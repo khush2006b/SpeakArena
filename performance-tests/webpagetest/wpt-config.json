@@ -1,0 +1,14 @@
+{
+  "targetUrl": "https://speakarena.com/", 
+  "location": "Dulles:Chrome",
+  "connectivity": "3G",
+  "runs": 3,
+  "firstViewOnly": false,
+  "video": true,
+  "specs": {
+    "loadTime": 3000,
+    "TTFB": 600,
+    "fullyLoaded": 5000,
+    "SpeedIndex": 2000
+  }
+}

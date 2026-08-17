@@ -1,0 +1,92 @@
+# =============================================================================
+# SpeakArena — Production Docker Compose Override
+#
+# Used together with the base compose file:
+#   docker compose -f docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml up -d
+#
+# Key differences from dev:
+# - Uses pre-built Docker images (no volume mounts, no hot-reload)
+# - Nginx reverse proxy in front of the API
+# - Resource limits on all containers
+# - Stricter restart policies
+# =============================================================================
+
+name: speakarena-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # NOT exposed to host in production — accessed via Docker network only
+    expose:
+      - "5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: >-
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:${IMAGE_TAG:-latest}
+    restart: always
+    env_file:
+      - /etc/speakarena/.env.prod
+    expose:
+      - "8000"
+    # No volume mounts in production — code is baked into the image
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/speakarena/nginx:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+volumes:
+  postgres_data:
+    name: speakarena_prod_postgres_data
+  redis_data:
+    name: speakarena_prod_redis_data
+  nginx_logs:
+    name: speakarena_prod_nginx_logs

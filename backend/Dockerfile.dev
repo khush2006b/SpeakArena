@@ -1,0 +1,67 @@
+# =============================================================================
+# SpeakArena Backend — Development Dockerfile
+#
+# Optimised for developer experience:
+#   - Hot-reload via uvicorn --reload
+#   - All dev/test dependencies installed
+#   - Volume-mounted source code for instant changes
+#   - Runs as non-root (same UID as production for parity)
+#
+# Usage:
+#   docker compose up api
+# =============================================================================
+
+ARG PYTHON_VERSION=3.13
+
+FROM python:${PYTHON_VERSION}-slim
+
+# System deps (build tools retained for dev)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    libpq-dev \
+    libpq5 \
+    libmagic1 \
+    libmagic-dev \
+    curl \
+    git \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user (matching production UID)
+RUN groupadd --gid 1001 speakarena \
+    && useradd \
+        --uid 1001 \
+        --gid speakarena \
+        --shell /bin/bash \
+        --create-home \
+        speakarena
+
+WORKDIR /app
+
+# Install Python dependencies into virtual env
+COPY requirements.txt .
+RUN python -m venv /venv \
+    && /venv/bin/pip install --upgrade pip wheel "setuptools<70.0.0" \
+    && /venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Fix ownership so non-root user can write (for pycache, etc.)
+RUN chown -R speakarena:speakarena /app /venv
+
+ENV PATH="/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Source code is volume-mounted at runtime — no COPY needed
+USER speakarena
+
+EXPOSE 8000
+
+# Development server with hot-reload
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--reload-dir", "/app/app", \
+     "--log-level", "debug"]

@@ -1,0 +1,1 @@
+"""SpeakArena FastAPI application package."""

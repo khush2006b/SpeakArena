@@ -1,0 +1,143 @@
+# =============================================================================
+# SpeakArena — Scheduled Security Audit
+#
+# Runs weekly on Sundays at 04:00 UTC.
+# Also triggered manually (workflow_dispatch).
+#
+# Scans:
+#   - Python dependency CVEs (pip-audit)
+#   - Docker image vulnerabilities (Trivy)
+#   - Secret scanning (Gitleaks)
+#   - SAST (Bandit)
+# =============================================================================
+
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'    # Every Sunday at 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: 'Trivy severity level'
+        required: false
+        default: 'CRITICAL,HIGH'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  dependency-audit:
+    name: Dependency CVE Audit
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: pip-audit full CVE scan
+        run: |
+          pip-audit \
+            --requirement requirements.txt \
+            --skip-editable \
+            --format markdown \
+            --output pip-audit-report.md
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: backend/pip-audit-report.md
+          retention-days: 90
+
+  docker-scan:
+    name: Docker Image Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: speakarena-backend:security-scan
+          cache-from: type=gha
+
+      - name: Trivy full scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: speakarena-backend:security-scan
+          format: sarif
+          output: trivy-weekly.sarif
+          severity: ${{ github.event.inputs.severity || 'CRITICAL,HIGH,MEDIUM' }}
+          exit-code: "0"     # Weekly: report only, don't fail
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-weekly.sarif
+          category: trivy-weekly
+
+  secret-scan:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  sast:
+    name: SAST (Bandit)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - run: pip install bandit
+
+      - name: Bandit full scan
+        run: |
+          bandit -r app/ -ll -f json -o bandit-weekly.json || true
+          bandit -r app/ -ll -f txt || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-weekly
+          path: backend/bandit-weekly.json
+          retention-days: 90

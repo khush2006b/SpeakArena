@@ -1,0 +1,110 @@
+# ============================================================
+# SpeakArena — .gitignore
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment files (never commit secrets)
+backend/.env
+frontend/.env.local
+frontend/.env
+*.env.local
+*.env.production
+*.env.staging
+
+# pytest
+.pytest_cache/
+htestcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ruff
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+.npm
+.yarn-integrity
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker
+*.env.docker
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Nginx
+infrastructure/nginx/ssl/
+
+# Alembic (keep versions, ignore pyc)
+backend/alembic/versions/__pycache__/
+
+# Uploads / temporary
+tmp/
+uploads/
+
+# Sentry
+.sentryclirc
+
+# Previous deploy state
+/var/speakarena/

@@ -1,0 +1,272 @@
+# =============================================================================
+# SpeakArena — Production Deployment Pipeline (Blue-Green)
+#
+# Triggered on: Push to main branch (after PR merge)
+# Strategy: Blue-green deployment with automatic rollback on failure.
+#
+# Secrets required in GitHub → Settings → Secrets → Actions:
+#   VPS_HOST            — Production server IP or hostname
+#   VPS_USER            — SSH username with docker access (deployer)
+#   VPS_SSH_KEY         — Private SSH key (Ed25519)
+#   GHCR_TOKEN          — GitHub PAT with packages:write
+#   SLACK_WEBHOOK_URL   — Slack incoming webhook URL
+#   SENTRY_AUTH_TOKEN   — Sentry auth token for release tracking
+#   SENTRY_ORG          — Sentry organization slug
+#   SENTRY_PROJECT      — Sentry project slug
+# =============================================================================
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "infrastructure/**"
+      - ".github/workflows/deploy-prod.yml"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # Never cancel an in-progress deployment
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  id-token: write             # For OIDC attestation
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Build and push Docker image to GHCR
+  # ---------------------------------------------------------------------------
+  build-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+      image-digest: ${{ steps.push.outputs.digest }}
+      full-image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.run_number }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+
+      - name: Scan pushed image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          format: sarif
+          output: trivy-prod-results.sarif
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-prod-results.sarif
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Deploy to VPS via SSH (Blue-Green)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment: production
+    outputs:
+      deployment-status: ${{ steps.deploy.outcome }}
+
+    steps:
+      - name: Checkout code (for infrastructure scripts)
+        uses: actions/checkout@v4
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS to known hosts
+        run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync infrastructure files to VPS
+        run: |
+          rsync -az --delete \
+            infrastructure/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/speakarena/infrastructure/
+          rsync -az \
+            docker-compose.prod.yml \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/speakarena/docker-compose.prod.yml
+
+      - name: Execute deployment on VPS
+        id: deploy
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "GITHUB_REPOSITORY=${{ github.repository }} \
+             IMAGE_TAG=${{ needs.build-push.outputs.image-tag }} \
+             /var/speakarena/infrastructure/scripts/deploy.sh \
+             ${{ needs.build-push.outputs.image-tag }}"
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Smoke tests — validate the deployment
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for deployment to stabilise
+        run: sleep 20
+
+      - name: Run smoke tests
+        run: |
+          bash infrastructure/scripts/smoke-test.sh https://api.speakarena.com
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Auto-rollback on failure
+  # ---------------------------------------------------------------------------
+  rollback:
+    name: Auto Rollback
+    runs-on: ubuntu-latest
+    needs: [deploy, smoke-test]
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS to known hosts
+        run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Execute rollback on VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "/var/speakarena/infrastructure/scripts/rollback.sh"
+
+  # ---------------------------------------------------------------------------
+  # Job 5: Create Sentry release
+  # ---------------------------------------------------------------------------
+  sentry-release:
+    name: Sentry Release
+    runs-on: ubuntu-latest
+    needs: smoke-test
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          finalize: true
+
+  # ---------------------------------------------------------------------------
+  # Job 6: Notify Slack
+  # ---------------------------------------------------------------------------
+  notify:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [build-push, deploy, smoke-test]
+    if: always()
+
+    steps:
+      - name: Notify success
+        if: needs.smoke-test.result == 'success'
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "\u2705 *SpeakArena deployed to production*",
+              "attachments": [{
+                "color": "#36a64f",
+                "fields": [
+                  {"title": "Version", "value": "${{ needs.build-push.outputs.image-tag }}", "short": true},
+                  {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                  {"title": "Commit", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Author", "value": "${{ github.actor }}", "short": true},
+                  {"title": "Duration", "value": "${{ github.run_number }} runs", "short": true},
+                  {"title": "Logs", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }'
+
+      - name: Notify failure (with rollback status)
+        if: needs.smoke-test.result != 'success' || needs.deploy.result != 'success'
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "\u274c *SpeakArena deployment FAILED \u2014 rollback initiated*",
+              "attachments": [{
+                "color": "#dc3545",
+                "fields": [
+                  {"title": "Version", "value": "${{ needs.build-push.outputs.image-tag }}", "short": true},
+                  {"title": "Author", "value": "${{ github.actor }}", "short": true},
+                  {"title": "Action", "value": "Rollback triggered automatically", "short": false},
+                  {"title": "Logs", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }'

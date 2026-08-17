@@ -1,0 +1,82 @@
+const SVG_BG_1 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'><defs><linearGradient id='g1' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='800' height='450' fill='url(%23g1)'/></svg>";
+const SVG_BG_2 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'><defs><linearGradient id='g2' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23064e3b'/><stop offset='100%' stop-color='%23059669'/></linearGradient></defs><rect width='800' height='450' fill='url(%23g2)'/></svg>";
+const SVG_BG_3 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'><defs><linearGradient id='g3' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23581c87'/><stop offset='100%' stop-color='%237e22ce'/></linearGradient></defs><rect width='800' height='450' fill='url(%23g3)'/></svg>";
+const SVG_BG_4 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'><defs><linearGradient id='g4' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e293b'/><stop offset='100%' stop-color='%23334155'/></linearGradient></defs><rect width='800' height='450' fill='url(%23g4)'/></svg>";
+
+export const MOCK_COURSES = [
+  {
+    id: "COURSE-101",
+    title: "Spoken English & Accent Reduction Masterclass",
+    thumbnail: SVG_BG_1,
+    category: "Fluency & Accent",
+    price: "$299.00",
+    students: 1245,
+    completion: 68, // percentage
+    revenue: "$372k",
+    rating: 4.9,
+    status: "Published",
+    visibility: "Public",
+    createdAt: "Jan 12, 2026",
+    updatedAt: "Aug 2, 2026",
+  },
+  {
+    id: "COURSE-102",
+    title: "Executive Business Communication",
+    thumbnail: SVG_BG_2,
+    category: "Business English",
+    price: "$199.00",
+    students: 830,
+    completion: 82,
+    revenue: "$165k",
+    rating: 4.8,
+    status: "Published",
+    visibility: "Public",
+    createdAt: "Feb 05, 2026",
+    updatedAt: "Jul 28, 2026",
+  },
+  {
+    id: "COURSE-103",
+    title: "IELTS & TOEFL Speaking Band 8+ Masterclass",
+    thumbnail: SVG_BG_3,
+    category: "Exam Prep",
+    price: "$249.00",
+    students: 0,
+    completion: 0,
+    revenue: "$0",
+    rating: 0,
+    status: "Draft",
+    visibility: "Private",
+    createdAt: "Aug 1, 2026",
+    updatedAt: "Aug 5, 2026",
+  },
+  {
+    id: "COURSE-104",
+    title: "Advanced English Grammar & Vocabulary",
+    thumbnail: SVG_BG_4,
+    category: "Grammar & Vocab",
+    price: "$149.00",
+    students: 312,
+    completion: 45,
+    revenue: "$46k",
+    rating: 4.5,
+    status: "Published",
+    visibility: "Private", // Only for internal cohort
+    createdAt: "Mar 10, 2026",
+    updatedAt: "Jun 12, 2026",
+  },
+  {
+    id: "COURSE-105",
+    title: "Confidence in Public Speaking & Debate",
+    thumbnail: SVG_BG_1,
+    category: "Public Speaking",
+    price: "$179.00",
+    students: 540,
+    completion: 55,
+    revenue: "$96k",
+    rating: 4.7,
+    status: "Published",
+    visibility: "Public",
+    createdAt: "Apr 15, 2026",
+    updatedAt: "Jul 20, 2026",
+  }
+];

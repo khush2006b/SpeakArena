@@ -1,0 +1,36 @@
+[run]
+source = app
+branch = true
+parallel = false
+omit =
+    app/alembic/*
+    app/alembic/versions/*
+    */migrations/*
+    */__init__.py
+
+[report]
+show_missing = true
+fail_under = 75
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+    # Defensive programming
+    raise NotImplementedError
+    raise AssertionError
+    # Type checking guards
+    if TYPE_CHECKING:
+    # Abstract methods
+    @(abc\.)?abstractmethod
+    # Production-only branches covered by integration tests
+    if settings.is_production:
+    # Repr helpers
+    def __repr__
+    def __str__
+    # Pass stubs
+    ^\s*pass$
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

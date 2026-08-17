@@ -1,0 +1,139 @@
+# =============================================================================
+# SpeakArena — Local Development Docker Compose
+#
+# Mounts source code as volumes for hot-reload.
+# Uses .env files for secrets (never committed).
+# Run: docker compose up -d
+# =============================================================================
+
+name: speakarena-dev
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: speakarena_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: speakarena
+      POSTGRES_PASSWORD: speakarena_dev_password
+      POSTGRES_DB: speakarena_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speakarena -d speakarena_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: speakarena_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # FastAPI Backend
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: builder    # Use builder stage for dev (has all dev deps)
+    container_name: speakarena_api
+    restart: unless-stopped
+    working_dir: /app
+    env_file:
+      - ./backend/.env
+    environment:
+      APP_ENV: development
+      DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://speakarena:speakarena_dev_password@db:5432/speakarena_db
+      DATABASE_SYNC_URL: postgresql+psycopg2://speakarena:speakarena_dev_password@db:5432/speakarena_db
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app   # Hot-reload: mount source code
+    command:
+      [
+        "sh", "-c",
+        "/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app"
+      ]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    networks:
+      - backend
+      - frontend
+
+  # ---------------------------------------------------------------------------
+  # Next.js Frontend (optional in dev — usually run with `npm run dev`)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: deps      # Install deps only for dev
+    container_name: speakarena_web
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules   # Prevent host node_modules from overriding
+      - /app/.next
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - api
+    networks:
+      - frontend
+    profiles:
+      - fullstack  # Only start with: docker compose --profile fullstack up
+
+networks:
+  backend:
+    driver: bridge
+    name: speakarena_backend
+  frontend:
+    driver: bridge
+    name: speakarena_frontend
+
+volumes:
+  postgres_data:
+    name: speakarena_postgres_data
+  redis_data:
+    name: speakarena_redis_data

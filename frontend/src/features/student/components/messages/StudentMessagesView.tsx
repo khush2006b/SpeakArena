@@ -1,0 +1,1900 @@
+"use client";
+
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import {
+  MessageSquare,
+  Send,
+  Loader2,
+  AlertCircle,
+  BookOpen,
+  Megaphone,
+  UserCheck,
+  Lock,
+  Hash,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  Sparkles,
+  Circle,
+  Info,
+} from "lucide-react";
+import { apiClient } from "@/services/api/client";
+import { useAuthStore } from "@/stores/auth.store";
+import { useChatStore } from "@/stores/chat.store";
+import {
+  connectChatSocket,
+  disconnectChatSocket,
+  getChatSocket,
+  sendTypingStart,
+  sendTypingStop,
+  socketEvents,
+} from "@/services/socket.client";
+import type { Course } from "@/types";
+import { toast } from "sonner";
+
+function getCourseTeacherId(course: any): string {
+  if (!course) return "";
+  const id = course.teacher_id || course.teacherId || course.teacher_info?.id || course.teacher?.id || course.instructor_id;
+  return id ? String(id) : "";
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ChatRoom {
+  id: string;
+  course_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+interface BackendMessage {
+  id: string;
+  chat_room_id: string;
+  sender: {
+    id: string;
+    full_name: string;
+    avatar_r2_key: string | null;
+    role: string;
+  };
+  recipient_id?: string | null;
+  content: string;
+  content_type: string;
+  reply_to: null | object;
+  is_pinned: boolean;
+  is_announcement: boolean;
+  is_edited: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  reactions: Record<string, string[]>;
+}
+
+// The active "channel" can be:
+// - "announcements"          → read-only broadcast for the selected course
+// - "course:{id}"            → group discussion for a specific enrolled course
+// - "teacher_dm:{courseId}"  → private 1-on-1 DM with that course's instructor
+type ActiveChannel =
+  | { type: "announcements"; course: Course }
+  | { type: "course"; course: Course }
+  | { type: "teacher_dm"; course: Course };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatTime(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function getInitials(name?: string | null) {
+  if (!name || typeof name !== "string") return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function Avatar({
+  name,
+  size = 34,
+  gradient = "linear-gradient(135deg,#4f46e5,#7c3aed)",
+}: {
+  name?: string | null;
+  size?: number;
+  gradient?: string;
+}) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: gradient,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.34,
+        fontWeight: 700,
+        color: "#fff",
+        flexShrink: 0,
+        letterSpacing: "-0.5px",
+      }}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function StudentMessagesView() {
+  const user = useAuthStore((s) => s.user);
+  const {
+    connectionStatus,
+    setConnectionStatus,
+    setActiveRoom,
+    clearActiveRoom,
+    typingUsers,
+  } = useChatStore();
+
+  // Enrolled courses
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+
+  // The currently open channel
+  const [activeChannel, setActiveChannel] = useState<ActiveChannel | null>(null);
+
+  // Collapse state for sidebar sections
+  const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
+  const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
+
+  // Room (fetched from backend for the selected course)
+  const [room, setRoom] = useState<ChatRoom | null>(null);
+  const [roomLoading, setRoomLoading] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
+
+  // Messages
+  const [messages, setMessages] = useState<BackendMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  // Input
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+
+  // Misc
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+
+  // Refs
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeChannelRef = useRef<ActiveChannel | null>(null);
+  const roomRef = useRef<ChatRoom | null>(null);
+  const userIdRef = useRef<string>("");
+  const coursesRef = useRef<Course[]>([]);
+
+  useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { userIdRef.current = user?.id ?? ""; }, [user?.id]);
+  useEffect(() => { coursesRef.current = courses; }, [courses]);
+
+  // ── Fetch enrolled courses ────────────────────────────────────────────────────
+  useEffect(() => {
+    setCoursesLoading(true);
+    apiClient
+      .get("/api/v1/courses")
+      .then((res) => {
+        const raw = res.data;
+        // API: { success, data: [...enrollments], pagination }
+        // Each item is a flat enrollment+course object (no nested .course)
+        let list: any[] = [];
+        if (Array.isArray(raw?.data))        list = raw.data;
+        else if (Array.isArray(raw?.data?.items)) list = raw.data.items;
+        else if (Array.isArray(raw))         list = raw;
+        else if (Array.isArray(raw?.courses)) list = raw.courses;
+
+        const parsed: Course[] = list.map((item: any, idx: number) => {
+          // item shape: { course_id, title, teacher_id, teacher_name, slug, ... }
+          const cid = item.course_id || item.id || `c-${idx}`;
+          return {
+            ...item,
+            id: cid,                                             // normalise to .id
+            teacherName: item.teacher_name || item.teacherName || "Instructor",
+            teacher_id:  item.teacher_id  || item.teacherId,
+          } as Course & { teacher_id: string; teacherName: string };
+        });
+
+        setCourses(parsed);
+        // Auto-select the first course's discussion channel
+        if (parsed.length > 0) {
+          setActiveChannel({ type: "course", course: parsed[0] });
+        }
+        setCoursesError(null);
+      })
+      .catch(() => setCoursesError("Failed to load courses."))
+      .finally(() => setCoursesLoading(false));
+  }, []);
+
+  // ── Fetch chat room when the active channel's course changes ─────────────────
+  const activeCourse = activeChannel?.course ?? null;
+
+  useEffect(() => {
+    if (!activeCourse) return;
+    setRoomLoading(true);
+    setRoomError(null);
+    setMessages([]);
+    setRoom(null);
+
+    apiClient
+      .get(`/api/v1/chat/${activeCourse.id}`)
+      .then((res) => {
+        const r: ChatRoom = res.data?.data;
+        setRoom(r);
+        setActiveRoom(r.id);
+      })
+      .catch(() =>
+        setRoomError("Chat room unavailable or you are not enrolled.")
+      )
+      .finally(() => setRoomLoading(false));
+  }, [activeCourse?.id, setActiveRoom]);
+
+  // ── Fetch message history ──────────────────────────────────────────────────
+  const fetchMessages = useCallback(async () => {
+    if (!activeCourse || !activeChannel) return;
+
+    // For course and teacher_dm channels, wait for room to be loaded
+    if (activeChannel.type !== "announcements" && !room) return;
+
+    if (activeChannel.type === "announcements") {
+      // Aggregate announcements from ALL enrolled courses (read via ref to avoid dep)
+      const currentCourses = coursesRef.current;
+      Promise.all(
+        currentCourses.map((c) =>
+          apiClient
+            .get(`/api/v1/chat/${c.id}/messages?limit=50&announcements_only=true`)
+            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+            .catch(() => [] as BackendMessage[])
+        )
+      ).then((results) => {
+        const allMsgs = results.flat().filter((m) => m.is_announcement);
+        const seen = new Set<string>();
+        const unique = allMsgs.filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setMessages(unique);
+      }).finally(() => setMessagesLoading(false));
+      return;
+    }
+
+    if (activeChannel.type === "teacher_dm") {
+      const currentCourses = coursesRef.current;
+      const teacherId = getCourseTeacherId(activeCourse);
+      if (!teacherId) {
+        setMessagesLoading(false);
+        return;
+      }
+      Promise.all(
+        currentCourses.map((c) =>
+          apiClient
+            .get(`/api/v1/chat/${c.id}/messages?limit=50&dm_student_id=${teacherId}`)
+            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+            .catch(() => [] as BackendMessage[])
+        )
+      ).then((results) => {
+        const allMsgs = results.flat().filter((m) => !m.is_announcement && Boolean(m.recipient_id));
+        const seen = new Set<string>();
+        const unique = allMsgs.filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setMessages(unique);
+      }).finally(() => setMessagesLoading(false));
+      return;
+    }
+
+    let url = `/api/v1/chat/${activeCourse.id}/messages?limit=50&public_only=true`;
+
+    apiClient
+      .get(url)
+      .then((res) => {
+        let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
+        msgs = msgs.filter((m) => !m.is_announcement && !m.recipient_id);
+        setMessages([...msgs].reverse()); // API returns newest-first
+      })
+      .catch(() => {})
+      .finally(() => setMessagesLoading(false));
+  }, [activeCourse, activeChannel, room]);
+
+  // ── Fetch message history whenever channel type or room changes + 3s poll ────
+  useEffect(() => {
+    if (!activeCourse || !activeChannel) return;
+
+    fetchMessages();
+  }, [activeCourse, activeChannel, room, fetchMessages]);
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!room) return;
+    setConnectionStatus("connecting");
+    connectChatSocket(room.id);
+    const socket = getChatSocket(room.id);
+
+    const onConnected = () => setConnectionStatus("connected");
+
+    const onMessageNew = (payload: any) => {
+      const msg: BackendMessage = payload?.message || payload;
+      if (!msg || !msg.content) return;
+
+      const currentRoom = roomRef.current;
+      const ch = activeChannelRef.current;
+      const myId = userIdRef.current.toLowerCase();
+      const senderId = String(msg.sender?.id || (msg as any).sender_id || "").toLowerCase();
+      const recId = String(msg.recipient_id || "").toLowerCase();
+
+      // Handle Direct Messages
+      if (msg.recipient_id) {
+        if (recId === myId || senderId === myId) {
+          const teacherId = String((ch?.type === "teacher_dm" ? (ch.course as any)?.teacher_id || (ch.course as any)?.teacherId : "") || "").toLowerCase();
+          if (ch?.type === "teacher_dm" && (senderId === teacherId || recId === teacherId || !teacherId)) {
+            setMessages((prev) => {
+              if (prev.some((m) => String(m.id).toLowerCase() === String(msg.id).toLowerCase()))
+                return prev;
+              const tempIdx = prev.findIndex(
+                (m) => m.id.startsWith("temp-") && m.content === msg.content
+              );
+              if (tempIdx !== -1) {
+                const updated = [...prev];
+                updated[tempIdx] = msg;
+                return updated;
+              }
+              return [...prev, msg];
+            });
+          } else if (recId === myId && senderId !== myId) {
+            toast.info(`New DM from ${msg.sender?.full_name || "Instructor"}: ${msg.content.slice(0, 40)}`);
+          }
+          return;
+        }
+      }
+
+      // Room guard for course channels
+      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "teacher_dm") {
+        if (
+          String(msg.chat_room_id).toLowerCase() !==
+          String(currentRoom.id).toLowerCase()
+        )
+          return;
+      }
+
+      // Channel filter for group discussion / announcements
+      if (!ch) return;
+      if (ch.type === "announcements" && !msg.is_announcement) return;
+      if (ch.type === "course" && (msg.is_announcement || msg.recipient_id)) return;
+
+      setMessages((prev) => {
+        const tempIdx = prev.findIndex(
+          (m) => m.id.startsWith("temp-") && m.content === msg.content
+        );
+        if (tempIdx !== -1) {
+          const updated = [...prev];
+          updated[tempIdx] = msg;
+          return updated;
+        }
+        if (
+          prev.some(
+            (m) =>
+              String(m.id).toLowerCase() === String(msg.id).toLowerCase()
+          )
+        )
+          return prev;
+        return [...prev, msg];
+      });
+    };
+
+    const onMessageEdited = (payload: any) => {
+      const { message_id, content } = payload ?? {};
+      if (!message_id) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message_id ? { ...m, content, is_edited: true } : m
+        )
+      );
+    };
+    const onMessageDeleted = (payload: any) => {
+      const { message_id } = payload ?? {};
+      if (!message_id) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message_id
+            ? { ...m, content: "[Message deleted]", is_deleted: true }
+            : m
+        )
+      );
+    };
+
+    socket.on("connected", onConnected);
+    socket.on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+    socket.on("message.edited", onMessageEdited);
+    socket.on("message.deleted", onMessageDeleted);
+
+    return () => {
+      socket.off("connected", onConnected);
+      socket.off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+      socket.off("message.edited", onMessageEdited);
+      socket.off("message.deleted", onMessageDeleted);
+      disconnectChatSocket(room.id);
+      clearActiveRoom();
+      setConnectionStatus("idle");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.id, setConnectionStatus, clearActiveRoom]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Typing ────────────────────────────────────────────────────────────────────
+  const handleTyping = useCallback(() => {
+    if (!room || activeChannelRef.current?.type !== "course") return;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      sendTypingStart(room.id);
+    }
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      sendTypingStop(room.id);
+    }, 2500);
+  }, [room]);
+
+  // ── Send ──────────────────────────────────────────────────────────────────────
+  const handleSend = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const content = draft.trim();
+      if (!content || !room || !activeCourse || !activeChannel || sending) return;
+      // Students cannot send announcements
+      if (activeChannel.type === "announcements") return;
+
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      isTypingRef.current = false;
+      if (activeChannel.type === "course") sendTypingStop(room.id);
+      setSending(true);
+      setDraft("");
+
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const teacherId =
+        (activeCourse as any)?.teacher_id ||
+        (activeCourse as any)?.teacherId ||
+        undefined;
+
+      const tempMsg: BackendMessage = {
+        id: tempId,
+        chat_room_id: room.id,
+        sender: {
+          id: user?.id ?? "",
+          full_name: (user as any)?.full_name || user?.fullName || "You",
+          avatar_r2_key: null,
+          role: (user as any)?.role || user?.role || "student",
+        },
+        recipient_id:
+          activeChannel.type === "teacher_dm" ? teacherId : undefined,
+        content,
+        content_type: "text",
+        reply_to: null,
+        is_pinned: false,
+        is_announcement: false,
+        is_edited: false,
+        is_deleted: false,
+        created_at: new Date().toISOString(),
+        reactions: {},
+      };
+
+      setMessages((prev) => [...prev, tempMsg]);
+
+      try {
+        const payload: any = { content, content_type: "text" };
+        if (activeChannel.type === "teacher_dm" && teacherId) {
+          payload.recipient_id = teacherId;
+        }
+
+        const res = await apiClient.post(
+          `/api/v1/chat/${activeCourse.id}/messages`,
+          payload
+        );
+        const realMsg: BackendMessage = res.data?.data;
+
+        if (realMsg) {
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === tempId);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = realMsg;
+              return updated;
+            }
+            if (
+              prev.some(
+                (m) =>
+                  String(m.id).toLowerCase() ===
+                  String(realMsg.id).toLowerCase()
+              )
+            )
+              return prev;
+            return [...prev, realMsg];
+          });
+        }
+      } catch {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setDraft(content);
+      } finally {
+        setSending(false);
+      }
+    },
+    [draft, room, sending, user, activeCourse, activeChannel]
+  );
+
+  // ── Typing label ──────────────────────────────────────────────────────────────
+  const typingLabel = useMemo(() => {
+    const others = typingUsers.filter((u) => u.userId !== user?.id);
+    if (!others.length) return null;
+    if (others.length === 1) return `${others[0].userName} is typing...`;
+    if (others.length === 2)
+      return `${others[0].userName} and ${others[1].userName} are typing...`;
+    return "Several people are typing...";
+  }, [typingUsers, user?.id]);
+
+  const statusDot = {
+    idle: { color: "#64748b", label: "Idle" },
+    connecting: { color: "#f59e0b", label: "Connecting..." },
+    connected: { color: "#22c55e", label: "Live" },
+    reconnecting: { color: "#f59e0b", label: "Reconnecting..." },
+    disconnected: { color: "#ef4444", label: "Disconnected" },
+  }[connectionStatus];
+
+  const isReadOnly = activeChannel?.type === "announcements";
+  const isTeacherDm = activeChannel?.type === "teacher_dm";
+
+  // Channel header labels
+  const channelTitle = !activeChannel
+    ? "Classroom Hub"
+    : activeChannel.type === "announcements"
+    ? `📢 Announcements`
+    : activeChannel.type === "course"
+    ? `# ${activeChannel.course.title}`
+    : `✉️ ${(activeChannel.course as any).teacherName || "Instructor"}`;
+
+  const channelSubtitle = !activeChannel
+    ? "Select a channel from the sidebar"
+    : activeChannel.type === "announcements"
+    ? "Instructor broadcast channel — read-only for students"
+    : activeChannel.type === "course"
+    ? `Group discussion for ${activeChannel.course.title}`
+    : `Private 1-on-1 with ${(activeChannel.course as any).teacherName || "your instructor"}`;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────────
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "calc(100vh - 4rem)",
+        width: "100%",
+        background: "#080c14",
+        color: "#f1f5f9",
+        overflow: "hidden",
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}
+    >
+      <style>{`
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .ch-item { transition: background 0.15s, color 0.15s; }
+        .ch-item:hover { background: rgba(255,255,255,0.05) !important; }
+        .msg-input:focus { outline:none; border-color:rgba(99,102,241,0.5) !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .send-btn:hover:not(:disabled) { filter: brightness(1.1); transform: scale(1.03); }
+        .send-btn:disabled { opacity:0.45; cursor:not-allowed; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+      `}</style>
+
+      {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          width: 290,
+          background: "#0b0f1a",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+          overflowY: "auto",
+        }}
+      >
+        {/* Branding */}
+        <div
+          style={{
+            padding: "18px 16px 14px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <GraduationCap style={{ width: 20, height: 20, color: "#fff" }} />
+            </div>
+            <div>
+              <div
+                style={{ fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}
+              >
+                SpeakArena
+              </div>
+              <div
+                style={{ fontSize: 11, color: "#4f46e5", fontWeight: 600 }}
+              >
+                Student Hub
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 1: Announcements ──────────────────────────────────────── */}
+        {/* One entry per enrolled course so students can see each course's announcements */}
+        <div style={{ padding: "10px 8px 2px" }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              padding: "4px 8px 6px",
+            }}
+          >
+            General
+          </div>
+
+          {/* Show announcements for the first enrolled course (global broadcast) */}
+          {courses.length > 0 ? (
+            <button
+              className="ch-item"
+              onClick={() =>
+                setActiveChannel({ type: "announcements", course: courses[0] })
+              }
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "9px 10px",
+                borderRadius: 8,
+                background:
+                  activeChannel?.type === "announcements"
+                    ? "rgba(245,158,11,0.1)"
+                    : "transparent",
+                border:
+                  activeChannel?.type === "announcements"
+                    ? "1px solid rgba(245,158,11,0.2)"
+                    : "1px solid transparent",
+                color:
+                  activeChannel?.type === "announcements"
+                    ? "#f59e0b"
+                    : "#94a3b8",
+                fontWeight:
+                  activeChannel?.type === "announcements" ? 700 : 400,
+                cursor: "pointer",
+                fontSize: 13,
+                textAlign: "left",
+              }}
+            >
+              <Megaphone
+                style={{
+                  width: 16,
+                  height: 16,
+                  color:
+                    activeChannel?.type === "announcements"
+                      ? "#f59e0b"
+                      : "#64748b",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ flex: 1 }}>Announcements</span>
+              <Lock
+                style={{
+                  width: 11,
+                  height: 11,
+                  color: "#64748b",
+                  flexShrink: 0,
+                }}
+              />
+            </button>
+          ) : (
+            <div
+              style={{
+                padding: "8px 10px",
+                fontSize: 12,
+                color: "#475569",
+                fontStyle: "italic",
+              }}
+            >
+              {coursesLoading ? "Loading..." : "Enroll in a course first."}
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION 2: Courses ────────────────────────────────────────────── */}
+        <div style={{ padding: "12px 8px 2px" }}>
+          <button
+            onClick={() => setCoursesSectionOpen((v) => !v)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 8px 6px",
+              color: "#64748b",
+              fontWeight: 700,
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              textAlign: "left",
+            }}
+          >
+            {coursesSectionOpen ? (
+              <ChevronDown style={{ width: 12, height: 12 }} />
+            ) : (
+              <ChevronRight style={{ width: 12, height: 12 }} />
+            )}
+            My Courses
+            {courses.length > 0 && (
+              <span
+                style={{
+                  marginLeft: "auto",
+                  background: "rgba(99,102,241,0.2)",
+                  color: "#818cf8",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: 8,
+                }}
+              >
+                {courses.length}
+              </span>
+            )}
+          </button>
+
+          {coursesSectionOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {coursesLoading ? (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    color: "#475569",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Loading courses...
+                </div>
+              ) : coursesError ? (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    color: "#ef4444",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <AlertCircle style={{ width: 12, height: 12 }} />
+                  {coursesError}
+                </div>
+              ) : courses.length === 0 ? (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    color: "#475569",
+                    fontStyle: "italic",
+                  }}
+                >
+                  No enrolled courses.
+                </div>
+              ) : (
+                courses.map((course, idx) => {
+                  const isActive =
+                    activeChannel?.type === "course" &&
+                    activeChannel.course.id === course.id;
+                  return (
+                    <button
+                      key={course.id || `c-${idx}`}
+                      className="ch-item"
+                      onClick={() =>
+                        setActiveChannel({ type: "course", course })
+                      }
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "9px 10px",
+                        borderRadius: 8,
+                        background: isActive
+                          ? "rgba(99,102,241,0.12)"
+                          : "transparent",
+                        border: isActive
+                          ? "1px solid rgba(99,102,241,0.2)"
+                          : "1px solid transparent",
+                        color: isActive ? "#818cf8" : "#94a3b8",
+                        fontWeight: isActive ? 700 : 400,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        textAlign: "left",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 7,
+                          background: isActive
+                            ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
+                            : "rgba(255,255,255,0.07)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: isActive ? "#fff" : "#64748b",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {course.title.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div
+                        style={{ overflow: "hidden", flex: 1, textAlign: "left" }}
+                      >
+                        <div
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            color: isActive ? "#f1f5f9" : "#cbd5e1",
+                            fontWeight: isActive ? 700 : 500,
+                            fontSize: 13,
+                          }}
+                        >
+                          {course.title}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#475569" }}>
+                          {(course as any).teacherName || "Instructor"}
+                        </div>
+                      </div>
+                      <Hash
+                        style={{
+                          width: 12,
+                          height: 12,
+                          color: isActive ? "#818cf8" : "#334155",
+                          flexShrink: 0,
+                        }}
+                      />
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION 3: Teacher DMs ────────────────────────────────────────── */}
+        <div style={{ padding: "12px 8px 2px", flex: 1 }}>
+          <button
+            onClick={() => setDmsSectionOpen((v) => !v)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 8px 6px",
+              color: "#64748b",
+              fontWeight: 700,
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              textAlign: "left",
+            }}
+          >
+            {dmsSectionOpen ? (
+              <ChevronDown style={{ width: 12, height: 12 }} />
+            ) : (
+              <ChevronRight style={{ width: 12, height: 12 }} />
+            )}
+            Direct Messages
+          </button>
+
+          {dmsSectionOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {!coursesLoading && courses.length === 0 && (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    color: "#475569",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Enroll in a course to message instructors.
+                </div>
+              )}
+              {(() => {
+                // Deduplicate: one DM entry per unique teacher
+                const seen = new Set<string>();
+                const uniqueTeachers: { teacherName: string; teacherId: string; course: typeof courses[0] }[] = [];
+                for (const course of courses) {
+                  const tid = getCourseTeacherId(course);
+                  if (tid && !seen.has(tid)) {
+                    seen.add(tid);
+                    uniqueTeachers.push({
+                      teacherName: (course as any).teacherName || (course as any).teacher_name || "Instructor",
+                      teacherId: tid,
+                      course, // first course for this teacher
+                    });
+                  }
+                }
+                return uniqueTeachers.map(({ teacherName, teacherId, course }) => {
+                  const isActive =
+                    activeChannel?.type === "teacher_dm" &&
+                    getCourseTeacherId(activeChannel.course) === teacherId;
+                  return (
+                    <button
+                      key={`dm-${teacherId}`}
+                      className="ch-item"
+                      onClick={() =>
+                        setActiveChannel({ type: "teacher_dm", course })
+                      }
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "7px 10px",
+                        borderRadius: 8,
+                        background: isActive
+                          ? "rgba(14,165,233,0.1)"
+                          : "transparent",
+                        border: isActive
+                          ? "1px solid rgba(14,165,233,0.18)"
+                          : "1px solid transparent",
+                        color: isActive ? "#38bdf8" : "#94a3b8",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        textAlign: "left",
+                      }}
+                    >
+                      <Avatar
+                        name={teacherName}
+                        size={28}
+                        gradient={
+                          isActive
+                            ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
+                            : "linear-gradient(135deg,#1e293b,#334155)"
+                        }
+                      />
+                      <div
+                        style={{
+                          overflow: "hidden",
+                          flex: 1,
+                          textAlign: "left",
+                        }}
+                      >
+                        <div
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            color: isActive ? "#e2e8f0" : "#cbd5e1",
+                            fontWeight: isActive ? 700 : 400,
+                            fontSize: 12,
+                          }}
+                        >
+                          {teacherName}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "#475569",
+                          }}
+                        >
+                          Your instructor
+                        </div>
+                      </div>
+                      {isActive && (
+                        <BookOpen
+                          style={{
+                            width: 11,
+                            height: 11,
+                            color: "#38bdf8",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* Student Profile Footer */}
+        <div
+          style={{
+            padding: "12px 14px",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "rgba(0,0,0,0.2)",
+          }}
+        >
+          <Avatar
+            name={user?.fullName || (user as any)?.full_name || "Student"}
+            size={34}
+            gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
+          />
+          <div style={{ overflow: "hidden", flex: 1 }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#f1f5f9",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {(user as any)?.full_name || user?.fullName || "Student"}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "#4f46e5",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Sparkles style={{ width: 10, height: 10 }} />
+                {/* Capitalize role from API ("student" → "Student") */}
+                {((user as any)?.role || user?.role || "student")
+                  .charAt(0).toUpperCase() +
+                  ((user as any)?.role || user?.role || "student").slice(1).toLowerCase()}
+            </div>
+          </div>
+          {/* Connection status dot */}
+          {room && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 10,
+                color: statusDot?.color,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              <Circle
+                style={{
+                  width: 7,
+                  height: 7,
+                  fill: statusDot?.color,
+                  color: statusDot?.color,
+                  animation:
+                    connectionStatus === "connecting" ||
+                    connectionStatus === "reconnecting"
+                      ? "pulse 1.2s infinite"
+                      : undefined,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          background: "#080c14",
+          minWidth: 0,
+        }}
+      >
+        {/* Chat Header */}
+        <div
+          style={{
+            height: 62,
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            padding: "0 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "rgba(11,15,26,0.9)",
+            backdropFilter: "blur(10px)",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: !activeChannel
+                  ? "linear-gradient(135deg,#334155,#475569)"
+                  : activeChannel.type === "announcements"
+                  ? "linear-gradient(135deg,#d97706,#f59e0b)"
+                  : activeChannel.type === "course"
+                  ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
+                  : "linear-gradient(135deg,#0284c7,#0ea5e9)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {(!activeChannel || activeChannel.type === "course") && (
+                <Hash style={{ width: 20, height: 20, color: "#fff" }} />
+              )}
+              {activeChannel?.type === "announcements" && (
+                <Megaphone style={{ width: 20, height: 20, color: "#fff" }} />
+              )}
+              {activeChannel?.type === "teacher_dm" && (
+                <UserCheck style={{ width: 20, height: 20, color: "#fff" }} />
+              )}
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: "#f1f5f9",
+                  letterSpacing: "-0.3px",
+                }}
+              >
+                {channelTitle}
+              </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
+                {channelSubtitle}
+              </div>
+            </div>
+          </div>
+
+          {/* Right side actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {room && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 20,
+                  padding: "5px 12px",
+                  fontSize: 11,
+                  color: statusDot?.color,
+                  fontWeight: 600,
+                }}
+              >
+                <Circle
+                  style={{
+                    width: 6,
+                    height: 6,
+                    fill: statusDot?.color,
+                    color: statusDot?.color,
+                    animation:
+                      connectionStatus === "connecting" ||
+                      connectionStatus === "reconnecting"
+                        ? "pulse 1.2s infinite"
+                        : undefined,
+                  }}
+                />
+                {statusDot?.label}
+              </div>
+            )}
+            <button
+              onClick={() => setShowInfoPanel((v) => !v)}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                background: showInfoPanel
+                  ? "rgba(99,102,241,0.15)"
+                  : "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: showInfoPanel ? "#818cf8" : "#94a3b8",
+                cursor: "pointer",
+              }}
+            >
+              <Info style={{ width: 16, height: 16 }} />
+            </button>
+          </div>
+        </div>
+
+        {/* Message Feed */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          {/* No channel selected */}
+          {!activeChannel && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                gap: 12,
+                color: "#334155",
+              }}
+            >
+              <MessageSquare
+                style={{ width: 52, height: 52, opacity: 0.15, color: "#818cf8" }}
+              />
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#475569",
+                }}
+              >
+                Select a channel to start
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "#334155",
+                  textAlign: "center",
+                  maxWidth: 280,
+                }}
+              >
+                Choose a course discussion, announcements, or teacher DM from
+                the sidebar.
+              </div>
+            </div>
+          )}
+
+          {/* Room error */}
+          {activeChannel && roomError && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "14px 18px",
+                borderRadius: 12,
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                color: "#fca5a5",
+                fontSize: 13,
+              }}
+            >
+              <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+              {roomError}
+            </div>
+          )}
+
+          {/* Loading */}
+          {activeChannel && !roomError && (roomLoading || messagesLoading) && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                gap: 10,
+                color: "#64748b",
+              }}
+            >
+              <Loader2
+                style={{
+                  width: 20,
+                  height: 20,
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              <span style={{ fontSize: 14 }}>Loading messages...</span>
+            </div>
+          )}
+
+          {/* Messages */}
+          {!roomLoading &&
+            !messagesLoading &&
+            room &&
+            messages.map((msg, idx) => {
+              const isTeacher =
+                ["teacher", "TEACHER"].includes(msg.sender?.role || "");
+              const isSelf = msg.sender?.id === user?.id;
+              const senderName = isSelf
+                ? "You"
+                : msg.sender?.full_name || "User";
+
+              return (
+                <div
+                  key={msg.id || `msg-${idx}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: isSelf ? "row-reverse" : "row",
+                    alignItems: "flex-end",
+                    gap: 10,
+                    animation: "fadeInUp 0.2s ease",
+                  }}
+                >
+                  {!isSelf && (
+                    <Avatar
+                      name={senderName}
+                      size={34}
+                      gradient={
+                        isTeacher
+                          ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
+                          : "linear-gradient(135deg,#0ea5e9,#6366f1)"
+                      }
+                    />
+                  )}
+                  <div
+                    style={{
+                      maxWidth: "65%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: isSelf ? "flex-end" : "flex-start",
+                      gap: 3,
+                    }}
+                  >
+                    {!isSelf && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: isTeacher ? "#a78bfa" : "#60a5fa",
+                          fontWeight: 600,
+                          paddingLeft: 4,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                        }}
+                      >
+                        {senderName}
+                        {isTeacher && (
+                          <span
+                            style={{
+                              background: "rgba(99,102,241,0.2)",
+                              color: "#818cf8",
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              letterSpacing: "0.5px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Instructor
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: isSelf
+                          ? "18px 18px 4px 18px"
+                          : "18px 18px 18px 4px",
+                        background: isSelf
+                          ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
+                          : msg.is_announcement || isTeacher
+                          ? "rgba(99,102,241,0.12)"
+                          : "rgba(255,255,255,0.06)",
+                        border: isSelf
+                          ? "none"
+                          : msg.is_announcement || isTeacher
+                          ? "1px solid rgba(99,102,241,0.3)"
+                          : "1px solid rgba(255,255,255,0.08)",
+                        color: "#e2e8f0",
+                        fontSize: 14,
+                        lineHeight: 1.55,
+                        wordBreak: "break-word",
+                        boxShadow: isSelf
+                          ? "0 4px 12px rgba(79,70,229,0.25)"
+                          : "0 2px 8px rgba(0,0,0,0.2)",
+                      }}
+                    >
+                      {msg.is_announcement && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            color: "#a78bfa",
+                            fontWeight: 700,
+                            fontSize: 11,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <Megaphone style={{ width: 13, height: 13 }} />
+                          ANNOUNCEMENT
+                        </div>
+                      )}
+                      {msg.content}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#475569",
+                        paddingLeft: 4,
+                        paddingRight: 4,
+                      }}
+                    >
+                      {formatTime(msg.created_at)}
+                      {msg.is_edited && (
+                        <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                          (edited)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+          {/* Empty state */}
+          {!roomLoading &&
+            !messagesLoading &&
+            room &&
+            messages.length === 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flex: 1,
+                  gap: 10,
+                  color: "#475569",
+                  paddingBottom: 30,
+                }}
+              >
+                {activeChannel?.type === "announcements" ? (
+                  <>
+                    <Megaphone
+                      style={{ width: 38, height: 38, opacity: 0.25, color: "#f59e0b" }}
+                    />
+                    <span style={{ fontSize: 14 }}>
+                      No announcements yet from your instructor.
+                    </span>
+                  </>
+                ) : activeChannel?.type === "teacher_dm" ? (
+                  <>
+                    <UserCheck
+                      style={{ width: 38, height: 38, opacity: 0.25, color: "#38bdf8" }}
+                    />
+                    <span style={{ fontSize: 14 }}>
+                      No messages yet with{" "}
+                      {(activeChannel.course as any)?.teacherName ||
+                        "your instructor"}
+                      . Send a note!
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare
+                      style={{ width: 38, height: 38, opacity: 0.25, color: "#818cf8" }}
+                    />
+                    <span style={{ fontSize: 14 }}>
+                      No messages yet. Start the conversation! 👋
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Typing indicator */}
+        {typingLabel && activeChannel?.type === "course" && (
+          <div
+            style={{
+              padding: "4px 24px 2px",
+              fontSize: 11,
+              color: "#818cf8",
+              fontStyle: "italic",
+              flexShrink: 0,
+            }}
+          >
+            {typingLabel}
+          </div>
+        )}
+
+        {/* Read-Only Banner (Announcements) */}
+        {isReadOnly && (
+          <div
+            style={{
+              padding: "12px 20px",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              background: "rgba(245,158,11,0.06)",
+              color: "#f59e0b",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            <Lock style={{ width: 14, height: 14 }} />
+            Announcement Channel — Read-Only. Only instructors can post here.
+          </div>
+        )}
+
+        {/* Input Bar — hidden for read-only channels */}
+        {activeChannel && !isReadOnly && (
+          <form
+            onSubmit={handleSend}
+            style={{
+              padding: "14px 18px",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexShrink: 0,
+              background: "rgba(11,15,26,0.8)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Avatar
+              name={(user as any)?.full_name || user?.fullName || "You"}
+              size={34}
+              gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
+            />
+            <input
+              id="chat-message-input"
+              className="msg-input"
+              type="text"
+              placeholder={
+                !room
+                  ? "Connecting to room..."
+                  : isTeacherDm
+                  ? `Message ${
+                      (activeChannel?.course as any)?.teacherName ||
+                      "Instructor"
+                    }...`
+                  : connectionStatus === "connected"
+                  ? "Type a message..."
+                  : "Connecting..."
+              }
+              value={draft}
+              disabled={!room || sending}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                handleTyping();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend(e as any);
+                }
+              }}
+              style={{
+                flex: 1,
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                padding: "10px 16px",
+                fontSize: 14,
+                color: "#f1f5f9",
+                transition: "border-color 0.2s, box-shadow 0.2s",
+              }}
+            />
+            <button
+              id="chat-send-btn"
+              type="submit"
+              className="send-btn"
+              disabled={!draft.trim() || !room || sending}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                borderRadius: 12,
+                background: isTeacherDm
+                  ? "linear-gradient(135deg,#0284c7,#0369a1)"
+                  : "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                padding: "10px 20px",
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                flexShrink: 0,
+                transition: "filter 0.15s, transform 0.15s",
+              }}
+            >
+              {sending ? (
+                <Loader2
+                  style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                />
+              ) : (
+                <Send style={{ width: 16, height: 16 }} />
+              )}
+              Send
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* ── RIGHT INFO PANEL ─────────────────────────────────────────────────── */}
+      {showInfoPanel && (
+        <div
+          style={{
+            width: 260,
+            background: "#0b0f1a",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            overflowY: "auto",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+            }}
+          >
+            Channel Info
+          </div>
+
+          {!activeChannel && (
+            <div style={{ fontSize: 13, color: "#475569" }}>
+              Select a channel to see details.
+            </div>
+          )}
+
+          {activeChannel?.type === "announcements" && (
+            <div
+              style={{
+                background: "rgba(245,158,11,0.06)",
+                border: "1px solid rgba(245,158,11,0.15)",
+                borderRadius: 12,
+                padding: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: "#f59e0b",
+                  marginBottom: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Megaphone style={{ width: 14, height: 14 }} />
+                Announcements
+              </div>
+              <div
+                style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}
+              >
+                Official announcements from your instructor across{" "}
+                <strong style={{ color: "#94a3b8" }}>
+                  all your enrolled courses
+                </strong>
+                . This channel is read-only for students.
+              </div>
+            </div>
+          )}
+
+          {activeChannel?.type === "course" && (
+            <div
+              style={{
+                background: "rgba(99,102,241,0.06)",
+                border: "1px solid rgba(99,102,241,0.15)",
+                borderRadius: 12,
+                padding: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "#818cf8",
+                  marginBottom: 4,
+                }}
+              >
+                {activeChannel.course.title}
+              </div>
+              <div style={{ fontSize: 11, color: "#475569" }}>
+                Instructor:{" "}
+                {(activeChannel.course as any).teacherName || "Instructor"}
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: "#64748b",
+                  lineHeight: 1.6,
+                }}
+              >
+                Group discussion open to all enrolled students and the
+                instructor.
+              </div>
+            </div>
+          )}
+
+          {activeChannel?.type === "teacher_dm" && (
+            <div
+              style={{
+                background: "rgba(14,165,233,0.06)",
+                border: "1px solid rgba(14,165,233,0.15)",
+                borderRadius: 12,
+                padding: 14,
+              }}
+            >
+              <Avatar
+                name={
+                  (activeChannel.course as any).teacherName || "Instructor"
+                }
+                size={44}
+                gradient="linear-gradient(135deg,#6366f1,#8b5cf6)"
+              />
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "#e2e8f0",
+                  marginTop: 10,
+                }}
+              >
+                {(activeChannel.course as any).teacherName || "Instructor"}
+              </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+                Instructor
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: "#64748b",
+                  lineHeight: 1.6,
+                }}
+              >
+                Private 1-on-1 direct message thread with your instructor.
+              </div>
+            </div>
+          )}
+
+          {/* Enrollment summary */}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              padding: 14,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#64748b",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 10,
+              }}
+            >
+              My Enrollment
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: "#94a3b8",
+                }}
+              >
+                <span>Enrolled Courses</span>
+                <span style={{ fontWeight: 700, color: "#818cf8" }}>
+                  {courses.length}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: "#94a3b8",
+                }}
+              >
+                <span>Messages Loaded</span>
+                <span style={{ fontWeight: 700, color: "#22c55e" }}>
+                  {messages.length}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: "#94a3b8",
+                }}
+              >
+                <span>Connection</span>
+                <span
+                  style={{ fontWeight: 700, color: statusDot?.color }}
+                >
+                  {statusDot?.label}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
