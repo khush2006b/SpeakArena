@@ -82,6 +82,56 @@ router = APIRouter(prefix="/teacher", tags=["Teacher"])
 
 
 # ===========================================================================
+# DB Patch Diagnostic & Fix
+# ===========================================================================
+
+from sqlalchemy import text
+
+@router.get("/db-patch", summary="Apply DB Schema Patches")
+async def run_db_patches(
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Run all missing column schema patches directly and report results."""
+    patches = [
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS short_description VARCHAR(500);",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS promo_video_r2_key VARCHAR(512);",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS original_price NUMERIC(10,2);",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lectures SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_enrollments INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_reviews INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS average_rating NUMERIC(3,2);",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_certificate_enabled BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS section VARCHAR(200);",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512);",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS hls_r2_key_prefix VARCHAR(512);",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS resolution_width SMALLINT;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS resolution_height SMALLINT;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS processing_error TEXT;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS section VARCHAR(200);",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512);",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS page_count INTEGER;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_downloadable BOOLEAN NOT NULL DEFAULT TRUE;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+    ]
+    results = []
+    for sql in patches:
+        try:
+            await db.execute(text(sql))
+            await db.commit()
+            results.append({"sql": sql, "status": "SUCCESS"})
+        except Exception as e:
+            await db.rollback()
+            results.append({"sql": sql, "status": "ERROR", "error": str(e)})
+
+    return success_response({"results": results})
+
+
+# ===========================================================================
 # Dashboard
 # ===========================================================================
 
