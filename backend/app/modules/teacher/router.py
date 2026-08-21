@@ -24,6 +24,7 @@ Endpoint groups:
 
 from __future__ import annotations
 
+import traceback
 import uuid
 from typing import Optional
 
@@ -151,37 +152,40 @@ async def list_courses(
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
     """List the teacher's courses with filters and pagination."""
-    svc = CourseService(db, teacher)
-    courses, total = await svc.list_courses(
-        page=filters.page,
-        page_size=filters.page_size,
-        status=filters.status,
-        visibility=filters.visibility,
-        search=filters.search,
-        sort_by=filters.sort_by,
-        sort_order=filters.sort_order,
-    )
-    items = [
-        {
-            "id": str(c.id),
-            "title": c.title,
-            "slug": c.slug,
-            "status": c.status,
-            "visibility": c.visibility,
-            "price": float(c.price),
-            "thumbnail_r2_key": c.thumbnail_r2_key,
-            "total_enrollments": c.total_enrollments or 0,
-            "max_students": c.max_students,
-            "total_lectures": c.total_lectures,
-            "level": c.level,
-            "created_at": c.created_at.isoformat(),
-            "updated_at": c.updated_at.isoformat(),
-        }
-        for c in courses
-    ]
-    return paginated_response(
-        items, page=filters.page, page_size=filters.page_size, total=total
-    )
+    try:
+        svc = CourseService(db, teacher)
+        courses, total = await svc.list_courses(
+            page=filters.page,
+            page_size=filters.page_size,
+            status=filters.status,
+            visibility=filters.visibility,
+            search=filters.search,
+            sort_by=filters.sort_by,
+            sort_order=filters.sort_order,
+        )
+        items = [
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "slug": c.slug,
+                "status": c.status,
+                "visibility": c.visibility,
+                "price": float(c.price),
+                "thumbnail_r2_key": c.thumbnail_r2_key,
+                "total_enrollments": c.total_enrollments or 0,
+                "max_students": c.max_students,
+                "total_lectures": c.total_lectures,
+                "level": c.level,
+                "created_at": c.created_at.isoformat(),
+                "updated_at": c.updated_at.isoformat(),
+            }
+            for c in courses
+        ]
+        return paginated_response(
+            items, page=filters.page, page_size=filters.page_size, total=total
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
 
 
 @router.post(
