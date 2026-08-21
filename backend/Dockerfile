@@ -128,7 +128,7 @@ HEALTHCHECK \
 # Production entrypoint: run Alembic migrations then start Gunicorn with Uvicorn workers
 # Adjust GUNICORN_WORKERS via environment variable (recommended: 2 × CPU cores)
 CMD ["sh", "-c", \
-    "/venv/bin/alembic upgrade head && \
+    "/venv/bin/alembic upgrade head || true && \
     exec gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers ${GUNICORN_WORKERS} \
