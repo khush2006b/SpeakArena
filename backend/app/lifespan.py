@@ -110,6 +110,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Non-fatal: table may not exist yet (migrations handle creation)
             logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
 
+    # Ensure teacher account has role='teacher' and a teacher profile
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("UPDATE users SET role = 'teacher', is_email_verified = true WHERE email = 'teacher@speakarena.com';"))
+            await conn.execute(text("""
+                INSERT INTO teacher_profiles (id, user_id, headline, created_at, updated_at)
+                SELECT gen_random_uuid(), id, 'Senior English Coach', NOW(), NOW()
+                FROM users WHERE email = 'teacher@speakarena.com'
+                ON CONFLICT (user_id) DO NOTHING;
+            """))
+    except Exception as t_exc:
+        logger.warning("Teacher profile auto-upgrade skipped: %s", t_exc)
+
     logger.info("Database startup complete.")
 
     # ── 5. Ready ───────────────────────────────────────────────────────────
