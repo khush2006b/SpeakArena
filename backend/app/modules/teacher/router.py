@@ -85,14 +85,16 @@ router = APIRouter(prefix="/teacher", tags=["Teacher"])
 # DB Patch Diagnostic & Fix
 # ===========================================================================
 
-from sqlalchemy import text
+from app.database import Base
 
 @router.get("/db-patch", summary="Apply DB Schema Patches")
 async def run_db_patches(
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
-    """Run all missing column schema patches directly and report results."""
+    """Run all missing table creations and column schema patches directly."""
+    conn = await db.connection()
+    await conn.run_sync(Base.metadata.create_all)
     patches = [
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS short_description VARCHAR(500);",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS promo_video_r2_key VARCHAR(512);",

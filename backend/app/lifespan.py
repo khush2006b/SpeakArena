@@ -35,7 +35,8 @@ from sqlalchemy import text
 from app.config import settings
 from app.core.logging.config import configure_logging
 from app.core.redis.client import RedisClient
-from app.database import engine
+from app.database import Base, engine
+import app.models  # noqa: F401 — registers all SQLAlchemy models on Base.metadata
 
 
 @asynccontextmanager
@@ -82,11 +83,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis startup failed (%s) — proceeding with database fallback.", exc)
 
     # ── 4. Database ────────────────────────────────────────────────────────
-    # First verify basic connectivity
+    # First verify basic connectivity and create any missing tables
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-        logger.info("Database connection verified.")
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database connection and schema tables verified.")
     except Exception as exc:
         logger.critical("Database connectivity check failed: %s", exc, exc_info=True)
         raise
