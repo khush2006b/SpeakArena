@@ -19,7 +19,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://speakarena.onrender
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 15_000,
+  timeout: 45_000,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

@@ -83,26 +83,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis startup failed (%s) — proceeding with database fallback.", exc)
 
     # ── 4. Database ────────────────────────────────────────────────────────
-    # First verify basic connectivity and create any missing tables
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(text("SELECT 1"))
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database connection and schema tables verified.")
-    except Exception as exc:
-        logger.critical("Database connectivity check failed: %s", exc, exc_info=True)
-        raise
-
-    # Apply incremental schema patches (non-fatal if table not yet created by migrations)
     _schema_patches = [
-        # ── pre-existing patches ────────────────────────────────────────────
         "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';",
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'in_app';",
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
-        # ── courses: columns added after initial schema ──────────────────────
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS short_description VARCHAR(500) DEFAULT NULL;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS promo_video_r2_key VARCHAR(512) DEFAULT NULL;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS original_price NUMERIC(10,2) DEFAULT NULL;",
@@ -113,9 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS average_rating NUMERIC(3,2) DEFAULT NULL;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_certificate_enabled BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
-        # Back-fill max_students for any rows that got 0
         "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
-        # ── videos: columns added after initial schema ───────────────────────
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS section VARCHAR(200) DEFAULT NULL;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512) DEFAULT NULL;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS hls_r2_key_prefix VARCHAR(512) DEFAULT NULL;",
@@ -124,25 +109,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS processing_error TEXT DEFAULT NULL;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ DEFAULT NULL;",
-        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';",
-        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
-        # ── pdfs: columns added after initial schema ─────────────────────────
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS section VARCHAR(200) DEFAULT NULL;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512) DEFAULT NULL;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS page_count INTEGER DEFAULT NULL;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_downloadable BOOLEAN NOT NULL DEFAULT TRUE;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
-        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';",
     ]
-    for patch_sql in _schema_patches:
-        try:
-            async with engine.begin() as conn:
-                await conn.execute(text(patch_sql))
-        except Exception as patch_exc:
-            # Non-fatal: table may not exist yet (migrations handle creation)
-            logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
 
-    logger.info("Database startup complete.")
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+            await conn.run_sync(Base.metadata.create_all)
+
+            for patch_sql in _schema_patches:
+                try:
+                    await conn.execute(text(patch_sql))
+                except Exception as patch_exc:
+                    logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
+
+        logger.info("Database connection and schema initialization complete.")
+    except Exception as exc:
+        logger.critical("Database connectivity check failed: %s", exc, exc_info=True)
+        raise
 
     # ── 5. Ready ───────────────────────────────────────────────────────────
     logger.info("%s is ready to serve requests.", settings.APP_NAME)
