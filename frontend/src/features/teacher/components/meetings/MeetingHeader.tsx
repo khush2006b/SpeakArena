@@ -11,10 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMeetingStore } from "@/stores/meeting.store";
-import { cn } from "@/lib/utils";
 
 export function MeetingHeader() {
-  const { calendarView, setCalendarView, currentDate, setCurrentDate, setCreateModalOpen } = useMeetingStore();
+  const { calendarView, currentDate, setCurrentDate, setCreateModalOpen } = useMeetingStore();
 
   const handlePrevious = () => {
     const newDate = new Date(currentDate);
@@ -37,9 +36,9 @@ export function MeetingHeader() {
   };
 
   return (
-    <div className="relative overflow-hidden mb-8 animate-fade-up">
+    <div className="relative overflow-hidden animate-fade-up">
       {/* Ambient glow */}
-      <div className="glow-purple w-72 h-72 -top-24 -right-24 opacity-50" />
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Left: Date Navigation */}
@@ -95,30 +94,12 @@ export function MeetingHeader() {
 
           <div className="h-6 w-px bg-border/60 hidden sm:block mx-1" />
 
-          {/* View Toggles */}
-          <div className="hidden md:flex items-center rounded-xl border border-border/60 p-1 bg-card/80 backdrop-blur-sm">
-            {(["month", "week", "day", "agenda"] as const).map((view) => (
-              <button
-                key={view}
-                onClick={() => setCalendarView(view)}
-                className={cn(
-                  "flex items-center justify-center rounded-lg px-3.5 py-2 text-[10px] font-bold uppercase tracking-widest transition-all press-scale",
-                  calendarView === view
-                    ? "bg-violet-500/20 text-violet-300 shadow-sm border border-violet-500/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-              >
-                {view}
-              </button>
-            ))}
-          </div>
-
           <button
             className="btn-primary press-scale sm:ml-2"
             onClick={() => setCreateModalOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Create Meeting
+            Schedule Live Class
           </button>
         </div>
       </div>

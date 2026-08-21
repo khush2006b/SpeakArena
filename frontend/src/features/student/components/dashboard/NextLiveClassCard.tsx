@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Video, Calendar, User, Loader2 } from "lucide-react";
+import { Video, Calendar, User, Loader2, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/services/api/client";
@@ -63,7 +63,7 @@ export function NextLiveClassCard() {
               </h3>
               <div className="space-y-1.5">
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
-                  <BookOpenIcon className="h-4 w-4" />
+                  <BookOpen className="h-4 w-4" />
                   <span className="truncate">
                     {meeting.courseTitle || (meeting.scheduled_at ? new Date(meeting.scheduled_at).toLocaleString() : "TBA")}
                   </span>
@@ -77,8 +77,14 @@ export function NextLiveClassCard() {
 
             {/* Actions */}
             <div className="pt-6 mt-auto flex items-center gap-3">
-              <Button className="flex-1 shadow-md transition-all font-bold btn-primary press-scale"
-                      style={{ borderRadius: 10 }}>
+              <Button 
+                onClick={() => {
+                  const link = meeting.meet_link || meeting.meetLink;
+                  if (link) window.open(link, '_blank');
+                  else window.location.href = '/student/live';
+                }}
+                className="flex-1 shadow-md transition-all font-bold btn-primary press-scale"
+                style={{ borderRadius: 10 }}>
                 <Video className="mr-2 h-4 w-4" /> Join Class
               </Button>
               <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground btn-outline press-scale" title="Add to Calendar"
@@ -93,22 +99,3 @@ export function NextLiveClassCard() {
   );
 }
 
-function BookOpenIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </svg>
-  )
-}

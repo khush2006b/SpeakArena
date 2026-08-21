@@ -27,6 +27,7 @@ Access:
 
 from __future__ import annotations
 
+import logging
 import enum
 import uuid
 from datetime import datetime
@@ -35,11 +36,13 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis.client import get_redis
 from app.core.utils.response import success_response
 from app.database import get_db_session
+from app.models.chat import ChatRoom
 from app.models.user import User
 from app.modules.auth.dependencies import get_current_teacher, get_current_user
 from app.modules.chat.repository import ChatRoomRepository
@@ -59,6 +62,8 @@ from app.modules.chat.service import (
 )
 from app.modules.chat.ws_manager import ConnectionManager
 from app.modules.chat.ws_schemas import WSEventType, make_envelope, message_new_payload
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -81,21 +86,21 @@ async def _broadcast_new_message(db: AsyncSession, redis: Redis, course_id: uuid
     try:
         json_data = _json_ready(data)
         recipient_id = json_data.get("recipient_id")
+        sender_id = json_data.get("sender_id")
         manager = ConnectionManager()
 
         if recipient_id:
-            # For direct messages: broadcast across all chat rooms so whichever course room
-            # socket the sender or recipient is connected to, they receive the real-time frame
-            stmt = select(ChatRoom.id)
-            room_ids = (await db.execute(stmt)).scalars().all()
-            for rid in room_ids:
-                envelope = make_envelope(
-                    WSEventType.MESSAGE_NEW,
-                    message_new_payload(json_data),
-                    room_id=str(rid),
-                )
-                await manager.broadcast_to_room(redis, str(rid), envelope)
+            # DM: Send directly to recipient & sender user channels via Redis Pub/Sub
+            envelope = make_envelope(
+                WSEventType.MESSAGE_NEW,
+                message_new_payload(json_data),
+                room_id=str(course_id),
+            )
+            await manager.send_to_user_channel(redis, str(recipient_id), envelope)
+            if sender_id and str(sender_id) != str(recipient_id):
+                await manager.send_to_user_channel(redis, str(sender_id), envelope)
         else:
+            # Room message: Publish to course room channel
             room = await ChatRoomRepository(db).get_by_course_id(course_id)
             if room:
                 envelope = make_envelope(

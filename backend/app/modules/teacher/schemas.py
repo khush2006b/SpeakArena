@@ -111,8 +111,8 @@ class AnalyticsQueryParams(BaseModel):
 
     period: str = Field(
         default="30d",
-        pattern="^(7d|30d|90d|1y|all)$",
-        description="Time window: 7d, 30d, 90d, 1y, all.",
+        pattern="^(7d|30d|90d|1y|all|DAILY|WEEKLY|MONTHLY|YEARLY|ALL|daily|weekly|monthly|yearly)$",
+        description="Time window: 7d, 30d, 90d, 1y, all, DAILY, WEEKLY, MONTHLY, YEARLY.",
     )
     course_id: Optional[uuid.UUID] = Field(
         default=None, description="Filter analytics to a single course."
@@ -154,6 +154,8 @@ class CreateCourseRequest(_StrictBase):
     level: CourseLevel = Field(default=CourseLevel.BEGINNER)
     language: str = Field(default="en", max_length=10)
     visibility: CourseVisibility = CourseVisibility.PRIVATE
+    status: CourseStatus = Field(default=CourseStatus.DRAFT)
+    max_students: int = Field(default=50, ge=1, le=100000, description="Seat limit for student enrollments.")
     category_ids: list[uuid.UUID] = Field(default_factory=list, max_length=5)
     primary_category_id: Optional[uuid.UUID] = None
     is_certificate_enabled: bool = False
@@ -182,6 +184,7 @@ class UpdateCourseRequest(_StrictBase):
     level: Optional[CourseLevel] = None
     language: Optional[str] = Field(default=None, max_length=10)
     visibility: Optional[CourseVisibility] = None
+    max_students: Optional[int] = Field(default=None, ge=1, le=100000)
     category_ids: Optional[list[uuid.UUID]] = Field(default=None, max_length=5)
     primary_category_id: Optional[uuid.UUID] = None
     is_certificate_enabled: Optional[bool] = None
@@ -218,6 +221,7 @@ class CourseResponse(_ReadBase):
     total_duration_seconds: int
     total_lectures: int
     total_enrollments: int
+    max_students: int = 50
     is_certificate_enabled: bool
     metadata: dict = Field(alias="metadata_", default_factory=dict)
     published_at: Optional[datetime]
@@ -239,6 +243,7 @@ class CourseSummaryResponse(_ReadBase):
     price: float
     thumbnail_r2_key: Optional[str]
     total_enrollments: int
+    max_students: int = 50
     total_lectures: int
     level: Optional[str]
     created_at: datetime
@@ -264,27 +269,28 @@ class CreateMeetingRequest(_StrictBase):
     course_id: uuid.UUID
     title: str = Field(..., min_length=3, max_length=200)
     description: Optional[str] = Field(default=None, max_length=5000)
-    meet_link: str = Field(..., min_length=10, max_length=512)
+    meet_link: Optional[str] = Field(default=None, max_length=512)
     scheduled_at: datetime
     duration_minutes: int = Field(default=60, ge=15, le=480)
     max_participants: Optional[int] = Field(default=None, ge=1, le=10000)
     provider: str = Field(default="google_meet", max_length=50)
 
-    @field_validator("scheduled_at", mode="before")
+    @field_validator("scheduled_at", mode="after")
     @classmethod
     def must_be_in_future(cls, v: datetime) -> datetime:
         """Validate that the meeting is not scheduled in the past."""
         from datetime import timezone
         now = datetime.now(timezone.utc)
-        if isinstance(v, datetime) and v.tzinfo is not None and v <= now:
+        v_utc = v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+        if v_utc <= now:
             raise ValueError("Meeting must be scheduled in the future.")
         return v
 
     @field_validator("meet_link")
     @classmethod
-    def validate_meet_link(cls, v: str) -> str:
-        """Basic validation that meet_link starts with http."""
-        if not v.startswith("http"):
+    def validate_meet_link(cls, v: Optional[str]) -> Optional[str]:
+        """Basic validation that meet_link starts with http if provided."""
+        if v and not v.startswith("http"):
             raise ValueError("meet_link must be a valid URL.")
         return v
 
@@ -294,10 +300,11 @@ class UpdateMeetingRequest(_StrictBase):
 
     title: Optional[str] = Field(default=None, min_length=3, max_length=200)
     description: Optional[str] = Field(default=None, max_length=5000)
-    meet_link: Optional[str] = Field(default=None, min_length=10, max_length=512)
+    meet_link: Optional[str] = Field(default=None, max_length=512)
     scheduled_at: Optional[datetime] = None
     duration_minutes: Optional[int] = Field(default=None, ge=15, le=480)
     max_participants: Optional[int] = Field(default=None, ge=1, le=10000)
+    status: Optional[str] = Field(default=None, max_length=20)
 
 
 class MeetingResponse(_ReadBase):
@@ -602,9 +609,9 @@ class StudentDetailResponse(BaseModel):
 
 
 class SuspendStudentRequest(_StrictBase):
-    """Request body to suspend a student from a specific course."""
+    """Request body to suspend a student from a specific course (or all courses if omitted)."""
 
-    course_id: uuid.UUID
+    course_id: Optional[uuid.UUID] = Field(default=None)
     reason: Optional[str] = Field(default=None, max_length=500)
 
 

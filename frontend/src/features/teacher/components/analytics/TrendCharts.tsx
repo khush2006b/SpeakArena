@@ -23,7 +23,8 @@ export default function TrendCharts() {
       } catch {
         res = await apiClient.get("/api/v1/teacher/dashboard");
       }
-      const rawData = res?.data?.data?.revenue_trend || res?.data?.data || res?.data || [];
+      const resPayload = res?.data?.data;
+      const rawData = resPayload?.data_points || resPayload?.revenue_trend || (Array.isArray(resPayload) ? resPayload : res?.data) || [];
       setData(Array.isArray(rawData) ? rawData : []);
     } catch (err) {
       setData([]);

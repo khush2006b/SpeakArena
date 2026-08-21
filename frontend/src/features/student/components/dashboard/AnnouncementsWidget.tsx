@@ -4,6 +4,7 @@ import * as React from "react";
 import { Megaphone, Pin, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { apiClient } from "@/services/api/client";
 
 export function AnnouncementsWidget() {
@@ -31,9 +32,11 @@ export function AnnouncementsWidget() {
           <Megaphone className="h-4 w-4 text-muted-foreground" />
           Announcements
         </CardTitle>
-        <Button variant="ghost" size="sm" className="text-xs hover:text-primary/80 -mr-2 text-primary btn-ghost press-scale">
-          View All <ChevronRight className="h-3 w-3 ml-1" />
-        </Button>
+        <Link href="/student/notifications">
+          <Button variant="ghost" size="sm" className="text-xs hover:text-primary/80 -mr-2 text-primary btn-ghost press-scale">
+            View All <ChevronRight className="h-3 w-3 ml-1" />
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-4 flex-1">
         
@@ -48,8 +51,8 @@ export function AnnouncementsWidget() {
           </div>
         ) : (
           <div className="space-y-4">
-            {announcements.map((announcement: any) => (
-              <div key={announcement.id || announcement._id || Math.random()} className="flex flex-col gap-1.5 p-3 rounded-lg transition-colors cursor-pointer bg-card border border-border hover-lift">
+            {announcements.map((announcement: any, idx: number) => (
+              <div key={announcement.id || announcement._id || idx} className="flex flex-col gap-1.5 p-3 rounded-lg transition-colors cursor-pointer bg-card border border-border hover-lift">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold flex items-center gap-1.5 line-clamp-1 text-foreground">
                     {announcement.isPinned && <Pin className="h-3 w-3 fill-current text-primary" />}

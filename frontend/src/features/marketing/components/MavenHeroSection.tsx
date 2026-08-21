@@ -80,7 +80,7 @@ export function MavenHeroSection() {
   // Shared horizontal padding matching the navbar: px-6 sm:px-12 lg:px-20
 
   return (
-    <div style={{ width: "100%", background: "#0d1117", color: "#fff" }}>
+    <div className="w-full bg-[#0d1117] text-white">
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section style={{ position: "relative", width: "100%", overflow: "hidden" }}>
         {/* Grid bg */}
@@ -89,10 +89,10 @@ export function MavenHeroSection() {
         <div style={{ position: "absolute", top: 0, right: 0, width: "55%", height: "100%", background: "radial-gradient(ellipse at 80% 40%, rgba(79,70,229,0.12) 0%, transparent 65%)", pointerEvents: "none" }} />
 
         <div className="w-full px-6 sm:px-12 lg:px-20" style={{ position: "relative", zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "stretch", minHeight: 420 }}>
+          <div className="flex flex-col lg:flex-row items-center gap-12" style={{ minHeight: 420 }}>
 
             {/* LEFT: Hero text */}
-            <div style={{ width: "48%", paddingTop: 68, paddingBottom: 48, paddingRight: 40, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ paddingTop: 68, paddingBottom: 48, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center" }} className="w-full lg:w-[48%] lg:pr-10">
               <h1 style={{ fontSize: "clamp(40px, 4.5vw, 70px)", fontWeight: 900, color: "#ffffff", lineHeight: 1.08, letterSpacing: "-0.035em", margin: "0 0 22px 0" }}>
                 Your English. Your Voice. Your Progress.<br />
                 <span style={{ fontStyle: "normal", color: "#818cf8" }}>It all starts here.</span>
@@ -103,7 +103,7 @@ export function MavenHeroSection() {
             </div>
 
             {/* RIGHT: Globe */}
-            <div style={{ flex: 1, position: "relative", minHeight: 420 }}>
+            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420 }}>
               <GlobeIllustration />
             </div>
 
@@ -111,8 +111,8 @@ export function MavenHeroSection() {
         </div>
 
         {/* ── 3 Feature Cards ─────────────────────────────────────────────── */}
-        <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingBottom: 48, position: "relative", zIndex: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+        <div className="w-full px-6 sm:px-12 lg:px-20 pb-12 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               {
                 id: "cohorts",

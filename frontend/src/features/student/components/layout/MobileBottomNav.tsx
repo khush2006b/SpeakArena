@@ -10,7 +10,7 @@ const NAV_TABS = [
   { name: "Home",     href: "/student",           icon: LayoutDashboard },
   { name: "Courses",  href: "/student/courses",   icon: Library },
   { name: "Live",     href: "/student/live",      icon: Video },
-  { name: "Progress", href: "/student/analytics", icon: BarChart2 },
+  { name: "Progress", href: "/student/progress", icon: BarChart2 },
   { name: "Profile",  href: "/student/profile",   icon: User },
 ];
 

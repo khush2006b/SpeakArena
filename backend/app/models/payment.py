@@ -17,7 +17,7 @@ from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text, text
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 TIMESTAMPTZ = TIMESTAMP(timezone=True)  # noqa: N816
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.database import Base
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
@@ -121,6 +121,7 @@ class Payment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     captured_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMPTZ, nullable=True, default=None
     )
+    paid_at = synonym("captured_at")
 
     # --- Relationships ---
     student: Mapped[User] = relationship(

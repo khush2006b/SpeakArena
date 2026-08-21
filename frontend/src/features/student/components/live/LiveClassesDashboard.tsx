@@ -17,7 +17,7 @@ export function LiveClassesDashboard() {
   const meetings = data?.items || [];
 
   const upcomingClasses = meetings.filter(
-    (c) => c.status === "SCHEDULED" || c.status === "CANCELLED"
+    (c) => c.status !== "ENDED" && c.status !== "CANCELLED"
   );
 
   const container = {

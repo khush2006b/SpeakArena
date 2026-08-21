@@ -20,7 +20,7 @@ const THUMBNAIL_FALLBACKS = [
 
 function mapCourse(item: any, idx: number) {
   return {
-    id: item.course_id || item.id,
+    id: item.course_id || item.id || `my-course-${idx}`,
     title: item.title,
     teacher: item.teacher_name || "Instructor",
     category: item.level || item.category || "Course",

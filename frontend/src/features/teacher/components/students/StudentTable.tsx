@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Eye, Mail, Ban, PlayCircle, FolderOpen } from "lucide-react";
+import { MoreHorizontal, Eye, Mail, Ban, PlayCircle, FolderOpen, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -57,6 +57,11 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
   };
 
   const handleSuspend = async (student: any) => {
+    if (student.enrolledCourses > 1) {
+      setActiveStudent(student as unknown as Parameters<typeof setActiveStudent>[0]);
+      toast.info(`Select a course in the panel to suspend/restore access for ${student.fullName}`);
+      return;
+    }
     try {
       if (student.status === "SUSPENDED") {
         await teacherService.unsuspendStudent(student.id, student.courseId);
@@ -83,6 +88,22 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
       queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
     } catch (err: any) {
       toast.error(err?.message || "Failed to block student");
+    }
+  };
+
+  const handleUnenroll = async (student: any) => {
+    if (student.enrolledCourses > 1) {
+      setActiveStudent(student as unknown as Parameters<typeof setActiveStudent>[0]);
+      toast.info(`Select a course in the panel to unenroll ${student.fullName}`);
+      return;
+    }
+    if (!confirm(`Are you sure you want to unenroll ${student.fullName || student.name || 'this student'} from this course?`)) return;
+    try {
+      await teacherService.unenrollStudent(student.id, student.courseId);
+      toast.success(`Unenrolled ${student.fullName || 'student'} from course`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to unenroll student");
     }
   };
 
@@ -144,7 +165,7 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
 
                   return (
                     <tr
-                      key={student.enrollmentId ? `${student.id}-${student.enrollmentId}` : `${student.id}-${index}`}
+                      key={student.id ? (student.enrollmentId ? `st-${student.id}-${student.enrollmentId}` : `st-${student.id}-${index}`) : `st-row-${index}`}
                       className={cn(
                         "transition-colors hover:bg-white/[0.02] cursor-pointer group",
                         isSelected && "bg-primary/5 hover:bg-primary/10"
@@ -283,6 +304,13 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
                             >
                               <Ban className="mr-2 h-4 w-4" />
                               {student.status === "SUSPENDED" ? "Unblock Student" : "Block Account"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="font-medium text-rose-400 focus:text-rose-300 focus:bg-rose-400/10"
+                              onClick={() => handleUnenroll(student)}
+                            >
+                              <UserX className="mr-2 h-4 w-4" />
+                              Unenroll Student
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

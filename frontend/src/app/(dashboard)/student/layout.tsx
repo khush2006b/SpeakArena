@@ -43,7 +43,7 @@ export default function StudentLayout({
 
           {/* Scrollable Content */}
           <main className="flex-1 overflow-y-auto">
-            <div style={{ margin: "0 auto", width: "100%", maxWidth: 1400, padding: "24px 28px 80px 28px" }}>
+            <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-7 pt-6 pb-20">
               {children}
             </div>
           </main>

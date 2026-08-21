@@ -165,7 +165,7 @@ export function useTeacherMeetings(
 ) {
   return useQuery({
     queryKey: queryKeys.meetings.list({ ...pagination, ...filters }),
-    queryFn: () => meetingService.list(pagination, filters),
+    queryFn: () => meetingService.teacherList(pagination, filters),
     placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,

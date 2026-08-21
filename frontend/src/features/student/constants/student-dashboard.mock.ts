@@ -24,7 +24,7 @@ export const MOCK_DASHBOARD_DATA = {
     id: "m-202",
     title: "Live Session: Interactive Pronunciation & Pitch Drill",
     courseTitle: "Executive Business Communication",
-    teacherName: "Alex Rivera",
+    teacherName: "Paras (Construction)",
     startsIn: "45 mins",
     scheduledAt: "2026-08-08T10:30:00.000Z",
   },

@@ -22,12 +22,15 @@ export const ENDPOINTS = {
 
   // --- Courses ---
   COURSES: {
-    LIST: `${API_V1}/teacher/courses`,
+    LIST: `${API_V1}/courses`,
     STUDENT_LIST: `${API_V1}/courses`,
-    DETAIL: (id: string) => `${API_V1}/teacher/courses/${id}`,
+    TEACHER_LIST: `${API_V1}/teacher/courses`,
+    DETAIL: (id: string) => `${API_V1}/courses/${id}`,
+    TEACHER_DETAIL: (id: string) => `${API_V1}/teacher/courses/${id}`,
     ENROLL: (id: string) => `${API_V1}/courses/${id}/enroll`,
     PROGRESS: (id: string) => `${API_V1}/courses/${id}/progress`,
-    LECTURES: (courseId: string) => `${API_V1}/teacher/courses/${courseId}/videos`,
+    LECTURES: (courseId: string) => `${API_V1}/resources/videos?course_id=${courseId}`,
+    TEACHER_LECTURES: (courseId: string) => `${API_V1}/teacher/courses/${courseId}/videos`,
     LECTURE: (courseId: string, lectureId: string) => `${API_V1}/courses/${courseId}/lectures/${lectureId}`,
     LECTURE_PROGRESS: (courseId: string, lectureId: string) => `${API_V1}/courses/${courseId}/lectures/${lectureId}/progress`,
     STUDENTS: (courseId: string) => `${API_V1}/teacher/courses/${courseId}/students`,
@@ -45,7 +48,7 @@ export const ENDPOINTS = {
     LIST: `${API_V1}/teacher/meetings`,
     STUDENT_LIST: `${API_V1}/meetings`,
     DETAIL: (id: string) => `${API_V1}/teacher/meetings/${id}`,
-    JOIN: (id: string) => `${API_V1}/meetings/${id}/join`,
+    JOIN: (id: string) => `${API_V1}/live/${id}/join`,
     ATTENDANCE: (id: string) => `${API_V1}/teacher/meetings/${id}/attendance`,
   },
 

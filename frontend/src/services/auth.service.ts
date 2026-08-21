@@ -76,6 +76,7 @@ export const authService = {
       ENDPOINTS.AUTH.REGISTER,
       {
         full_name: payload.fullName,
+        fullName: payload.fullName,
         email: payload.email,
         password: payload.password,
       },

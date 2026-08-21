@@ -127,14 +127,14 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                 </td>
               </tr>
             ) : (
-              courses.map((course) => {
+              courses.map((course, idx) => {
                 const isSelected = selectedRows.has(course.id);
                 const isDraft = course.status === "DRAFT";
                 const isArchived = course.status === "ARCHIVED";
                 
                 return (
                   <tr 
-                    key={course.id} 
+                    key={course.id ? `${course.id}-${idx}` : `teacher-course-list-${idx}`} 
                     style={{
                       borderBottom: '1px solid hsl(var(--border))',
                       background: isSelected ? 'rgba(124, 58, 237, 0.05)' : 'transparent',
@@ -202,10 +202,10 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                       </Badge>
                     </td>
                     <td style={{ padding: '16px 24px', fontWeight: 800, color: "hsl(var(--foreground))" }}>
-                      {(course.enrolledCount ?? 0).toLocaleString()}
+                      {(course.enrolledCount ?? (course as any).total_enrollments ?? 0).toLocaleString()} / {(course.maxStudents ?? (course as any).max_students ?? 50).toLocaleString()}
                     </td>
                     <td style={{ padding: '16px 24px', fontWeight: 800, color: "hsl(var(--foreground))" }}>
-                      ${course.price.toFixed(2)}
+                      {course.price === 0 ? "Free" : `₹${course.price.toLocaleString("en-IN")}`}
                     </td>
                     <td style={{ padding: '16px 24px', color: "hsl(var(--muted-foreground))", fontSize: '0.75rem', fontWeight: 600 }} className="hidden md:table-cell">
                       {course.updatedAt ? format(new Date(course.updatedAt), "MMM d, yyyy") : "—"}

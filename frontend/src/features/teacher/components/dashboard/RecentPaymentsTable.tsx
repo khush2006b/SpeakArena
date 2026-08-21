@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeacherTransactions } from "@/hooks/queries/useTeacherQueries";
 import { format } from "date-fns";
@@ -24,7 +24,7 @@ export function RecentPaymentsTable() {
   const payments = data?.items ?? [];
 
   return (
-    <div className="lg:col-span-2 card-glass hover-lift overflow-hidden rounded-2xl bg-card border border-border">
+    <div className="card-glass hover-lift overflow-hidden rounded-2xl bg-card border border-border">
       <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
         <div>
           <h3 className="text-lg font-extrabold text-foreground tracking-tight m-0">Recent Payments</h3>
@@ -32,9 +32,9 @@ export function RecentPaymentsTable() {
             {isLoading ? "Loading payments…" : `${data?.total ?? 0} total transactions`}
           </p>
         </div>
-        <button className="btn-ghost press-scale text-sm font-semibold text-[hsl(270,80%,60%)] bg-transparent border-none cursor-pointer">
+        <Link href="/teacher/finance" className="btn-ghost press-scale text-sm font-semibold text-[hsl(270,80%,60%)] bg-transparent border-none cursor-pointer">
           View all
-        </button>
+        </Link>
       </div>
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left border-collapse text-sm table-glass">
@@ -61,7 +61,7 @@ export function RecentPaymentsTable() {
                 ))
               : payments.map((payment, index) => (
                   <tr
-                    key={payment.id}
+                    key={payment.id ? `pmt-${payment.id}` : `pmt-idx-${index}`}
                     className={`border-b border-border ${index % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'} hover:bg-muted/40 transition-colors`}
                   >
                     <td className="p-4 sm:p-6">
@@ -90,9 +90,9 @@ export function RecentPaymentsTable() {
                       {format(new Date(payment.createdAt), "MMM d, yyyy")}
                     </td>
                     <td className="p-4 sm:p-6 text-right">
-                      <button className="p-2 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors press-scale">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                      <Link href="/teacher/finance" className="p-2 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors press-scale inline-flex items-center justify-center text-xs font-semibold underline-offset-2 hover:underline">
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))}

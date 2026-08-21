@@ -20,14 +20,14 @@ export function RevenueChart() {
   const { data, isLoading } = useRevenueTrends(period);
 
   return (
-    <div className="lg:col-span-2 card-glass hover-lift rounded-2xl bg-card border border-border p-4 sm:p-6 flex flex-col gap-4 relative overflow-hidden">
+    <div className="card-glass hover-lift rounded-2xl bg-card border border-border p-4 flex flex-col gap-3 relative overflow-hidden h-full">
       {/* Ambient background glow */}
       <div 
         className="absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] opacity-10 pointer-events-none"
         style={{ background: "hsl(270 80% 60%)" }}
       />
       
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 relative z-10">
         <div className="flex flex-col gap-1">
           <h3 className="m-0 text-lg font-extrabold text-foreground tracking-tight">Revenue & Growth</h3>
           <p className="m-0 text-sm text-muted-foreground">
@@ -48,7 +48,7 @@ export function RevenueChart() {
           ))}
         </div>
       </div>
-      <div className="h-[300px] sm:h-[350px] w-full mt-4 relative z-10">
+      <div className="h-[260px] w-full mt-2 relative z-10">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
@@ -56,7 +56,7 @@ export function RevenueChart() {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={data || []}
+              data={Array.isArray(data) ? data : (data as any)?.data_points || []}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <defs>

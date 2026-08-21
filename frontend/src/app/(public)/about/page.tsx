@@ -22,7 +22,7 @@ const VALUES = [
 ];
 
 const TEAM = [
-  { name: "Dr. Eleanor Chen", role: "Head of Curriculum · Edinburgh M.A.", initials: "EC", color: "#4f46e5" },
+  { name: "Paras (Construction)", role: "Head of English & Spoken Communication", initials: "PC", color: "#4f46e5", image: "/images/paras_teacher.png" },
   { name: "James Okafor", role: "Product Lead · Ex-Coursera", initials: "JO", color: "#059669" },
   { name: "Priya Sharma", role: "Head of Engineering · IIT Delhi", initials: "PS", color: "#d97706" },
   { name: "Lucas Mendes", role: "Head of Partnerships", initials: "LM", color: "#dc2626" },
@@ -116,8 +116,12 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {TEAM.map(m => (
               <div key={m.name} className="card-glass p-8 text-center hover-lift">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-extrabold text-white mx-auto mb-4" style={{ background: m.color, boxShadow: `0 0 24px ${m.color}40` }}>
-                  {m.initials}
+                <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-xl font-extrabold text-white mx-auto mb-4" style={{ background: m.color, boxShadow: `0 0 24px ${m.color}40` }}>
+                  {m.image ? (
+                    <img src={m.image} alt={m.name} className="w-full h-full object-cover object-center" />
+                  ) : (
+                    m.initials
+                  )}
                 </div>
                 <div className="text-base font-bold text-foreground mb-1">{m.name}</div>
                 <div className="text-sm text-muted-foreground">{m.role}</div>

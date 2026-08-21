@@ -305,6 +305,10 @@ async def teacher_stats(
         "audit log → return join payload. The Google Meet link is ONLY revealed here."
     ),
 )
+@meeting_router.post(
+    "/{meeting_id}/join",
+    summary="Join a meeting (alias)",
+)
 async def join_meeting(
     meeting_id: uuid.UUID,
     user: User = Depends(get_current_user),

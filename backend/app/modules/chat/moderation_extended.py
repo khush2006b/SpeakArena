@@ -133,6 +133,7 @@ class ExtendedModerationService:
         await self._redis.set(
             _KEY_MUTE.format(room_id=room_id_str, user_id=student_id_str),
             "true",
+            ex=2592000,  # 30-day TTL to allow volatile-lru eviction safety
         )
 
         self._db.add(AuditLog(
@@ -286,7 +287,7 @@ class ExtendedModerationService:
             raise RoomNotFoundError()
 
         room_id_str = str(room.id)
-        await self._redis.set(_KEY_LOCK.format(room_id=room_id_str), "true")
+        await self._redis.set(_KEY_LOCK.format(room_id=room_id_str), "true", ex=2592000)
 
         self._db.add(AuditLog(
             user_id=self._teacher.id,

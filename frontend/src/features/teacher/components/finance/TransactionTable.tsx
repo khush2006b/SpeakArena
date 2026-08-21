@@ -115,9 +115,9 @@ export default function TransactionTable({ search, status, courseId }: Transacti
                     <td className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-lg bg-white/5" /></td>
                   </tr>
                 ))
-              : transactions.map((tx) => (
+              : transactions.map((tx, idx) => (
                   <tr
-                    key={tx.id}
+                    key={tx.id ? `tx-${tx.id}` : `tx-idx-${idx}`}
                     onClick={() => setActiveTransaction(tx as unknown as Parameters<typeof setActiveTransaction>[0])}
                     className="cursor-pointer"
                   >

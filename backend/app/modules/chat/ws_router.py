@@ -181,6 +181,7 @@ async def websocket_chat_endpoint(
     
     ws_key = id(websocket)
     manager._connections[room_id_str].append((websocket, user_id_str))
+    manager._user_connections[user_id_str].append(websocket)
     manager._ws_to_room[ws_key] = room_id_str
     manager._ws_to_user[ws_key] = user_id_str
 
@@ -211,9 +212,10 @@ async def websocket_chat_endpoint(
     await redis.publish(f"chat:presence:{room_id_str}", presence_json)
 
     # ------------------------------------------------------------------
-    # 4. Ensure single Redis Pub/Sub listener per room
+    # 4. Ensure Redis Pub/Sub listeners per room and per user
     # ------------------------------------------------------------------
     await manager.ensure_room_subscription(redis, room_id_str)
+    await manager.ensure_user_subscription(redis, user_id_str)
 
     # ------------------------------------------------------------------
     # 5. Event loop

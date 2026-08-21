@@ -6,54 +6,61 @@ import { useRouter } from "next/navigation";
 import { LogOut, Settings, User, CreditCard } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth.store";
 
 export function TeacherProfileMenu() {
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
+  const user = useAuthStore((s) => s.user);
+  const clearUser = useAuthStore((s) => s.clearUser);
+
+  const teacherName = user?.fullName || (user as any)?.full_name || "Teacher";
+  const teacherEmail = user?.email || "teacher@speakarena.com";
 
   const handleLogout = () => {
+    clearUser();
     router.push(ROUTES.LOGIN);
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-[100]">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full bg-transparent border-none outline-none cursor-pointer transition-transform hover:scale-105 press-scale"
       >
         <div className="h-9 w-9 rounded-full border border-border overflow-hidden bg-violet-500/10 flex items-center justify-center text-violet-400 font-semibold text-sm relative">
           <img
-            src="https://github.com/shadcn.png"
-            alt="Teacher Avatar"
-            className="w-full h-full object-cover"
+            src="/images/default_avatar.png"
+            alt={teacherName}
+            className="w-full h-full object-cover object-top"
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
-          <span className="absolute">JD</span>
+          <span className="absolute">PC</span>
         </div>
       </button>
 
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[99]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-[calc(100%+8px)] w-56 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl p-2 shadow-2xl z-50 flex flex-col gap-1 animate-fade-up">
+          <div className="absolute right-0 top-[calc(100%+8px)] w-60 bg-card/95 backdrop-blur-2xl border border-border/60 rounded-xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] flex flex-col gap-1 animate-fade-up">
             <div className="px-3 py-2 border-b border-border/50 mb-1">
-              <p className="text-sm font-semibold text-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">john.doe@speakarena.com</p>
+              <p className="text-sm font-bold text-foreground truncate">{teacherName}</p>
+              <p className="text-xs text-muted-foreground truncate">{teacherEmail}</p>
             </div>
 
             <div className="flex flex-col gap-0.5">
-              <Link href="/teacher/profile" className={menuItemClass}>
+              <Link href="/teacher/profile" onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <User className="w-4 h-4" />
                 <span>Profile</span>
               </Link>
-              <Link href="/teacher/settings" className={menuItemClass}>
+              <Link href="/teacher/settings" onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
               </Link>
-              <Link href="/teacher/billing" className={menuItemClass}>
+              <Link href="/teacher/finance" onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <CreditCard className="w-4 h-4" />
                 <span>Billing</span>
               </Link>

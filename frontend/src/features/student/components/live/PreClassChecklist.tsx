@@ -20,8 +20,8 @@ import {
   AlertTriangle,
   ExternalLink,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useJoinMeeting } from "@/hooks/queries/useMeetingQueries";
+import { toast } from "sonner";
 
 interface PreClassChecklistProps {
   liveClass: any | null;
@@ -35,26 +35,56 @@ export function PreClassChecklist({
   onClose,
 }: PreClassChecklistProps) {
   const [checking, setChecking] = React.useState(true);
+  const [micStatus, setMicStatus] = React.useState<"ok" | "warning">("ok");
+  const [camStatus, setCamStatus] = React.useState<"ok" | "warning">("ok");
 
   const joinMutation = useJoinMeeting();
 
   React.useEffect(() => {
     if (isOpen) {
       setChecking(true);
-      const timer = setTimeout(() => {
-        setChecking(false);
-      }, 2500); // Simulate hardware check delay
-      return () => clearTimeout(timer);
+      
+      // Perform hardware access check
+      if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true, video: true })
+          .then((stream) => {
+            setMicStatus("ok");
+            setCamStatus("ok");
+            // Clean up stream tracks
+            stream.getTracks().forEach((track) => track.stop());
+          })
+          .catch(() => {
+            setMicStatus("warning");
+            setCamStatus("warning");
+          })
+          .finally(() => {
+            setTimeout(() => setChecking(false), 800);
+          });
+      } else {
+        setTimeout(() => setChecking(false), 800);
+      }
     }
-    return () => {};
   }, [isOpen]);
 
   if (!liveClass) return null;
 
   const handleJoin = () => {
+    const rawMeetLink = liveClass.meetLink || liveClass.meet_link || liveClass.meeting_url || "";
+    if (rawMeetLink) {
+      const meetUrl = rawMeetLink.startsWith("http") ? rawMeetLink : `https://${rawMeetLink}`;
+      window.open(meetUrl, "_blank");
+      toast.success("Opening Google Meet...");
+      onClose();
+      return;
+    }
     joinMutation.mutate(liveClass.id, {
       onSuccess: () => {
+        toast.success("Joining session...");
         onClose();
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || err?.message || "Failed to join live class.");
       },
     });
   };
@@ -68,13 +98,14 @@ export function PreClassChecklist({
     {
       label: "Microphone Access",
       icon: <Mic className="h-5 w-5" />,
-      status: "ok",
+      status: micStatus,
+      message: micStatus === "warning" ? "Microphone permission pending" : undefined,
     },
     {
       label: "Camera Access",
       icon: <Camera className="h-5 w-5" />,
-      status: "warning",
-      message: "Camera blocked by browser",
+      status: camStatus,
+      message: camStatus === "warning" ? "Camera permission pending" : undefined,
     },
     {
       label: "Audio Output",
@@ -99,84 +130,26 @@ export function PreClassChecklist({
                 Join Live Class
               </SheetTitle>
               <SheetDescription className="text-xs text-muted-foreground">
-                Pre-flight hardware check
+                {liveClass.title || "Course Session"}
               </SheetDescription>
             </div>
           </div>
-
-          <div className="mt-4 p-3 bg-background border border-border/50 rounded-xl">
-            <p className="text-sm font-semibold text-foreground line-clamp-1">
-              {liveClass.title}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Course Session</p>
-          </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-          {/* Status Animation Area */}
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <AnimatePresence mode="wait">
-              {checking ? (
-                <motion.div
-                  key="checking"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
-                    <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center relative z-10 border border-primary/30">
-                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    </div>
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Testing Equipment...
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Please allow browser permissions if prompted.
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="ready"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
-                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Ready to Join!
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Your equipment is configured correctly.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Checklist */}
-          <div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="rounded-xl border border-border/50 p-4 bg-card/50">
             <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
-              System Check
+              Pre-flight Diagnostics
             </h4>
             <div className="space-y-3">
-              {checks.map((check, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.2 + (checking ? 0 : 0.5) }}
-                  className="flex items-start gap-3 p-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur"
+              {checks.map((check, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-border/40 bg-secondary/20"
                 >
                   <div
-                    className={`p-2 rounded-md ${
-                      checking
-                        ? "bg-secondary text-muted-foreground"
-                        : check.status === "ok"
+                    className={`p-2 rounded-lg ${
+                      check.status === "ok"
                         ? "bg-emerald-500/10 text-emerald-500"
                         : "bg-amber-500/10 text-amber-500"
                     }`}
@@ -198,12 +171,12 @@ export function PreClassChecklist({
                     )}
                   </div>
                   {!checking && check.status === "ok" && (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-1" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                   )}
                   {!checking && check.status === "warning" && (
-                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-1" />
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                   )}
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -216,9 +189,9 @@ export function PreClassChecklist({
             onClick={handleJoin}
           >
             {checking
-              ? "Testing..."
+              ? "Running pre-flight checks..."
               : joinMutation.isPending
-              ? "Joining..."
+              ? "Connecting..."
               : (
                   <>
                     Join Google Meet{" "}

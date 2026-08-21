@@ -9,13 +9,14 @@ import { apiClient } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import {
   type Course,
-  type Enrollment,
   type PaginatedResponse,
   type APIResponse,
   type PaginationConfig,
   type FilterConfig,
   CourseStatus,
 } from "@/types";
+
+export type { Course };
 
 export interface Lecture {
   id: string;
@@ -86,6 +87,7 @@ function mapCourse(raw: any): Course {
     totalLectures: raw.total_lectures ?? raw.totalLectures ?? 0,
     totalDurationSeconds: raw.total_duration_seconds ?? raw.totalDurationSeconds ?? 0,
     enrolledCount: raw.total_enrollments ?? raw.enrolledCount ?? 0,
+    maxStudents: raw.max_students ?? raw.maxStudents ?? 50,
     createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     updatedAt: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
   };
@@ -131,7 +133,7 @@ function mapPaginatedCourses(raw: any, fallbackPage: number): PaginatedResponse<
 // ---------------------------------------------------------------------------
 
 export const courseService = {
-  /** GET /teacher/courses — teacher's own courses (paginated, filterable) */
+  /** GET /teacher/courses or /courses — list teacher or student courses */
   list: async (
     pagination?: PaginationConfig,
     filters?: FilterConfig,
@@ -142,20 +144,34 @@ export const courseService = {
     if (filters?.search) params.search = filters.search;
     if (filters?.status) params.status = filters.status;
 
-    const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.LIST, { params });
-    return mapPaginatedCourses(data, pagination?.page ?? 1);
+    try {
+      const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.TEACHER_LIST, { params });
+      return mapPaginatedCourses(data, pagination?.page ?? 1);
+    } catch {
+      const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.STUDENT_LIST, { params });
+      return mapPaginatedCourses(data, pagination?.page ?? 1);
+    }
   },
 
-  /** GET /teacher/courses/:id */
+  /** GET /courses/:id or /teacher/courses/:id */
   detail: async (id: string): Promise<Course> => {
-    const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.DETAIL(id));
-    const raw = data?.data ?? data;
-    return mapCourse(raw);
+    try {
+      const { data } = await apiClient.get<any>(`/api/v1/courses/${id}`);
+      const raw = data?.data ?? data;
+      return mapCourse(raw);
+    } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.status === 404) {
+        const { data } = await apiClient.get<any>(`/api/v1/teacher/courses/${id}`);
+        const raw = data?.data ?? data;
+        return mapCourse(raw);
+      }
+      throw err;
+    }
   },
 
   /** POST /teacher/courses */
   create: async (payload: CreateCoursePayload): Promise<Course> => {
-    const { data } = await apiClient.post<any>(ENDPOINTS.COURSES.LIST, {
+    const { data } = await apiClient.post<any>(ENDPOINTS.COURSES.TEACHER_LIST, {
       title: payload.title,
       description: payload.description,
       price: payload.price ?? 0,
@@ -169,30 +185,67 @@ export const courseService = {
 
   /** PATCH /teacher/courses/:id */
   update: async (id: string, payload: UpdateCoursePayload): Promise<Course> => {
-    const { data } = await apiClient.patch<any>(ENDPOINTS.COURSES.DETAIL(id), payload);
+    const { data } = await apiClient.patch<any>(ENDPOINTS.COURSES.TEACHER_DETAIL(id), payload);
     const raw = data?.data ?? data;
     return mapCourse(raw);
   },
 
   /** DELETE /teacher/courses/:id */
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(ENDPOINTS.COURSES.DETAIL(id));
+    await apiClient.delete(ENDPOINTS.COURSES.TEACHER_DETAIL(id));
   },
 
   /** POST /courses/:id/enroll */
-  enroll: async (courseId: string): Promise<Enrollment> => {
-    const { data } = await apiClient.post<APIResponse<Enrollment>>(
-      ENDPOINTS.COURSES.ENROLL(courseId),
+  enroll: async (courseId: string): Promise<any> => {
+    const { data } = await apiClient.post<any>(
+      `/api/v1/courses/${courseId}/enroll`
     );
-    return data.data;
+    return data?.data ?? data;
   },
 
-  /** GET /teacher/courses/:courseId/videos */
+  /** GET /courses/explore — all published courses catalog */
+  explore: async (pagination?: PaginationConfig, filters?: FilterConfig): Promise<PaginatedResponse<Course & { isEnrolled?: boolean }>> => {
+    const params: Record<string, unknown> = {};
+    if (pagination?.page) params.page = pagination.page;
+    if (pagination?.pageSize) params.page_size = pagination.pageSize;
+    if (filters?.search) params.search = filters.search;
+
+    const { data } = await apiClient.get<any>("/api/v1/courses/explore", { params });
+    const items = (data?.data ?? data?.items ?? []).map((raw: any) => ({
+      ...mapCourse(raw),
+      isEnrolled: Boolean(raw.is_enrolled),
+    }));
+    return {
+      items,
+      total: data?.pagination?.total ?? items.length,
+      page: data?.pagination?.page ?? 1,
+      pageSize: data?.pagination?.page_size ?? 50,
+      totalPages: data?.pagination?.total_pages ?? 1,
+      hasNext: data?.pagination?.has_next ?? false,
+      hasPrev: data?.pagination?.has_prev ?? false,
+    };
+  },
+
+  /** GET /teacher/courses/:courseId/videos or student lectures */
   getLectures: async (courseId: string): Promise<Lecture[]> => {
-    const { data } = await apiClient.get<APIResponse<Lecture[]>>(
-      ENDPOINTS.COURSES.LECTURES(courseId),
-    );
-    return data.data;
+    try {
+      const { data } = await apiClient.get<any>(`/api/v1/teacher/courses/${courseId}/videos`);
+      return (data?.data ?? data ?? []).map((l: any) => ({
+        id: String(l.id),
+        courseId: String(courseId),
+        title: l.title ?? l.video_title ?? "Lecture",
+        description: l.description ?? null,
+        position: l.position ?? 1,
+        durationSeconds: l.duration_seconds ?? 0,
+        videoUrl: l.video_url ?? l.r2_key ?? null,
+        resourceIds: [],
+        isPublished: true,
+        createdAt: l.created_at ?? new Date().toISOString(),
+        updatedAt: l.updated_at ?? new Date().toISOString(),
+      }));
+    } catch {
+      return [];
+    }
   },
 
   /** GET /courses/:courseId/lectures/:lectureId */
@@ -205,10 +258,27 @@ export const courseService = {
 
   /** GET /courses/:id/progress */
   getProgress: async (courseId: string): Promise<CourseProgress> => {
-    const { data } = await apiClient.get<APIResponse<CourseProgress>>(
-      ENDPOINTS.COURSES.PROGRESS(courseId),
-    );
-    return data.data;
+    try {
+      const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.PROGRESS(courseId));
+      const raw = data?.data ?? data;
+      return {
+        courseId,
+        progressPercent: Number(raw?.progress_percent ?? raw?.progressPercent ?? 0),
+        completedLectures: Number(raw?.completed_lectures ?? raw?.completedLectures ?? 0),
+        totalLectures: Number(raw?.total_lectures ?? raw?.totalLectures ?? 0),
+        lastWatchedAt: raw?.last_watched_at ?? raw?.lastWatchedAt ?? null,
+        lectureProgress: raw?.lecture_progress ?? raw?.lectureProgress ?? [],
+      };
+    } catch {
+      return {
+        courseId,
+        progressPercent: 0,
+        completedLectures: 0,
+        totalLectures: 0,
+        lastWatchedAt: null,
+        lectureProgress: [],
+      };
+    }
   },
 
   /** PATCH /courses/:courseId/lectures/:lectureId/progress */

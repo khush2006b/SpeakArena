@@ -267,25 +267,20 @@ class MessageRepository:
             conditions.append(Message.created_at < before)
         if not include_muted:
             conditions.append(Message.is_muted_user_message.is_(False))
+        target_dm_user_id = dm_student_id or recipient_id
         if announcements_only:
-
-
             conditions.append(Message.is_announcement.is_(True))
         elif public_only:
             conditions.append(Message.recipient_id.is_(None))
             conditions.append(Message.is_announcement.is_(False))
-        elif dm_student_id and actor_id:
+        elif target_dm_user_id and actor_id:
             conditions.append(Message.is_announcement.is_(False))
             conditions.append(
                 or_(
-                    and_(Message.sender_id == actor_id, Message.recipient_id == dm_student_id),
-                    and_(Message.sender_id == dm_student_id, Message.recipient_id == actor_id),
+                    and_(Message.sender_id == actor_id, Message.recipient_id == target_dm_user_id),
+                    and_(Message.sender_id == target_dm_user_id, Message.recipient_id == actor_id),
                 )
             )
-        elif recipient_id:
-            conditions.append(Message.is_announcement.is_(False))
-            conditions.append(Message.recipient_id == recipient_id)
-
 
         # Sender alias
         SenderUser = User
@@ -335,19 +330,19 @@ class MessageRepository:
             )
             for r in (await self._db.execute(reply_stmt)).all():
                 reply_map[r.id] = {
-                    "id": r.id,
+                    "id": str(r.id),
                     "content": r.content[:100],
                     "sender_name": r.sender_name,
                 }
 
         return [
             {
-                "id": r.id,
-                "chat_room_id": r.chat_room_id,
-                "sender_id": r.sender_id,
-                "recipient_id": r.recipient_id,
+                "id": str(r.id),
+                "chat_room_id": str(r.chat_room_id),
+                "sender_id": str(r.sender_id),
+                "recipient_id": str(r.recipient_id) if r.recipient_id else None,
                 "sender": {
-                    "id": r.sender_id,
+                    "id": str(r.sender_id),
                     "full_name": r.sender_name,
                     "avatar_r2_key": r.sender_avatar,
                     "role": r.sender_role.value if hasattr(r.sender_role, "value") else str(r.sender_role),
@@ -357,15 +352,15 @@ class MessageRepository:
                 "reply_to": reply_map.get(r.reply_to_id) if r.reply_to_id else None,
                 "reply_count": r.reply_count,
                 "is_pinned": r.is_pinned,
-                "pinned_at": r.pinned_at,
+                "pinned_at": r.pinned_at.isoformat() if r.pinned_at else None,
                 "is_announcement": r.is_announcement,
                 "is_edited": r.is_edited,
-                "edited_at": r.edited_at,
-                "attachments": r.attachments,
-                "reactions": r.reactions,
+                "edited_at": r.edited_at.isoformat() if r.edited_at else None,
+                "attachments": r.attachments or [],
+                "reactions": r.reactions or {},
                 "is_deleted": False,
-                "created_at": r.created_at,
-                "updated_at": r.updated_at,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
             }
             for r in rows
         ]

@@ -51,7 +51,7 @@ export function CourseList({ courses }: CourseListProps) {
         <TableBody>
           {courses.map((course, idx) => (
             <TableRow 
-              key={course.id} 
+              key={course.id ? `${course.id}-${idx}` : `student-course-list-${idx}`} 
               className="group cursor-pointer transition-colors hover:bg-white/5"
               style={{ background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.03)" }}
               onClick={() => setSelectedCourseId(course.id)}

@@ -10,19 +10,18 @@ import { toast } from "sonner";
 export function PreviewStep() {
   const {
     prevStep,
-    courseId, courseTitle, description, price,
+    courseTitle, description, price,
     publishCourse, isPublishing, error, reset,
   } = useBuilderStore();
   const router = useRouter();
 
-  const hasTitle = courseTitle.trim() && courseTitle !== "Untitled Course";
-  const hasCourseId = !!courseId;
+  const hasTitle = Boolean(courseTitle.trim() && courseTitle !== "Untitled Course");
   const hasPrice = price >= 0;
 
   const handlePublish = async () => {
     const ok = await publishCourse();
     if (ok) {
-      toast.success("🎉 Course published successfully!");
+      toast.success("🎉 Course published successfully and saved to database!");
       reset();
       router.push("/teacher/courses");
     } else {
@@ -32,19 +31,19 @@ export function PreviewStep() {
 
   const checks = [
     {
-      done: hasCourseId && hasTitle,
+      done: hasTitle,
       label: "Course Information",
-      desc: "Title, description and course record created.",
-    },
-    {
-      done: hasCourseId,
-      label: "Course Created",
-      desc: "Your course exists in the database as a draft.",
+      desc: "Title and description filled out.",
     },
     {
       done: hasPrice,
       label: "Pricing Confirmed",
-      desc: price === 0 ? "Free course." : `Base price: $${price.toFixed(2)} USD`,
+      desc: price === 0 ? "Free course." : `Base price: ₹${price.toFixed(2)}`,
+    },
+    {
+      done: hasTitle && hasPrice,
+      label: "Ready to Publish",
+      desc: "Will save directly to database upon publishing.",
     },
   ];
 
@@ -55,7 +54,7 @@ export function PreviewStep() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Review &amp; Publish</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Make sure everything looks perfect before going live.
+          Make sure everything looks perfect before adding your course to the database and publishing live.
         </p>
       </div>
 
@@ -86,14 +85,14 @@ export function PreviewStep() {
           </div>
 
           {/* Course Summary */}
-          {hasCourseId && (
+          {hasTitle && (
             <div className="p-4 rounded-xl border border-border/50 bg-card space-y-2 text-sm">
               <p className="font-semibold text-foreground truncate">{courseTitle}</p>
               {description && (
                 <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
               )}
               <p className="text-xs text-primary font-semibold">
-                {price === 0 ? "Free" : `$${price.toFixed(2)} USD`}
+                {price === 0 ? "Free" : `₹${price.toFixed(2)}`}
               </p>
             </div>
           )}
@@ -106,8 +105,7 @@ export function PreviewStep() {
             <Button
               variant="outline"
               className="justify-start h-12 press-scale"
-              disabled={!hasCourseId}
-              onClick={() => courseId && window.open(`/teacher/courses/${courseId}/preview`, "_blank")}
+              disabled={!hasTitle}
             >
               <Monitor className="h-4 w-4 mr-3 text-muted-foreground" />
               Desktop Preview (Student View)
@@ -115,7 +113,7 @@ export function PreviewStep() {
             <Button
               variant="outline"
               className="justify-start h-12 press-scale"
-              disabled={!hasCourseId}
+              disabled={!hasTitle}
             >
               <Smartphone className="h-4 w-4 mr-3 text-muted-foreground" />
               Mobile Preview
@@ -123,7 +121,7 @@ export function PreviewStep() {
             <Button
               variant="outline"
               className="justify-start h-12 press-scale"
-              disabled={!hasCourseId}
+              disabled={!hasTitle}
             >
               <Eye className="h-4 w-4 mr-3 text-muted-foreground" />
               SEO &amp; Social Card Preview
@@ -144,7 +142,7 @@ export function PreviewStep() {
           {isPublishing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Publishing...
+              Publishing to DB...
             </>
           ) : (
             <>

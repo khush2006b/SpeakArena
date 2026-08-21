@@ -170,7 +170,8 @@ async def list_courses(
             "visibility": c.visibility,
             "price": float(c.price),
             "thumbnail_r2_key": c.thumbnail_r2_key,
-            "total_enrollments": c.total_enrollments,
+            "total_enrollments": max(c.total_enrollments or 0, len(c.enrollments) if hasattr(c, "enrollments") and c.enrollments is not None else 0),
+            "max_students": c.max_students,
             "total_lectures": c.total_lectures,
             "level": c.level,
             "created_at": c.created_at.isoformat(),
@@ -258,7 +259,8 @@ async def get_course(
             "language": course.language,
             "total_duration_seconds": course.total_duration_seconds,
             "total_lectures": course.total_lectures,
-            "total_enrollments": course.total_enrollments,
+            "total_enrollments": max(course.total_enrollments or 0, len(course.enrollments) if hasattr(course, "enrollments") and course.enrollments is not None else 0),
+            "max_students": course.max_students,
             "is_certificate_enabled": course.is_certificate_enabled,
             "metadata": course.metadata_,
             "published_at": course.published_at.isoformat() if course.published_at else None,
@@ -987,12 +989,13 @@ async def list_meetings(
         {
             "id": str(m.id),
             "course_id": str(m.course_id),
+            "course_title": m.course.title if getattr(m, "course", None) else "Course Session",
             "title": m.title,
             "status": m.status,
             "scheduled_at": m.scheduled_at.isoformat(),
             "duration_minutes": m.duration_minutes,
             "meet_link": m.meet_link,
-            "provider": m.provider,
+            "provider": getattr(m, "provider", "google_meet"),
             "created_at": m.created_at.isoformat(),
         }
         for m in meetings
@@ -1050,13 +1053,13 @@ async def get_meeting(
             "title": m.title,
             "description": m.description,
             "meet_link": m.meet_link,
-            "provider": m.provider,
+            "provider": getattr(m, "provider", "google_meet"),
             "scheduled_at": m.scheduled_at.isoformat(),
             "duration_minutes": m.duration_minutes,
-            "actual_started_at": m.actual_started_at.isoformat() if m.actual_started_at else None,
-            "actual_ended_at": m.actual_ended_at.isoformat() if m.actual_ended_at else None,
+            "actual_started_at": m.actual_started_at.isoformat() if getattr(m, "actual_started_at", None) else None,
+            "actual_ended_at": m.actual_ended_at.isoformat() if getattr(m, "actual_ended_at", None) else None,
             "status": m.status,
-            "max_participants": m.max_participants,
+            "max_participants": getattr(m, "max_participants", None),
             "recording_r2_key": m.recording_r2_key,
             "reminder_sent": m.reminder_sent,
             "created_at": m.created_at.isoformat(),
@@ -1257,15 +1260,17 @@ async def get_student(
 )
 async def suspend_student(
     student_id: uuid.UUID,
-    body: SuspendStudentRequest,
+    body: Optional[SuspendStudentRequest] = None,
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
-    """Suspend a student from a specific course."""
+    """Suspend a student from a specific course (or all teacher courses if omitted)."""
     svc = StudentManagementService(db, teacher)
-    await svc.suspend_student(student_id, body.course_id, reason=body.reason)
+    course_id = body.course_id if body else None
+    reason = body.reason if body else None
+    await svc.suspend_student(student_id, course_id, reason=reason)
     await db.commit()
-    return success_response(message="Student suspended from course.")
+    return success_response(message="Student suspended successfully.")
 
 
 @router.post(
@@ -1274,7 +1279,7 @@ async def suspend_student(
 )
 async def unsuspend_student(
     student_id: uuid.UUID,
-    course_id: uuid.UUID = Query(...),
+    course_id: Optional[uuid.UUID] = Query(default=None),
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
@@ -1283,6 +1288,25 @@ async def unsuspend_student(
     await svc.unsuspend_student(student_id, course_id)
     await db.commit()
     return success_response(message="Student access restored.")
+
+
+@router.post(
+    "/students/{student_id}/unenroll",
+    summary="Unenroll student from course",
+    description="Completely unenrolls a student from a specific course.",
+)
+async def unenroll_student(
+    student_id: uuid.UUID,
+    course_id: Optional[uuid.UUID] = Query(default=None, description="Course ID to unenroll student from."),
+    reason: Optional[str] = Query(default=None, description="Optional unenrollment reason."),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Unenroll a student from a course."""
+    svc = StudentManagementService(db, teacher)
+    await svc.unenroll_student(student_id, course_id, reason=reason)
+    await db.commit()
+    return success_response(message="Student unenrolled from course successfully.")
 
 
 @router.post(

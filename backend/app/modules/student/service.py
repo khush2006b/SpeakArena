@@ -259,6 +259,33 @@ class CourseService:
             only_completed=only_completed,
         )
 
+    async def list_explore(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return paginated list of all published courses with is_enrolled flag."""
+        return await self._repo.list_explore(
+            self._student.id,
+            page=page,
+            page_size=page_size,
+            search=search,
+        )
+
+    async def enroll(self, course_id: uuid.UUID) -> dict[str, Any]:
+        """Enroll the authenticated student in a course."""
+        res = await self._repo.enroll(self._student.id, course_id)
+        _audit(
+            self._db,
+            self._student,
+            "student.course.enrolled",
+            "course",
+            course_id,
+            metadata={"status": res.get("status")},
+        )
+        return res
+
     async def get_course_detail(self, course_id: uuid.UUID) -> dict[str, Any]:
         """Return full course detail for an enrolled student.
 
@@ -293,6 +320,28 @@ class CourseService:
             list[dict]: Recent course data.
         """
         return await self._repo.get_recently_viewed(self._student.id, limit=limit)
+
+    async def get_course_progress(self, course_id: uuid.UUID) -> dict[str, Any]:
+        """Return completion percentage and progress details for an enrolled course.
+
+        Args:
+            course_id: The course UUID.
+
+        Returns:
+            dict: Course progress details.
+        """
+        detail = await self._repo.get_course_detail(self._student.id, course_id)
+        if detail is None:
+            raise EnrollmentNotFoundError()
+        return {
+            "course_id": str(course_id),
+            "progress_percent": float(detail.get("progress_percent") or 0.0),
+            "completed_lectures": detail.get("completed_lectures") or 0,
+            "total_lectures": detail.get("total_lectures") or 0,
+            "is_completed": detail.get("is_completed") or False,
+            "completed_at": detail.get("completed_at"),
+            "lecture_progress": [],
+        }
 
 
 # ===========================================================================
@@ -709,8 +758,8 @@ class MeetingService:
         Returns:
             dict: Meeting dict with meet_link gated.
         """
-        status = meeting_data.get("status")
-        if status not in (MeetingStatus.SCHEDULED, MeetingStatus.LIVE):
+        status = str(meeting_data.get("status") or "").upper()
+        if status not in ("SCHEDULED", "LIVE"):
             meeting_data = {**meeting_data, "meet_link": None}
         return meeting_data
 

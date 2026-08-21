@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Play, PlayCircle, Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
 
@@ -108,14 +109,18 @@ export function DashboardHero() {
           </div>
 
           <div className="pt-4 flex items-center gap-3">
-            <Button size="lg" className="px-8 text-base shadow-lg transition-transform btn-primary press-scale"
-                    style={{ borderRadius: 10 }}>
-              <Play className="mr-2 h-5 w-5 fill-current" /> Resume Video
-            </Button>
-            <Button size="lg" variant="secondary" className="px-8 text-base backdrop-blur-md transition-transform hidden sm:flex btn-outline press-scale"
-                    style={{ borderRadius: 10 }}>
-              Course Overview
-            </Button>
+            <Link href="/student/courses">
+              <Button size="lg" className="px-8 text-base shadow-lg transition-transform btn-primary press-scale"
+                      style={{ borderRadius: 10 }}>
+                <Play className="mr-2 h-5 w-5 fill-current" /> Resume Video
+              </Button>
+            </Link>
+            <Link href="/student/courses">
+              <Button size="lg" variant="secondary" className="px-8 text-base backdrop-blur-md transition-transform hidden sm:flex btn-outline press-scale"
+                      style={{ borderRadius: 10 }}>
+                Course Overview
+              </Button>
+            </Link>
           </div>
         </motion.div>
       </div>

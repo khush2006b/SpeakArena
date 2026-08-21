@@ -3,9 +3,11 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
+import { apiClient } from "@/services/api/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface RingProps {
-  progress: number; // 0 to 100
+  progress: number;
   size: number;
   strokeWidth: number;
   color: string;
@@ -18,10 +20,9 @@ function ProgressRing({ progress, size, strokeWidth, color }: RingProps) {
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
-      {/* Background Ring */}
       <svg style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }} width={size} height={size}>
         <circle
-          style={{ color: 'rgba(255,255,255,0.1)' }}
+          className="text-muted/20"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -30,8 +31,7 @@ function ProgressRing({ progress, size, strokeWidth, color }: RingProps) {
           cy={size / 2}
         />
       </svg>
-      {/* Progress Ring */}
-      <svg style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }} width={size} height={size}>
+      <svg style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }} width={size} height={size}>
         <motion.circle
           style={{ color }}
           strokeWidth={strokeWidth}
@@ -53,41 +53,53 @@ function ProgressRing({ progress, size, strokeWidth, color }: RingProps) {
 }
 
 export function CourseProgressRing() {
-  return (
-    <Card style={{ padding: '24px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', height: '100%', boxSizing: 'border-box' }}>
-      <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '24px', width: '100%', textAlign: 'center', margin: 0, paddingBottom: '24px' }}>Course Progress</h3>
-      
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Outer Ring - Total Progress */}
-        <ProgressRing progress={68} size={200} strokeWidth={16} color="#4f46e5" />
-        
-        {/* Inner Ring - Current Module */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ProgressRing progress={45} size={150} strokeWidth={14} color="#10b981" />
-        </div>
-        
-        {/* Center Text */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: '30px', fontWeight: 800, color: '#fff' }}>68%</span>
-          <span style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>Complete</span>
-        </div>
-      </div>
+  const [courses, setCourses] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-      <div style={{ marginTop: '32px', display: 'flex', alignItems: 'center', gap: '24px', width: '100%', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <div style={{ height: '8px', width: '8px', borderRadius: '50%', backgroundColor: '#4f46e5' }} />
-            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Course</span>
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await apiClient.get('/api/v1/courses?enrolled=true&page=1&page_size=4');
+        setCourses(res.data.items || res.data.courses || []);
+      } catch (err) {
+        console.error("Failed to load courses", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading) {
+    return <Skeleton className="h-[300px] w-full rounded-[18px]" />;
+  }
+
+  if (courses.length === 0) {
+    return (
+      <Card className="p-6 bg-card border-border rounded-[18px] flex flex-col items-center justify-center h-full">
+        <p className="text-muted-foreground text-sm">No enrolled courses yet.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-6 bg-card border-border rounded-[18px] flex flex-col h-full overflow-hidden">
+      <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-6 text-center">Course Progress</h3>
+      
+      <div className="flex flex-col gap-6 w-full flex-1 justify-center">
+        {courses.slice(0, 4).map((course, idx) => (
+          <div key={course.id || idx} className="flex items-center gap-4">
+            <div className="relative flex items-center justify-center shrink-0">
+              <ProgressRing progress={course.progress || 0} size={60} strokeWidth={6} color="hsl(var(--primary))" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-bold text-foreground">{course.progress || 0}%</span>
+              </div>
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-semibold text-foreground truncate">{course.title}</span>
+            </div>
           </div>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>68%</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <div style={{ height: '8px', width: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Module 2</span>
-          </div>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>45%</span>
-        </div>
+        ))}
       </div>
     </Card>
   );

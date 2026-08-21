@@ -29,6 +29,7 @@ from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.exceptions.errors import ValidationError
 from app.models.chat import ChatRoom, Message
 from app.models.course import (
     ContentProgress,
@@ -36,6 +37,7 @@ from app.models.course import (
     CourseEnrollment,
 )
 from app.models.enums import (
+    CourseStatus,
     EnrollmentStatus,
     MeetingStatus,
     PaymentStatus,
@@ -310,6 +312,123 @@ class StudentCourseRepository:
             for r in rows
         ]
         return items, total
+
+    async def list_explore(
+        self,
+        student_id: uuid.UUID,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return paginated list of all published courses with is_enrolled flag."""
+        enrolled_stmt = select(CourseEnrollment.course_id).where(
+            CourseEnrollment.student_id == student_id,
+            CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+        )
+        enrolled_res = await self._db.execute(enrolled_stmt)
+        enrolled_ids = set(enrolled_res.scalars().all())
+
+        conditions = [
+            or_(Course.status == CourseStatus.PUBLISHED, Course.status == "published"),
+            Course.deleted_at.is_(None),
+        ]
+        if search:
+            conditions.append(Course.title.ilike(f"%{search}%"))
+
+        count_stmt = select(func.count(Course.id)).where(and_(*conditions))
+        total: int = (await self._db.execute(count_stmt)).scalar_one()
+
+        data_stmt = (
+            select(Course, User.full_name.label("teacher_name"))
+            .join(User, User.id == Course.teacher_id)
+            .options(selectinload(Course.enrollments))
+            .where(and_(*conditions))
+            .order_by(Course.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = (await self._db.execute(data_stmt)).all()
+
+        items = []
+        for r in rows:
+            c: Course = r[0]
+            teacher_name: str = r[1] or "Instructor"
+            active_enrolled_count = len([e for e in (c.enrollments or []) if e.status == EnrollmentStatus.ACTIVE]) if c.enrollments is not None else (c.total_enrollments or 0)
+            items.append({
+                "id": str(c.id),
+                "course_id": str(c.id),
+                "title": c.title,
+                "slug": c.slug,
+                "description": c.description,
+                "short_description": c.short_description,
+                "thumbnail_r2_key": c.thumbnail_r2_key,
+                "price": float(c.price),
+                "level": c.level,
+                "language": c.language,
+                "total_lectures": c.total_lectures,
+                "total_enrollments": active_enrolled_count,
+                "max_students": c.max_students,
+                "teacher_name": teacher_name,
+                "is_enrolled": c.id in enrolled_ids,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+        return items, total
+
+    async def enroll(
+        self,
+        student_id: uuid.UUID,
+        course_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """Enroll student in a course."""
+        course_stmt = select(Course).where(Course.id == course_id, Course.deleted_at.is_(None))
+        course = (await self._db.execute(course_stmt)).scalar_one_or_none()
+        if course is None:
+            raise ValueError("Course not found")
+
+        # Check existing enrollment
+        existing_stmt = select(CourseEnrollment).where(
+            CourseEnrollment.student_id == student_id,
+            CourseEnrollment.course_id == course_id,
+        )
+        existing = (await self._db.execute(existing_stmt)).scalar_one_or_none()
+        if existing:
+            if existing.status != EnrollmentStatus.ACTIVE:
+                # Count current active enrollments before reactivating
+                count_stmt = select(func.count(CourseEnrollment.id)).where(
+                    CourseEnrollment.course_id == course_id,
+                    CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                )
+                active_count = (await self._db.execute(count_stmt)).scalar_one() or 0
+                if course.max_students and active_count >= course.max_students:
+                    raise ValidationError(message=f"Course is full. Maximum enrollment limit of {course.max_students} seats has been reached.")
+
+                existing.status = EnrollmentStatus.ACTIVE
+                course.total_enrollments = active_count + 1
+                await self._db.flush()
+            return {"course_id": str(course_id), "status": "active", "is_enrolled": True, "message": "Already enrolled"}
+
+        # Count current active enrollments before new enrollment
+        count_stmt = select(func.count(CourseEnrollment.id)).where(
+            CourseEnrollment.course_id == course_id,
+            CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+        )
+        active_count = (await self._db.execute(count_stmt)).scalar_one() or 0
+        if course.max_students and active_count >= course.max_students:
+            raise ValidationError(message=f"Course is full. Maximum enrollment limit of {course.max_students} seats has been reached.")
+
+        enrollment = CourseEnrollment(
+            student_id=student_id,
+            course_id=course_id,
+            status=EnrollmentStatus.ACTIVE,
+            progress_percentage=0.0,
+            enrolled_at=datetime.now(timezone.utc),
+        )
+        self._db.add(enrollment)
+        course.total_enrollments = active_count + 1
+        await self._db.flush()
+
+        return {"course_id": str(course_id), "status": "active", "is_enrolled": True, "message": "Successfully enrolled!"}
 
     async def get_course_detail(
         self,
@@ -1080,10 +1199,9 @@ class StudentMeetingRepository:
         if course_id:
             conditions.append(Meeting.course_id == course_id)
         if upcoming_only:
-            conditions.append(Meeting.scheduled_at >= now)
             conditions.append(Meeting.status.in_([MeetingStatus.SCHEDULED, MeetingStatus.LIVE]))
         if history_only:
-            conditions.append(Meeting.scheduled_at < now)
+            conditions.append(Meeting.status.in_([MeetingStatus.COMPLETED, MeetingStatus.ENDED]))
 
         count_stmt = select(func.count(Meeting.id)).where(and_(*conditions))
         total: int = (await self._db.execute(count_stmt)).scalar_one()

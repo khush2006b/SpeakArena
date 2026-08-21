@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { User, Settings, LogOut, Award } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
+import { apiClient } from "@/services/api/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function ProfileMenu() {
   const { user, clearUser } = useAuthStore();
+  const [profile, setProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await apiClient.get('/api/v1/profile');
+        setProfile(res.data);
+      } catch (err) {
+        console.error("Failed to load profile for menu", err);
+      }
+    }
+    loadData();
+  }, []);
 
   const initials = user?.fullName
     ? user.fullName
@@ -28,58 +42,62 @@ export function ProfileMenu() {
         .slice(0, 2)
     : "S";
 
+  const streak = profile?.streak_days || 0;
+  const goal = profile?.weekly_goal || 7;
+  const progressPercent = Math.min(100, Math.round((streak / goal) * 100));
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-          <Avatar className="h-9 w-9 transition-transform active:scale-95" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+          <Avatar className="h-9 w-9 transition-transform active:scale-95 border-border border">
             <AvatarImage src={user?.avatarUrl || undefined} alt={user?.fullName || "Student"} />
-            <AvatarFallback style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8" }}>{initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end" forceMount style={{ background: "#0b0e18", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <DropdownMenuContent className="w-64 bg-card border-border border" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-2">
-            <p className="text-sm font-medium leading-none" style={{ color: "#fff" }}>{user?.fullName || "Student Name"}</p>
-            <p className="text-xs leading-none" style={{ color: "#9ca3af" }}>
+            <p className="text-sm font-medium leading-none text-foreground">{user?.fullName || "Student Name"}</p>
+            <p className="text-xs leading-none text-muted-foreground">
               {user?.email || "student@example.com"}
             </p>
             
             {/* Student specific: Quick Progress/Streak Snapshot */}
-            <div className="mt-3 rounded-md p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="mt-3 rounded-md p-3 bg-white/5 border border-white/5">
               <div className="flex items-center gap-2 mb-1">
-                <Award className="h-4 w-4" style={{ color: "#f59e0b" }} />
-                <span className="text-xs font-semibold" style={{ color: "#e5e7eb" }}>5 Day Streak!</span>
+                <Award className="h-4 w-4 text-amber-500" />
+                <span className="text-xs font-semibold text-foreground">{streak} Day Streak!</span>
               </div>
-              <div className="w-full rounded-full h-1.5 mt-2 overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
-                <div className="h-1.5 rounded-full w-[70%]" style={{ background: "#f59e0b" }} />
+              <div className="w-full rounded-full h-1.5 mt-2 overflow-hidden bg-white/5">
+                <div className="h-1.5 rounded-full bg-amber-500" style={{ width: `${progressPercent}%` }} />
               </div>
-              <p className="text-[10px] mt-1 text-right" style={{ color: "#6b7280" }}>70% to Weekly Goal</p>
+              <p className="text-[10px] mt-1 text-right text-muted-foreground">{progressPercent}% to Weekly Goal</p>
             </div>
           </div>
         </DropdownMenuLabel>
         
-        <DropdownMenuSeparator style={{ background: "rgba(255,255,255,0.07)" }} />
+        <DropdownMenuSeparator className="bg-white/10" />
         
         <DropdownMenuGroup>
           <DropdownMenuItem asChild className="focus:bg-white/5 cursor-pointer">
-            <Link href="/student/profile" className="flex items-center" style={{ color: "#e5e7eb" }}>
-              <User className="mr-2 h-4 w-4" style={{ color: "#9ca3af" }} />
+            <Link href="/student/profile" className="flex items-center text-foreground">
+              <User className="mr-2 h-4 w-4 text-muted-foreground" />
               <span>My Profile</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="focus:bg-white/5 cursor-pointer">
-            <Link href="/student/settings" className="flex items-center" style={{ color: "#e5e7eb" }}>
-              <Settings className="mr-2 h-4 w-4" style={{ color: "#9ca3af" }} />
+            <Link href="/student/settings" className="flex items-center text-foreground">
+              <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
               <span>Settings</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         
-        <DropdownMenuSeparator style={{ background: "rgba(255,255,255,0.07)" }} />
+        <DropdownMenuSeparator className="bg-white/10" />
         
-        <DropdownMenuItem onClick={() => clearUser()} className="focus:bg-red-500/10 cursor-pointer" style={{ color: "#ef4444" }}>
+        <DropdownMenuItem onClick={() => clearUser()} className="focus:bg-red-500/10 cursor-pointer text-red-500">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

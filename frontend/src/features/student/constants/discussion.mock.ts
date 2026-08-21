@@ -64,8 +64,8 @@ export const MOCK_DISCUSSION_THREADS: DiscussionThread[] = [
         id: "r-1",
         author: {
           id: "t-1",
-          name: "Sarah Chen",
-          avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
+          name: "Paras (Construction)",
+          avatar: "/images/paras_teacher.png",
           role: "teacher",
           isVerifiedTeacher: true
         },
@@ -96,8 +96,8 @@ export const MOCK_DISCUSSION_THREADS: DiscussionThread[] = [
     type: "announcement",
     author: {
       id: "t-1",
-      name: "Sarah Chen",
-      avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
+      name: "Paras (Construction)",
+      avatar: "/images/paras_teacher.png",
       role: "teacher",
       isVerifiedTeacher: true
     },

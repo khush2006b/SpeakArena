@@ -97,7 +97,7 @@ function CourseCard({ course }: { course: Course }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-xl border-white/10 shadow-2xl">
                 <DropdownMenuItem className="font-medium" asChild>
-                  <Link href={`/teacher/courses/builder?courseId=${course.id}`}>
+                  <Link href={`/teacher/builder?courseId=${course.id}`}>
                     <FileEdit className="mr-2 h-4 w-4 text-muted-foreground" />
                     Edit Course
                   </Link>
@@ -159,12 +159,14 @@ function CourseCard({ course }: { course: Course }) {
 
         <div className="mt-auto space-y-4 pt-2">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span className="font-bold text-foreground tracking-tight">
-              ${course.price.toFixed(2)}
+            <span className="font-extrabold text-foreground tracking-tight">
+              {course.price === 0 ? "Free" : `₹${course.price.toLocaleString("en-IN")}`}
             </span>
             <div className="flex items-center gap-1.5 font-semibold">
-              <Users className="h-4 w-4" />
-              <span>{(course.enrolledCount ?? 0).toLocaleString()} students</span>
+              <Users className="h-4 w-4 text-violet-400" />
+              <span className="text-xs">
+                {(course.enrolledCount ?? (course as any).total_enrollments ?? 0).toLocaleString()} / {course.maxStudents ?? (course as any).max_students ?? 50} seats
+              </span>
             </div>
           </div>
           <div className="space-y-2">
@@ -288,8 +290,8 @@ export function CourseGrid({
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {courses.map((course) => (
-          <CourseCard key={course.id} course={course} />
+        {courses.map((course, idx) => (
+          <CourseCard key={course.id ? `${course.id}-${idx}` : `teacher-course-${idx}`} course={course} />
         ))}
       </div>
       {data && data.totalPages > 1 && (

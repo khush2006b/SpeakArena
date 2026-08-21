@@ -202,6 +202,7 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     replies: Mapped[list[Message]] = relationship(
         "Message",
         foreign_keys=[reply_to_id],
+        overlaps="reply_to",
         lazy="raise",
     )
     reactions_normalized: Mapped[list[MessageReaction]] = relationship(

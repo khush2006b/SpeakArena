@@ -183,6 +183,13 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     total_enrollments: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    max_students: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=50,
+        server_default="50",
+        comment="Maximum allowed student enrollments (seat limit).",
+    )
     total_reviews: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )

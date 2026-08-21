@@ -79,6 +79,9 @@ from app.models.notification import (  # noqa: F401
     NotificationPreference,
 )
 
+# --- Tests & Grading module ---
+from app.models.test import CourseTest, TestGrade  # noqa: F401
+
 # --- Audit (last; references all other models via actor_id) ---
 from app.models.audit import AuditLog  # noqa: F401
 
@@ -132,5 +135,7 @@ __all__: list[str] = [
     "MessageReaction",
     "Notification",
     "NotificationPreference",
+    "CourseTest",
+    "TestGrade",
     "AuditLog",
 ]

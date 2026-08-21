@@ -183,6 +183,7 @@ class CourseDetailResponse(BaseModel):
     total_lectures: int
     total_duration_seconds: int
     total_enrollments: int
+    max_students: int = 50
     is_certificate_enabled: bool
     teacher: TeacherSummary
     enrollment_id: uuid.UUID

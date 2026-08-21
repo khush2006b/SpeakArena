@@ -1,8 +1,18 @@
+"use client";
+
 import * as React from "react";
 import { format } from "date-fns";
+import { apiClient } from "@/services/api/client";
 
 export function DashboardHeader() {
   const today = new Date();
+  const [name, setName] = React.useState("Teacher");
+
+  React.useEffect(() => {
+    apiClient.get("/api/v1/profile").then(({ data }) => {
+      setName(data.full_name || data.first_name || "Teacher");
+    }).catch(() => {});
+  }, []);
   
   return (
     <div className="relative overflow-hidden rounded-2xl bg-card border border-border p-6 sm:p-8 mb-8 hover-lift card-glass">
@@ -15,7 +25,7 @@ export function DashboardHeader() {
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-responsive-xl font-extrabold tracking-tight text-foreground mb-1">
-            Welcome back, Teacher!
+            Welcome back, {name}!
           </h1>
           <p className="text-muted-foreground text-responsive-lg">
             Here's what's happening with your courses today.

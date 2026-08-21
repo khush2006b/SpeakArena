@@ -21,10 +21,10 @@ export function AnalyticsDashboard() {
         {/* Header */}
         <div className="flex justify-between items-end flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="text-foreground font-extrabold text-responsive-xl m-0">Your Year in Code</h1>
-            <p className="text-muted-foreground text-sm mt-1 m-0 page-subtitle">A detailed breakdown of your learning journey and milestones.</p>
+            <h1 className="text-foreground font-extrabold text-responsive-xl m-0">Your Learning Journey</h1>
+            <p className="text-muted-foreground text-sm mt-1 m-0 page-subtitle">A detailed breakdown of your speaking skills and learning sessions.</p>
           </div>
-          <Button variant="outline" size="sm" className="flex gap-2 btn-outline press-scale rounded-lg">
+          <Button variant="outline" size="sm" className="flex gap-2 btn-outline press-scale rounded-lg" onClick={() => window.print()}>
             <Download className="h-4 w-4" /> Export Report
           </Button>
         </div>

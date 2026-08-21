@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Play, X, Clock, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export function CoursePreviewDrawer() {
   const { selectedCourseId, setSelectedCourseId } = useCoursesStore();
+  const router = useRouter();
   
   const { data: course, isLoading: isLoadingCourse } = useCourseDetail(selectedCourseId || "");
   const { data: progressData } = useCourseProgress(selectedCourseId || "");
@@ -118,8 +120,15 @@ export function CoursePreviewDrawer() {
             </div>
 
             {/* Sticky Bottom Actions */}
-            <div className="p-4 sticky bottom-0 flex gap-3 backdrop-blur-xl" style={{ background: "rgba(8,12,20,0.8)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <Button className="flex-1 shadow-md hover:scale-105 active:scale-95 transition-all text-base h-11" style={{ background: "#4f46e5", color: "#fff", borderRadius: 10, fontWeight: 700 }}>
+            <div className="p-4 sticky bottom-0 flex gap-3 backdrop-blur-xl bg-card/90 border-t border-border">
+              <Button
+                className="flex-1 shadow-md hover:scale-105 active:scale-95 transition-all text-base h-11 btn-primary"
+                style={{ borderRadius: 10, fontWeight: 700 }}
+                onClick={() => {
+                  setSelectedCourseId(null);
+                  router.push(`/student/courses/${selectedCourseId}`);
+                }}
+              >
                 <Play className="mr-2 h-4 w-4 fill-current" />
                 {progressPercent === 0 ? "Start Course" : "Go to Course"}
               </Button>

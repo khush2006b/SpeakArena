@@ -1,25 +1,58 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Trophy, Award, Download, CheckCircle2, Flame, Clock } from "lucide-react";
+import { apiClient } from "@/services/api/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProgressView() {
-  const certificates = [
-    {
-      id: "cert-1",
-      title: "Certificate of Excellence in Public Speaking",
-      course: "Mastering Public Speaking & Rhetoric",
-      issueDate: "Aug 4, 2026",
-      credentialId: "SA-CERT-2026-8891",
-    },
-    {
-      id: "cert-2",
-      title: "Foundations of Debate & Critical Thinking",
-      course: "Advanced Debate & Argumentation",
-      issueDate: "Jul 18, 2026",
-      credentialId: "SA-CERT-2026-4412",
-    },
-  ];
+  const [profile, setProfile] = useState<any>(null);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [profRes, certRes] = await Promise.allSettled([
+          apiClient.get('/api/v1/profile'),
+          apiClient.get('/api/v1/certificates?page=1&page_size=10')
+        ]);
+        
+        if (profRes.status === 'fulfilled') {
+          setProfile(profRes.value.data);
+        }
+        if (certRes.status === 'fulfilled') {
+          setCertificates(certRes.value.data.items || certRes.value.data.certificates || []);
+        } else {
+          setCertificates([]);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8 min-h-screen bg-background">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-60 w-full" />
+      </div>
+    );
+  }
+
+  const getLevel = (courses: number) => {
+    if (courses >= 6) return "Advanced Speaker";
+    if (courses >= 3) return "Intermediate Speaker";
+    if (courses >= 1) return "Learner Speaker";
+    return "Beginner Speaker";
+  };
+
+  const completedCourses = profile?.total_courses_completed || 0;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8 min-h-screen bg-background relative overflow-hidden">
@@ -35,7 +68,7 @@ export function ProgressView() {
                 Progress & Certificates
               </h1>
               <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-500">
-                <Trophy className="h-3 w-3" /> Level 4 Speaker
+                <Trophy className="h-3 w-3" /> {getLevel(completedCourses)}
               </span>
             </div>
             <p className="text-sm mt-1 text-muted-foreground page-subtitle" style={{ lineHeight: 1.7 }}>
@@ -56,9 +89,8 @@ export function ProgressView() {
               </div>
             </div>
             <p className="text-3xl font-extrabold tracking-tight text-foreground">
-              14 Days
+              {profile?.streak_days || 0} Days
             </p>
-            <p className="text-xs font-medium text-emerald-500">Personal best record!</p>
           </div>
 
           <div className="rounded-2xl p-5 space-y-2 card-glass hover-lift" style={{ borderRadius: 16 }}>
@@ -71,9 +103,8 @@ export function ProgressView() {
               </div>
             </div>
             <p className="text-3xl font-extrabold tracking-tight text-foreground">
-              38.5 hrs
+              {profile?.total_hours || 0} hrs
             </p>
-            <p className="text-xs text-muted-foreground">+4.2 hrs this week</p>
           </div>
 
           <div className="rounded-2xl p-5 space-y-2 card-glass hover-lift" style={{ borderRadius: 16 }}>
@@ -86,9 +117,8 @@ export function ProgressView() {
               </div>
             </div>
             <p className="text-3xl font-extrabold tracking-tight text-foreground">
-              2 Courses
+              {completedCourses} Courses
             </p>
-            <p className="text-xs font-medium text-emerald-500">100% completion rate</p>
           </div>
 
           <div className="rounded-2xl p-5 space-y-2 card-glass hover-lift" style={{ borderRadius: 16 }}>
@@ -101,9 +131,8 @@ export function ProgressView() {
               </div>
             </div>
             <p className="text-3xl font-extrabold tracking-tight text-foreground">
-              2 Certificates
+              {certificates.length} Certificates
             </p>
-            <p className="text-xs text-muted-foreground">Verified & Shareable</p>
           </div>
         </div>
 
@@ -113,42 +142,51 @@ export function ProgressView() {
             <Award className="h-5 w-5 text-primary" /> Official Certificates
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {certificates.map((cert) => (
-              <div
-                key={cert.id}
-                className="rounded-2xl p-4 sm:p-6 flex flex-col justify-between space-y-4 relative overflow-hidden card-glass hover-lift"
-                style={{ borderRadius: 16 }}
-              >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-500">
-                      <CheckCircle2 className="h-3 w-3" /> Verified
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {cert.credentialId}
-                    </span>
-                  </div>
-                  <h4 className="text-lg font-bold text-foreground">
-                    {cert.title}
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Issued for completing <span className="font-semibold text-foreground">{cert.course}</span> on {cert.issueDate}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    const dlUrl = `/api/v1/certificates/${cert.credentialId}/download`;
-                    window.open(dlUrl, '_blank');
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all btn-outline press-scale bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/50"
+          {certificates.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground bg-card/50 rounded-2xl border border-border">
+              Complete a course to earn your first certificate!
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {certificates.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="rounded-2xl p-4 sm:p-6 flex flex-col justify-between space-y-4 relative overflow-hidden card-glass hover-lift"
+                  style={{ borderRadius: 16 }}
                 >
-                  <Download className="h-4 w-4 text-primary" /> Download PDF Certificate
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-500">
+                        <CheckCircle2 className="h-3 w-3" /> Verified
+                      </span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {cert.credentialId}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-bold text-foreground">
+                      {cert.title}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Issued for completing <span className="font-semibold text-foreground">{cert.course}</span> on {cert.issueDate || new Date().toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <button
+                    disabled={!cert.credentialId}
+                    onClick={() => {
+                      if (cert.credentialId) {
+                        const dlUrl = `/api/v1/certificates/${cert.credentialId}/download`;
+                        window.open(dlUrl, '_blank');
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all btn-outline press-scale bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download className="h-4 w-4 text-primary" /> Download PDF Certificate
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -17,34 +17,18 @@ const PARTNERS = [
   "IELTS Band 8+", "Coursera", "TOEFL iBT", "Duolingo",
 ];
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
   return (
     /*
      * Outer container: CSS Grid with two equal columns.
      * `grid` + `grid-cols-2` guarantees a hard 50/50 split that
      * cannot be squished by content — no flex, no w-1/2 issues.
      */
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        minHeight: "100vh",
-        width: "100%",
-        background: "#080c14",
-      }}
-    >
+    <div className="flex min-h-screen w-full bg-[#080c14]">
       {/* ══════════════════════════════════════════════════
           LEFT COLUMN — Brand + Form
          ══════════════════════════════════════════════════ */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          background: "#080c14",
-          padding: "36px 56px 28px",
-          minHeight: "100vh",
-        }}
-      >
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 py-10 min-h-screen" style={{ background: "#080c14" }}>
         {/* ── Logo row (top-left) ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
@@ -88,9 +72,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           and partner logos are pinned to bottom
          ══════════════════════════════════════════════════ */}
       <div
+        className="hidden lg:flex flex-col flex-1"
         style={{
-          display: "flex",
-          flexDirection: "column",
           background: "#0b1120",
           borderLeft: "1px solid rgba(255,255,255,0.07)",
           padding: "56px",
@@ -126,7 +109,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Quote text */}
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.72)", lineHeight: 1.75, margin: "0 0 28px 0" }}>
-            SpeakArena has completely transformed my speaking confidence. It&apos;s reliable, structured, and ensures my fluency improves every single day.
+            {quote || "SpeakArena has completely transformed my speaking confidence. It's reliable, structured, and ensures my fluency improves every single day."}
           </p>
 
           {/* Author row */}
@@ -147,10 +130,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
                 border: "2px solid rgba(255,255,255,0.15)",
               }}
             >
-              MC
+              {author ? author.charAt(0) : "MC"}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#ffffff", lineHeight: 1.3 }}>Michael Carter</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#ffffff", lineHeight: 1.3 }}>{author || "Michael Carter"}</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>IELTS Band 8.5 Student &amp; Software Engineer</div>
             </div>
           </div>

@@ -8,7 +8,6 @@ import { QuickActionsDropdown } from "./QuickActionsDropdown";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function TeacherHeader() {
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleSearch = useUIStore((s) => s.toggleSearch);
   const toggleNotificationDrawer = useUIStore((s) => s.toggleNotificationDrawer);
   const [searchFocused, setSearchFocused] = React.useState(false);
@@ -16,7 +15,7 @@ export function TeacherHeader() {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full flex-shrink-0"
+      className="sticky top-0 z-50 w-full flex-shrink-0"
       style={{
         height: 64,
         display: "flex",
@@ -31,7 +30,7 @@ export function TeacherHeader() {
     >
       {/* Mobile toggle */}
       <button
-        onClick={toggleSidebar}
+        onClick={() => document.getElementById('teacher-mobile-menu-trigger')?.click()}
         className="lg:hidden btn-ghost press-scale"
         style={{ width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 10, flexShrink: 0 }}
         aria-label="Open sidebar"

@@ -211,6 +211,13 @@ export function TeacherCommunicationView() {
       .then((res: any) => {
         const list: TeacherCourse[] = res.data?.data ?? [];
         setCourses(list);
+        if (list.length > 0) {
+          setActiveChannel((prev) => {
+            if (prev.type === "dm" && prev.student) return prev;
+            if (prev.type === "announcements") return prev;
+            return { type: "course", course: list[0] };
+          });
+        }
       })
       .catch(() => {})
       .finally(() => setCoursesLoading(false));

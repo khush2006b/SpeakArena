@@ -409,6 +409,11 @@ class PaymentService:
         if enrolled:
             raise DuplicateEnrollmentError()
 
+        if course.max_students > 0 and course.total_enrollments >= course.max_students:
+            raise CourseNotPurchasableError(
+                message=f"This course has reached its student limit of {course.max_students} enrolled seats."
+            )
+
         amount_paise = int(float(course.price) * 100)
 
         # Create pending Payment record first to get our UUID for the receipt
@@ -609,6 +614,22 @@ class WebhookService:
         self._redis = redis
         self._payment_repo = PaymentRepository(db)
         self._razorpay = RazorpayService()
+
+    def verify_webhook_signature(self, payload_body: bytes, signature: str) -> bool:
+        return self._razorpay.verify_webhook_signature(payload_body, signature)
+
+    def verify_payment_signature(
+        self, razorpay_order_id: str, razorpay_payment_id: str, razorpay_signature: str
+    ) -> bool:
+        return self._razorpay.verify_payment_signature(
+            razorpay_order_id, razorpay_payment_id, razorpay_signature
+        )
+
+    async def assert_not_replayed(self, event_id: str) -> None:
+        key = f"webhook:seen:{event_id}"
+        is_new = await self._redis.set(key, "1", nx=True, ex=86400)
+        if not is_new:
+            raise WebhookReplayError(f"Duplicate webhook event: {event_id}")
 
     async def handle(
         self,

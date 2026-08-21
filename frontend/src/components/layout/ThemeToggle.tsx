@@ -45,7 +45,7 @@ export function ThemeToggle() {
           <span className="sr-only">Toggle Day/Night theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[140px] bg-[#0b0e18] border-white/10 text-white rounded-xl shadow-2xl p-1">
+      <DropdownMenuContent align="end" className="min-w-[140px] bg-card border-border text-foreground rounded-xl shadow-2xl p-1">
         <DropdownMenuItem
           onClick={() => setTheme("light")}
           className="flex items-center justify-between cursor-pointer rounded-lg text-xs font-semibold focus:bg-white/10"

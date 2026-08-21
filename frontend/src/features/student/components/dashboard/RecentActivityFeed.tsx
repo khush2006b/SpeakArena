@@ -4,6 +4,7 @@ import * as React from "react";
 import { PlayCircle, Video, FileText, ChevronRight, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { apiClient } from "@/services/api/client";
 
 export function RecentActivityFeed() {
@@ -41,9 +42,11 @@ export function RecentActivityFeed() {
           <Activity className="h-4 w-4 text-muted-foreground" />
           Recent Activity
         </CardTitle>
-        <Button variant="ghost" size="sm" className="text-xs hover:text-primary/80 -mr-2 text-primary btn-ghost press-scale">
-          View All <ChevronRight className="h-3 w-3 ml-1" />
-        </Button>
+        <Link href="/student/notifications">
+          <Button variant="ghost" size="sm" className="text-xs hover:text-primary/80 -mr-2 text-primary btn-ghost press-scale">
+            View All <ChevronRight className="h-3 w-3 ml-1" />
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-4 flex-1">
         

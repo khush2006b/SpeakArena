@@ -40,7 +40,7 @@ export interface CourseCurriculum {
 export const MOCK_ENTERPRISE_CURRICULUM: CourseCurriculum = {
   id: "c-101",
   title: "Advanced Frontend Architecture",
-  teacher: "Sarah Chen",
+  teacher: "Paras (Construction)",
   thumbnail: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=2070&auto=format&fit=crop",
   progress: 35,
   estimatedRemainingTime: "12h 45m left",

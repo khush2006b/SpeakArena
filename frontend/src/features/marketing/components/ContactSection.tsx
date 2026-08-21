@@ -5,8 +5,8 @@ import { Mail, Phone, MapPin, Clock, Send, Twitter, Linkedin, Github } from "luc
 
 const CONTACT_ITEMS = [
   { icon: Mail, label: "Email us", lines: ["support@speakarena.com", "enterprise@speakarena.com"], color: "#818cf8" },
-  { icon: Phone, label: "Call us", lines: ["+1 (555) 123-4567", "+1 (555) 987-6543"], color: "#34d399" },
-  { icon: MapPin, label: "Visit us", lines: ["100 Market St, Suite 400", "San Francisco, CA 94105"], color: "#f87171" },
+  { icon: Phone, label: "Call us", lines: ["+91 98765 43210"], color: "#34d399" },
+  { icon: MapPin, label: "Visit us", lines: ["New Delhi, India"], color: "#f87171" },
   { icon: Clock, label: "Business hours", lines: ["Monday – Friday", "9:00 AM – 6:00 PM (PST)"], color: "#fbbf24" },
 ];
 
@@ -73,7 +73,7 @@ export function ContactSection() {
         </div>
 
         {/* 2-col grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
           {/* ─── LEFT: Form ──────────────────────────────────────────── */}
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 22, padding: "40px 40px" }}>
@@ -162,7 +162,7 @@ export function ContactSection() {
           {/* ─── RIGHT: Contact info + Map ───────────────────────────── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             {/* Contact items */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {CONTACT_ITEMS.map(({ icon: Icon, label, lines, color }) => (
                 <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 22px" }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
@@ -187,8 +187,8 @@ export function ContactSection() {
                 <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(79,70,229,0.2)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px auto" }}>
                   <MapPin style={{ width: 22, height: 22, color: "#818cf8" }} />
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#e5e7eb" }}>SF Headquarters</div>
-                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>100 Market St, San Francisco</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#e5e7eb" }}>Headquarters</div>
+                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>New Delhi, India</div>
               </div>
             </div>
 

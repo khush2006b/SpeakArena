@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { format, parseISO } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { Clock, Calendar, Video, PlayCircle, ExternalLink, XCircle } from "lucide-react";
+import { Clock, Calendar, Video, ExternalLink } from "lucide-react";
 
 interface LiveClassCardProps {
   liveClass: any;
@@ -11,18 +10,33 @@ interface LiveClassCardProps {
 }
 
 export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
-  const isCancelled = liveClass.status === "CANCELLED";
-  const isCompleted = liveClass.status === "ENDED";
-  const isInProgress = liveClass.status === "LIVE";
-  const date = parseISO(liveClass.scheduledAt);
+  const now = Date.now();
+  let date: Date;
+  try {
+    date = parseISO(liveClass.scheduledAt);
+    if (isNaN(date.getTime())) date = new Date();
+  } catch {
+    date = new Date();
+  }
+  const startMs = date.getTime();
+  const durationMs = (liveClass.durationMinutes || 60) * 60 * 1000;
+  const endMs = startMs + durationMs;
 
+  const isCancelled = liveClass.status === "CANCELLED" || liveClass.status === "Cancelled";
+  const isCompleted = liveClass.status === "ENDED" || liveClass.status === "COMPLETED" || now > endMs;
+  const isInProgress = !isCancelled && !isCompleted && (now >= startMs && now <= endMs || liveClass.status === "LIVE");
+  const isUpcoming = !isCancelled && !isCompleted && !isInProgress;
+
+  const rawMeetLink = liveClass.meetLink || liveClass.meet_link || liveClass.meeting_url || "";
+  const meetUrl = rawMeetLink.startsWith("http") ? rawMeetLink : `https://${rawMeetLink}`;
   const thumbnail = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='800' height='400' fill='url(%23g)'/></svg>`;
 
   return (
     <div
-      className={`card-glass hover-lift overflow-hidden transition-all flex flex-col ${
+      className={`card-glass hover-lift overflow-hidden transition-all flex flex-col cursor-pointer ${
         isCancelled ? "opacity-60 grayscale" : ""
       }`}
+      onClick={() => onJoinClick?.(liveClass)}
     >
       {/* Thumbnail Area */}
       <div className="h-32 relative overflow-hidden bg-secondary rounded-t-2xl">
@@ -54,7 +68,9 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
 
       <div className="p-4 flex-1 flex flex-col">
         {/* Course & Topic */}
-        <p className="text-xs font-semibold text-primary mb-1">Course Session</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1 line-clamp-1">
+          {liveClass.courseName || liveClass.courseTitle || liveClass.course_title || "Course Session"}
+        </p>
         <h3 className="text-base font-bold text-foreground leading-tight mb-4 line-clamp-2">
           {liveClass.title}
         </h3>
@@ -76,33 +92,34 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
         {/* Action Button */}
         <div className="mt-auto">
           {isInProgress ? (
-            <Button
-              className="w-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 press-scale"
-              onClick={() => onJoinClick?.(liveClass)}
+            <a
+              href={meetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all press-scale"
             >
-              <Video className="mr-2 h-4 w-4" /> Join Class Now
-            </Button>
-          ) : liveClass.status === "SCHEDULED" ? (
-            <Button
-              className="btn-primary w-full press-scale"
-              onClick={() => onJoinClick?.(liveClass)}
+              <Video className="h-4 w-4" />
+              Join Google Meet Now
+              <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />
+            </a>
+          ) : isUpcoming ? (
+            <a
+              href={rawMeetLink ? meetUrl : "#"}
+              target={rawMeetLink ? "_blank" : "_self"}
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                if (!rawMeetLink) e.preventDefault();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 border border-violet-500/30 transition-all press-scale"
             >
-              <ExternalLink className="mr-2 h-4 w-4" /> Pre-flight Check
-            </Button>
-          ) : isCompleted ? (
-            <Button
-              variant="outline"
-              className="w-full bg-background hover:bg-secondary/50 border-border press-scale"
-            >
-              <PlayCircle className="mr-2 h-4 w-4" /> Watch Recording
-            </Button>
+              <Video className="h-4 w-4 text-violet-400" />
+              {rawMeetLink ? "Join Meeting Link" : `Opens at ${format(date, "h:mm a")}`}
+              {rawMeetLink && <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />}
+            </a>
           ) : (
-            <Button
-              variant="secondary"
-              className="w-full opacity-50 cursor-not-allowed"
-            >
-              <XCircle className="mr-2 h-4 w-4" /> Class Unavailable
-            </Button>
+            <div className="w-full py-2 px-3 rounded-xl bg-secondary/30 text-center text-xs font-semibold text-muted-foreground border border-border/40">
+              Session Ended
+            </div>
           )}
         </div>
       </div>

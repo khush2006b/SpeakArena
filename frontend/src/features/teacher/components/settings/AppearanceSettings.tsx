@@ -6,17 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useNotificationsStore } from "@/stores/notifications.store";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 export function AppearanceSettings() {
   const { isSaving, setIsSaving } = useSettingsStore();
   const { addToast } = useNotificationsStore();
-  const [theme, setTheme] = React.useState("system");
+  const { theme, setTheme } = useTheme();
   const [animations, setAnimations] = React.useState(true);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 800));
     addToast({ title: "Appearance Saved", description: "Your visual preferences have been updated.", variant: "success" });
     setIsSaving(false);
   };

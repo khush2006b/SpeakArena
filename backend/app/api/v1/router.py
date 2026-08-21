@@ -130,5 +130,7 @@ api_router.include_router(calendar_router)
 #   - Mute + lock checked per message.send via O(1) Redis lookups.
 #   - All events broadcast via Redis Pub/Sub for multi-instance safety.
 from app.modules.chat.ws_router import ws_router  # noqa: E402
+from app.modules.test.router import router as test_router  # noqa: E402
 
 api_router.include_router(ws_router)
+api_router.include_router(test_router)

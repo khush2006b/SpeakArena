@@ -4,6 +4,8 @@ import * as React from "react";
 import Image from "next/image";
 import { Play, Star, ChevronLeft, ChevronRight, Mic, Briefcase, Award, BookOpen, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { apiClient } from "@/services/api/client";
 
 interface CourseItem {
   id: string;
@@ -20,7 +22,6 @@ interface CourseItem {
 
 interface CourseCarouselProps {
   title: string;
-  items: CourseItem[];
   type: "enrolled" | "recommended";
 }
 
@@ -34,11 +35,31 @@ function getCourseIcon(iconType?: string) {
   }
 }
 
-export function CourseCarousel({ title, items, type }: CourseCarouselProps) {
+export function CourseCarousel({ title, type }: CourseCarouselProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = React.useState(false);
   const [showRightScroll, setShowRightScroll] = React.useState(true);
   const [failedImages, setFailedImages] = React.useState<Record<string, boolean>>({});
+  const [items, setItems] = React.useState<CourseItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const endpoint = type === "enrolled" 
+          ? "/api/v1/courses?enrolled=true&page=1&page_size=6" 
+          : "/api/v1/courses?page=1&page_size=6";
+        const res = await apiClient.get(endpoint);
+        const data = res.data?.items || res.data?.data || res.data || [];
+        setItems(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCourses();
+  }, [type]);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -91,15 +112,22 @@ export function CourseCarousel({ title, items, type }: CourseCarouselProps) {
           onScroll={handleScroll}
           className="flex gap-4 pb-4 snap-x snap-mandatory custom-scrollbar"
         >
-          {items.map((item) => {
+          {isLoading ? (
+            <div className="flex items-center justify-center w-full py-12">
+              <div className="animate-pulse flex space-x-4">
+                <div className="rounded-xl bg-muted h-32 w-64"></div>
+                <div className="rounded-xl bg-muted h-32 w-64"></div>
+              </div>
+            </div>
+          ) : items.map((item) => {
             const Icon = getCourseIcon(item.iconType);
             const isImageFailed = failedImages[item.id];
             const defaultGradient = item.gradient || "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 100%)";
 
             return (
+              <Link href={`/student/courses/${item.id}`} className="block shrink-0 snap-start w-[280px] sm:w-[320px]" key={item.id}>
               <div 
-                key={item.id} 
-                className="shrink-0 snap-start w-[280px] sm:w-[320px] group/card cursor-pointer p-3 rounded-2xl transition-all duration-300 card-glass hover-lift"
+                className="group/card cursor-pointer p-3 rounded-2xl transition-all duration-300 card-glass hover-lift h-full"
                 style={{ borderRadius: 16 }}
               >
                 {/* Thumbnail / Gradient Banner */}
@@ -172,6 +200,7 @@ export function CourseCarousel({ title, items, type }: CourseCarouselProps) {
                   )}
                 </div>
               </div>
+              </Link>
             );
           })}
         </div>

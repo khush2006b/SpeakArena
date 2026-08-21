@@ -58,11 +58,10 @@ export function PurchaseSummary() {
     {
       icon: DollarSign,
       label: "Total Spent",
-      value: `$${summary.totalSpent.toFixed(2)}`,
+      value: `₹${summary.totalSpent.toFixed(2)}`,
       iconBg: "bg-emerald-500/15",
       iconBorder: "border-emerald-500/25",
       iconColor: "text-emerald-400",
-      bgIcon: DollarSign,
     },
     {
       icon: BookOpen,
@@ -71,16 +70,14 @@ export function PurchaseSummary() {
       iconBg: "bg-blue-500/15",
       iconBorder: "border-blue-500/25",
       iconColor: "text-blue-400",
-      bgIcon: BookOpen,
     },
     {
       icon: Crown,
       label: "Lifetime Value",
-      value: String(summary.lifetimeValue),
+      value: `₹${summary.lifetimeValue.toFixed(2)}`,
       iconBg: "bg-amber-500/15",
       iconBorder: "border-amber-500/25",
       iconColor: "text-amber-400",
-      bgIcon: Crown,
     },
     {
       icon: Calendar,
@@ -89,7 +86,6 @@ export function PurchaseSummary() {
       iconBg: "bg-purple-500/15",
       iconBorder: "border-purple-500/25",
       iconColor: "text-purple-400",
-      bgIcon: Calendar,
       smallValue: true,
     },
   ];
@@ -109,20 +105,16 @@ export function PurchaseSummary() {
       animate="show"
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
     >
-      {SUMMARY_CARDS.map(({ icon: Icon, bgIcon: BgIcon, label, value, iconBg, iconBorder, iconColor, smallValue }) => (
+      {SUMMARY_CARDS.map(({ icon: Icon, label, value, iconBg, iconBorder, iconColor, smallValue }) => (
         <motion.div key={label} variants={item}>
-          <div className="card-stat relative overflow-hidden hover-lift cursor-default">
-            {/* Background decorative icon */}
-            <div className="absolute right-[-16px] top-[-16px] opacity-[0.05] pointer-events-none">
-              <BgIcon size={96} />
-            </div>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className={`h-12 w-12 rounded-xl ${iconBg} border ${iconBorder} flex items-center justify-center ${iconColor} shrink-0`}>
-                <Icon size={24} />
+          <div className="card-glass p-5 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl hover-lift cursor-default group transition-all duration-300">
+            <div className="flex items-center gap-4">
+              <div className={`h-12 w-12 rounded-xl ${iconBg} border ${iconBorder} flex items-center justify-center ${iconColor} shrink-0 shadow-sm`}>
+                <Icon className="w-6 h-6" />
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest m-0">{label}</p>
-                <h3 className={`font-extrabold text-foreground m-0 mt-1 ${smallValue ? "text-sm" : "text-2xl font-mono"}`}>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest m-0 truncate">{label}</p>
+                <h3 className={`font-extrabold text-foreground m-0 mt-1 truncate ${smallValue ? "text-sm" : "text-2xl tracking-tight"}`}>
                   {value}
                 </h3>
               </div>

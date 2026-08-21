@@ -8,7 +8,8 @@ import {
   Eye,
   Activity,
   Loader2,
-  Users
+  Users,
+  UserX
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,12 +20,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useStudentStore } from "@/stores/student.store";
 import { useTeacherStudents } from "@/hooks/queries/useTeacherQueries";
+import { teacherService } from "@/services/teacher.service";
+import { queryKeys } from "@/constants/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export function StudentCard({ student }: { student: any }) {
   const { setActiveStudent } = useStudentStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
   
   const isActive = student.status === "ACTIVE";
   const isSuspended = student.status === "SUSPENDED";
@@ -35,6 +41,23 @@ export function StudentCard({ student }: { student: any }) {
   const handleMessage = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/teacher/communication?email=${encodeURIComponent(student.email || "")}`);
+  };
+
+  const handleUnenroll = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (student.enrolledCourses > 1) {
+      setActiveStudent(student);
+      toast.info(`Select a course in the panel to unenroll ${fullName}`);
+      return;
+    }
+    if (!confirm(`Are you sure you want to unenroll ${fullName} from this course?`)) return;
+    try {
+      await teacherService.unenrollStudent(student.id, student.courseId);
+      toast.success(`Unenrolled ${fullName} from course successfully`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to unenroll student");
+    }
   };
 
   return (
@@ -52,7 +75,7 @@ export function StudentCard({ student }: { student: any }) {
               <MoreVertical className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 bg-background/95 backdrop-blur-xl border-white/10 shadow-2xl">
+          <DropdownMenuContent align="end" className="w-44 bg-background/95 backdrop-blur-xl border-white/10 shadow-2xl">
             <DropdownMenuItem onClick={() => setActiveStudent(student)} className="font-medium">
               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
               View Profile
@@ -60,6 +83,10 @@ export function StudentCard({ student }: { student: any }) {
             <DropdownMenuItem onClick={handleMessage} className="font-medium">
               <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
               Message
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleUnenroll} className="font-medium text-rose-400 focus:text-rose-300 focus:bg-rose-400/10">
+              <UserX className="mr-2 h-4 w-4" />
+              Unenroll Student
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -159,7 +186,7 @@ export function StudentGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pb-24">
       {students.map((student, index) => (
-        <StudentCard key={student.enrollmentId ? `${student.id}-${student.enrollmentId}` : `${student.id}-${student.courseId || index}`} student={student} />
+        <StudentCard key={student.id ? (student.enrollmentId ? `st-card-${student.id}-${student.enrollmentId}` : `st-card-${student.id}-${index}`) : `st-card-idx-${index}`} student={student} />
       ))}
     </div>
   );

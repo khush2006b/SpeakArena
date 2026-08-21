@@ -39,14 +39,7 @@ export function ProfileCard() {
       <div className="px-8 pb-8 relative">
         {/* Avatar */}
         <div className="relative -mt-16 w-32 h-32 rounded-2xl border-[6px] border-background bg-secondary shadow-[0_8px_24px_rgba(0,0,0,0.5)] group cursor-pointer overflow-hidden z-10 flex items-center justify-center hover-lift">
-          {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:opacity-50" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-violet-500/20">
-              <span className="text-4xl font-extrabold text-violet-400">{user.fullName?.[0]}</span>
-            </div>
-          )}
+            <img src={user.avatarUrl || "/images/paras_teacher.png"} alt={user.fullName} className="w-full h-full object-cover object-top transition-all duration-500 group-hover:scale-110 group-hover:opacity-50" />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/40 backdrop-blur-[2px]">
             <Camera className="h-8 w-8 text-foreground drop-shadow-md" />
           </div>

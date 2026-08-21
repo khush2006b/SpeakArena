@@ -29,9 +29,9 @@ export function CourseGrid({ courses }: CourseGridProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {courses.map((course) => (
+      {courses.map((course, idx) => (
         <div 
-          key={course.id} 
+          key={course.id ? `${course.id}-${idx}` : `student-course-${idx}`} 
           className="group relative flex flex-col overflow-hidden transition-all duration-300 cursor-pointer active:scale-[0.98] card-glass hover-lift"
           style={{ borderRadius: 16 }}
           onClick={() => setSelectedCourseId(course.id)}

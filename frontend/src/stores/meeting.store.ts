@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type MeetingStatus = "Scheduled" | "Live" | "Completed" | "Cancelled" | "Draft";
+export type MeetingStatus = "Scheduled" | "Live" | "Completed" | "Cancelled" | "Draft" | "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
 
 export interface Meeting {
   id: string;

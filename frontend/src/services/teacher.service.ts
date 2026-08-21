@@ -74,6 +74,7 @@ export interface TeacherStudent {
   courseTitle?: string;
   courseId?: string;
   enrollmentId?: string;
+  enrollments?: any[];
 }
 
 // ---------------------------------------------------------------------------
@@ -133,15 +134,20 @@ export const teacherService = {
   getRevenueTrends: async (period: "week" | "month" | "year" = "month"): Promise<RevenueTrend[]> => {
     try {
       const periodParam = period === "month" ? "MONTHLY" : period.toUpperCase();
-      const { data } = await apiClient.get<APIResponse<RevenueTrend[]>>(
+      const { data } = await apiClient.get<any>(
         ENDPOINTS.ANALYTICS.REVENUE_TRENDS,
         { params: { period: periodParam } },
       );
-      return data.data ?? [];
+      const resData = data?.data;
+      if (Array.isArray(resData)) return resData;
+      if (Array.isArray(resData?.data_points)) return resData.data_points;
+      if (Array.isArray(resData?.data)) return resData.data;
+      return [];
     } catch {
       try {
         const { data } = await apiClient.get<any>("/api/v1/teacher/dashboard");
-        return data?.data?.revenue_trend ?? [];
+        const raw = data?.data?.revenue_trend || data?.data?.revenue_series;
+        return Array.isArray(raw) ? raw : [];
       } catch {
         return [];
       }
@@ -289,22 +295,43 @@ export const teacherService = {
       lastActiveAt: item.last_active_at ?? null,
       joinedAt: item.created_at ?? new Date().toISOString(),
       status: item.is_active ? "ACTIVE" : "SUSPENDED",
+      enrollments: item.enrollments ?? [],
     };
   },
 
   /** POST /students/:id/suspend */
-  suspendStudent: async (studentId: string, courseId: string, reason?: string) => {
+  suspendStudent: async (studentId: string, courseId?: string, reason?: string) => {
     await apiClient.post(`/api/v1/teacher/students/${studentId}/suspend`, {
-      course_id: courseId,
+      course_id: courseId || undefined,
       reason: reason || "Suspended by teacher",
     });
   },
 
   /** POST /students/:id/unsuspend */
-  unsuspendStudent: async (studentId: string, courseId: string) => {
+  unsuspendStudent: async (studentId: string, courseId?: string) => {
     await apiClient.post(`/api/v1/teacher/students/${studentId}/unsuspend`, null, {
-      params: { course_id: courseId },
+      params: courseId ? { course_id: courseId } : {},
     });
+  },
+
+  /** POST /students/:id/unenroll */
+  unenrollStudent: async (studentId: string, courseId?: string, reason?: string) => {
+    const params: Record<string, string> = {};
+    if (courseId) params.course_id = courseId;
+    if (reason) params.reason = reason;
+    await apiClient.post(`/api/v1/teacher/students/${studentId}/unenroll`, null, {
+      params,
+    });
+  },
+
+  /** GET /students/:id/attendance */
+  getStudentAttendance: async (studentId: string) => {
+    try {
+      const { data } = await apiClient.get(`/api/v1/teacher/students/${studentId}/attendance`);
+      return data.data ?? data;
+    } catch {
+      return { items: [] };
+    }
   },
 
   /** POST /students/:id/block */

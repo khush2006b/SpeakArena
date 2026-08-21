@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Library, Video, BookOpen,
+  LayoutDashboard, Library, Video, BookOpen, Compass,
   Trophy, CalendarCheck, CreditCard, MessageSquare, Bookmark,
-  ChevronRight, ChevronLeft, Mic2, X,
+  ChevronRight, ChevronLeft, Mic2, X, ClipboardCheck,
 } from "lucide-react";
 import { useStudentLayoutStore } from "@/stores/student-layout.store";
 
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
     items: [
       { name: "Dashboard", href: "/student", icon: LayoutDashboard },
       { name: "My Courses", href: "/student/courses", icon: Library },
+      { name: "Explore Courses", href: "/student/explore", icon: Compass },
       { name: "Live Classes", href: "/student/live", icon: Video },
       { name: "Resources", href: "/student/resources", icon: BookOpen },
     ],
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
     group: "Performance",
     items: [
       { name: "Progress", href: "/student/progress", icon: Trophy },
+      { name: "Tests", href: "/student/tests", icon: ClipboardCheck },
       { name: "Attendance", href: "/student/attendance", icon: CalendarCheck },
     ],
   },

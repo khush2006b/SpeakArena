@@ -107,7 +107,9 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
           <h2 className="text-responsive-lg font-extrabold tracking-tight text-foreground mb-2">
             {nextClass.title}
           </h2>
-          <p className="text-sm font-medium text-primary mb-6">Course Session</p>
+          <p className="text-sm font-bold uppercase tracking-wider text-primary mb-6">
+            {nextClass.courseName || nextClass.courseTitle || nextClass.course_title || "Course Session"}
+          </p>
 
           <div className="flex flex-wrap items-center gap-6 mb-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">

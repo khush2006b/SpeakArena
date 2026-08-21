@@ -23,6 +23,7 @@ from app.core.exceptions.errors import (
     ResourceNotFoundError,
 )
 from app.models.audit import AuditLog
+from app.models.chat import ChatRoom
 from app.models.enums import AuditSeverity, MessageContentType, NotificationType, UserRole
 from app.models.notification import Notification
 from app.models.user import User
@@ -442,15 +443,15 @@ class MessageService:
         )
 
         return {
-            "id": message.id,
-            "chat_room_id": message.chat_room_id,
-            "sender_id": self._actor.id,
-            "recipient_id": message.recipient_id,
+            "id": str(message.id),
+            "chat_room_id": str(message.chat_room_id),
+            "sender_id": str(self._actor.id),
+            "recipient_id": str(message.recipient_id) if message.recipient_id else None,
             "sender": {
-                "id": self._actor.id,
+                "id": str(self._actor.id),
                 "full_name": self._actor.full_name,
                 "avatar_r2_key": self._actor.avatar_r2_key,
-                "role": self._actor.role,
+                "role": self._actor.role.value if hasattr(self._actor.role, "value") else str(self._actor.role),
             },
             "content": message.content,
             "content_type": message.content_type,
@@ -461,10 +462,10 @@ class MessageService:
             "is_announcement": False,
             "is_edited": False,
             "edited_at": None,
-            "attachments": message.attachments,
+            "attachments": message.attachments or [],
             "reactions": {},
             "is_deleted": False,
-            "created_at": message.created_at,
+            "created_at": message.created_at.isoformat() if message.created_at else datetime.utcnow().isoformat(),
             "updated_at": None,
         }
 

@@ -3,15 +3,41 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { Clock, BookOpen, Flame, Award } from "lucide-react";
-import { MOCK_SUMMARY } from "../../constants/analytics.mock";
 import { Card } from "@/components/ui/card";
+import { apiClient } from "@/services/api/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function AnalyticsSummary() {
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const response = await apiClient.get('/api/v1/profile');
+        setData(response.data);
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[120px] rounded-[18px]" />)}
+      </div>
+    );
+  }
+
   const cards = [
-    { title: "Hours Studied", value: MOCK_SUMMARY.hoursStudied, icon: <Clock style={{ height: '20px', width: '20px', color: '#4f46e5' }} />, suffix: "h" },
-    { title: "Current Streak", value: MOCK_SUMMARY.currentStreak, icon: <Flame style={{ height: '20px', width: '20px', color: '#4f46e5' }} />, suffix: " days" },
-    { title: "Lessons Completed", value: MOCK_SUMMARY.lessonsCompleted, icon: <BookOpen style={{ height: '20px', width: '20px', color: '#4f46e5' }} /> },
-    { title: "Longest Streak", value: MOCK_SUMMARY.longestStreak, icon: <Award style={{ height: '20px', width: '20px', color: '#4f46e5' }} />, suffix: " days" },
+    { title: "Hours Studied", value: data.total_hours || 0, icon: <Clock className="h-5 w-5 text-primary" />, suffix: "h" },
+    { title: "Current Streak", value: data.streak_days || 0, icon: <Flame className="h-5 w-5 text-primary" />, suffix: " days" },
+    { title: "Courses Enrolled", value: data.total_courses_enrolled || 0, icon: <BookOpen className="h-5 w-5 text-primary" /> },
+    { title: "Courses Completed", value: data.total_courses_completed || 0, icon: <Award className="h-5 w-5 text-primary" /> },
   ];
 
   const container = {
@@ -36,19 +62,19 @@ export function AnalyticsSummary() {
     >
       {cards.map((card, i) => (
         <motion.div key={i} variants={item}>
-          <Card style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6b7280', marginBottom: '12px' }}>
-              <div style={{ borderRadius: '10px', padding: '8px', background: 'rgba(79,70,229,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Card className="p-4 flex flex-col h-full bg-card border-border rounded-[18px]">
+            <div className="flex items-center gap-2 text-muted-foreground mb-3">
+              <div className="rounded-[10px] p-2 bg-primary/10 flex items-center justify-center">
                 {card.icon}
               </div>
-              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{card.title}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider">{card.title}</span>
             </div>
-            <div style={{ marginTop: 'auto' }}>
-              <span style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>
+            <div className="mt-auto">
+              <span className="text-[28px] font-extrabold text-foreground">
                 {card.value}
               </span>
               {card.suffix && (
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af', marginLeft: '4px' }}>{card.suffix}</span>
+                <span className="text-sm font-medium text-muted-foreground ml-1">{card.suffix}</span>
               )}
             </div>
           </Card>

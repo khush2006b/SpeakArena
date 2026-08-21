@@ -8,18 +8,63 @@ import {
   TrendingUp,
   Clock,
   BookOpen,
-  DollarSign
+  DollarSign,
+  UserX,
+  PlayCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useStudentStore } from "@/stores/student.store";
 import { useRouter } from "next/navigation";
+import { teacherService } from "@/services/teacher.service";
+import { queryKeys } from "@/constants/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ActivityTimeline } from "./ActivityTimeline";
 
 export function StudentDrawer() {
   const { activeStudent, setActiveStudent } = useStudentStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [fullStudent, setFullStudent] = React.useState<any>(null);
+  const [unenrollingCourseId, setUnenrollingCourseId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (activeStudent?.id) {
+      teacherService
+        .getStudent(activeStudent.id)
+        .then((res) => setFullStudent(res))
+        .catch(() => setFullStudent(null));
+    } else {
+      setFullStudent(null);
+    }
+  }, [activeStudent?.id]);
+
+  const enrollmentsList = React.useMemo(() => {
+    if (!activeStudent) return [];
+    if (fullStudent?.enrollments && Array.isArray(fullStudent.enrollments) && fullStudent.enrollments.length > 0) {
+      return fullStudent.enrollments;
+    }
+    if (activeStudent?.enrollments && Array.isArray(activeStudent.enrollments) && activeStudent.enrollments.length > 0) {
+      return activeStudent.enrollments;
+    }
+    if (typeof activeStudent?.courseTitle === "string" && activeStudent.courseTitle.includes(",")) {
+      const titles = activeStudent.courseTitle.split(",").map((t: string) => t.trim());
+      return titles.map((t: string, idx: number) => ({
+        course_id: activeStudent.courseId || `c-${idx}`,
+        course_title: t,
+        progress_percent: activeStudent.progressPercent || activeStudent.progress || 0,
+      }));
+    }
+    return [
+      {
+        course_id: activeStudent?.courseId,
+        course_title: activeStudent?.courseTitle || "Enrolled Course",
+        progress_percent: activeStudent?.progressPercent || activeStudent?.progress || 0,
+      },
+    ];
+  }, [fullStudent, activeStudent]);
 
   if (!activeStudent) return null;
 
@@ -35,6 +80,59 @@ export function StudentDrawer() {
   const handleMessage = () => {
     setActiveStudent(null);
     router.push(`/teacher/communication?email=${encodeURIComponent(email)}`);
+  };
+
+  const handleUnenrollCourse = async (targetCourseId: string, targetCourseTitle: string) => {
+    if (!targetCourseId) {
+      toast.error("Course ID not found");
+      return;
+    }
+    if (!confirm(`Are you sure you want to unenroll ${fullName} from "${targetCourseTitle}"?`)) return;
+
+    setUnenrollingCourseId(targetCourseId);
+    try {
+      await teacherService.unenrollStudent(activeStudent.id, targetCourseId);
+      toast.success(`Unenrolled ${fullName} from "${targetCourseTitle}" successfully.`);
+      
+      if (fullStudent) {
+        setFullStudent((prev: any) => ({
+          ...prev,
+          enrollments: (prev?.enrollments || []).filter((e: any) => (e.course_id || e.courseId) !== targetCourseId),
+        }));
+      }
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to unenroll student");
+    } finally {
+      setUnenrollingCourseId(null);
+    }
+  };
+
+  const handleToggleSuspendCourse = async (targetCourseId: string, targetCourseTitle: string, isSuspended: boolean) => {
+    if (!targetCourseId) return;
+    try {
+      if (isSuspended) {
+        await teacherService.unsuspendStudent(activeStudent.id, targetCourseId);
+        toast.success(`Restored access for ${fullName} in "${targetCourseTitle}"`);
+      } else {
+        await teacherService.suspendStudent(activeStudent.id, targetCourseId);
+        toast.warning(`Suspended access for ${fullName} in "${targetCourseTitle}"`);
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+      if (fullStudent) {
+        setFullStudent((prev: any) => ({
+          ...prev,
+          enrollments: (prev?.enrollments || []).map((e: any) =>
+            (e.course_id || e.courseId) === targetCourseId
+              ? { ...e, status: isSuspended ? "ACTIVE" : "SUSPENDED" }
+              : e
+          ),
+        }));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
+    }
   };
 
   return (
@@ -125,21 +223,62 @@ export function StudentDrawer() {
             {/* Course Enrollments */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" /> Active Course
+                <BookOpen className="h-4 w-4 text-primary" /> Enrolled Courses ({enrollmentsList.length})
               </h4>
               <div className="space-y-3">
-                <div className="p-4 rounded-xl border border-border/50 bg-background shadow-sm hover:border-primary/20 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-sm">{courseTitle}</span>
-                    <Badge variant="secondary" className="text-[10px]">Enrolled</Badge>
-                  </div>
-                  <div className="flex flex-col gap-1.5 w-full mt-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{progress.toFixed(0)}% Completed</span>
+                {enrollmentsList.map((item: any, idx: number) => {
+                  const cTitle = item.course_title || item.courseTitle || courseTitle;
+                  const cId = item.course_id || item.courseId || item.id || activeStudent?.courseId;
+                  const cProgress = Number(item.progress_percent ?? item.progressPercent ?? progress);
+                  const isUnenrollingThis = unenrollingCourseId === cId;
+                  const isCourseSuspended = item.status === "SUSPENDED" || item.enrollment_status === "SUSPENDED";
+                  const itemKey = `drawer-course-${cId || 'noid'}-${item.enrollment_id || item.id || 'noid'}-${idx}`;
+
+                  return (
+                    <div
+                      key={itemKey}
+                      className="p-4 rounded-xl border border-border/50 bg-background shadow-sm hover:border-primary/20 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2 gap-2">
+                        <span className="font-semibold text-sm line-clamp-1 text-foreground">{cTitle}</span>
+                        {cId && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleToggleSuspendCourse(cId, cTitle, isCourseSuspended)}
+                              className={`h-7 text-xs px-2.5 rounded-lg ${
+                                isCourseSuspended
+                                  ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                                  : "text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
+                              }`}
+                            >
+                              <PlayCircle className="mr-1 h-3.5 w-3.5" />
+                              {isCourseSuspended ? "Restore" : "Suspend"}
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={isUnenrollingThis}
+                              onClick={() => handleUnenrollCourse(cId, cTitle)}
+                              className="h-7 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 rounded-lg"
+                            >
+                              <UserX className="mr-1 h-3.5 w-3.5" />
+                              {isUnenrollingThis ? "Unenrolling..." : "Unenroll"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1.5 w-full mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{cProgress.toFixed(0)}% Completed</span>
+                        </div>
+                        <Progress value={cProgress} className="h-1.5" indicatorClassName="bg-primary" />
+                      </div>
                     </div>
-                    <Progress value={progress} className="h-1.5" indicatorClassName="bg-primary" />
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -148,7 +287,7 @@ export function StudentDrawer() {
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-6">
                 <TrendingUp className="h-4 w-4 text-primary" /> Activity History
               </h4>
-              <ActivityTimeline />
+              <ActivityTimeline studentId={activeStudent.id} />
             </div>
           </div>
         </div>

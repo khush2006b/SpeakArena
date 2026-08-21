@@ -5,30 +5,30 @@ import { Users, Star, Briefcase, Trophy, ArrowRight, GraduationCap } from "lucid
 import Link from "next/link";
 
 const STATS = [
-  { label: "Students Taught", value: "50,000+", icon: Users, color: "#818cf8" },
+  { label: "Active Learners", value: "1,200+", icon: Users, color: "#818cf8" },
   { label: "Average Rating", value: "4.9 / 5", icon: Star, color: "#fbbf24" },
-  { label: "Years Experience", value: "12+", icon: Briefcase, color: "#34d399" },
-  { label: "Success Placements", value: "2,000+", icon: Trophy, color: "#f87171" },
+  { label: "Live Interactive Hours", value: "250+", icon: Briefcase, color: "#34d399" },
+  { label: "Fluency Success Rate", value: "96%", icon: Trophy, color: "#f87171" },
 ];
 
 const TIMELINE = [
   {
-    year: "2021 – Present",
-    role: "Head of English Programs",
+    year: "2024 – Present",
+    role: "Founder & Lead Peer Coach",
     org: "SpeakArena",
-    desc: "Designing and leading cohort-based English fluency programs for 50,000+ students globally, specialising in accent reduction and business communication.",
+    desc: "Building a high-energy, peer-driven English speaking platform where students break free from hesitation through real live practice and instant feedback.",
   },
   {
-    year: "2015 – 2021",
-    role: "Senior Linguistics Instructor",
-    org: "British Council",
-    desc: "Taught advanced spoken English, phonetics, and IELTS Speaking preparation to learners from 30+ countries at the Mumbai and Delhi centres.",
+    year: "2023 – 2024",
+    role: "Public Speaking & Debate Circle Lead",
+    org: "University Campus",
+    desc: "Mentored 300+ fellow college students in public speaking, impromptu presentation skills, and overcoming stage fear for placement interviews.",
   },
   {
-    year: "2013 – 2015",
-    role: "M.A. Applied Linguistics",
-    org: "University of Edinburgh",
-    desc: "Specialised in phonological acquisition and second-language accent research. Graduated with Distinction.",
+    year: "2022 – 2023",
+    role: "Spoken English Peer Trainer",
+    org: "Campus English Club",
+    desc: "Organized interactive daily practice circles focusing on natural pronunciation, sentence rhythm, and vocal confidence.",
   },
 ];
 
@@ -40,7 +40,7 @@ export function TeacherSection() {
       <div style={{ position: "absolute", bottom: 0, left: 0, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.05) 0%, transparent 70%)", transform: "translate(-30%, 30%)", pointerEvents: "none" }} />
 
       <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
 
           {/* ─── LEFT: Portrait + Stats ──────────────────────────────── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
@@ -50,24 +50,25 @@ export function TeacherSection() {
               position: "relative", borderRadius: 24, overflow: "hidden",
               aspectRatio: "4/5", maxWidth: 400,
               background: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
             }}>
-              {/* Gradient overlay image simulation */}
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)", zIndex: 1 }} />
-              {/* Decorative bg pattern */}
-              <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0)", backgroundSize: "28px 28px" }} />
-              {/* Avatar placeholder */}
-              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -60%)", width: 120, height: 120, borderRadius: "50%", background: "linear-gradient(135deg, #4f46e5, #818cf8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 800, color: "#fff", border: "4px solid rgba(255,255,255,0.15)", boxShadow: "0 20px 60px rgba(79,70,229,0.4)" }}>
-                EC
-              </div>
+              {/* Teacher Image */}
+              <img
+                src="/images/paras_teacher.png"
+                alt="Expert English Coach"
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
+              />
+              {/* Gradient overlay */}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(11,14,24,0.92) 0%, rgba(11,14,24,0.2) 50%, transparent 100%)", zIndex: 1 }} />
               {/* Name card overlay */}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 28px 28px", zIndex: 2 }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(79,70,229,0.2)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 100, padding: "4px 12px", marginBottom: 12 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(79,70,229,0.25)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: 100, padding: "4px 12px", marginBottom: 12, backdropFilter: "blur(8px)" }}>
                   <GraduationCap style={{ width: 12, height: 12, color: "#818cf8" }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Lead Instructor</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Founder & Mentor</span>
                 </div>
-                <h3 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 6px 0", lineHeight: 1.2 }}>Dr. Eleanor Chen</h3>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0 }}>M.A. Applied Linguistics · University of Edinburgh</p>
+                <h3 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 6px 0", lineHeight: 1.2 }}>Expert English Coach</h3>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Peer Mentor · SpeakArena</p>
               </div>
             </div>
 
@@ -92,15 +93,15 @@ export function TeacherSection() {
             </div>
 
             <h2 style={{ fontSize: "clamp(28px, 3vw, 44px)", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, margin: "0 0 24px 0" }}>
-              Learn from someone who has lived it.
+              Real practice with someone who understands your journey.
             </h2>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 48 }}>
               <p style={{ fontSize: 16, color: "#9ca3af", lineHeight: 1.75, margin: 0 }}>
-                I believe the best way to master spoken English is not through disconnected drills, but by understanding the real acoustic and social dynamics behind natural communication.
+                As a student, I experienced the exact same hesitation when speaking English in front of peers, seminars, and interviewers. Textbooks don't teach fluency — real speaking practice does.
               </p>
               <p style={{ fontSize: 16, color: "#9ca3af", lineHeight: 1.75, margin: 0 }}>
-                My teaching philosophy: <strong style={{ color: "#e5e7eb", fontWeight: 700 }}>build confidence first, perfect the technique second.</strong> Over 12 years, I've coached students from 60+ countries to Band 8+ IELTS scores, C-suite presentations, and native-like fluency.
+                My approach is simple: <strong style={{ color: "#e5e7eb", fontWeight: 700 }}>no judgment, zero fear, 100% active speaking.</strong> Together at SpeakArena, we turn awkward silences into confident, natural conversation.
               </p>
             </div>
 

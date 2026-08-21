@@ -8,20 +8,46 @@ import {
   Video, 
   Clock, 
   Calendar as CalendarIcon, 
-  Users, 
   BookOpen, 
   Copy,
   ExternalLink,
-  Edit,
   Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useMeetingStore } from "@/stores/meeting.store";
+import { useDeleteMeeting } from "@/hooks/queries/useTeacherQueries";
+import { toast } from "sonner";
 
 export function MeetingDrawer() {
   const { activeMeeting, setActiveMeeting } = useMeetingStore();
+
+  const deleteMeetingMutation = useDeleteMeeting();
+
+  if (!activeMeeting) return null;
+
+  const startDate = activeMeeting.start ? new Date(activeMeeting.start) : new Date();
+  const endDate = activeMeeting.end ? new Date(activeMeeting.end) : new Date();
+
+  const handleCopyLink = () => {
+    const link = activeMeeting.meetLink || `https://meet.google.com/${activeMeeting.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Meeting link copied to clipboard!");
+  };
+
+  const handleCancelMeeting = () => {
+    if (!confirm(`Are you sure you want to cancel session "${activeMeeting.title}"?`)) return;
+
+    deleteMeetingMutation.mutate(activeMeeting.id, {
+      onSuccess: () => {
+        toast.success("Meeting cancelled.");
+        setActiveMeeting(null);
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to cancel meeting.");
+      },
+    });
+  };
 
   return (
     <AnimatePresence>
@@ -50,13 +76,13 @@ export function MeetingDrawer() {
                 <Badge
                   variant="outline"
                   className={
-                    activeMeeting.status === "Live" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                    activeMeeting.status === "Completed" ? "bg-secondary text-muted-foreground border-border" :
-                    activeMeeting.status === "Cancelled" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                    activeMeeting.status === "Live" || activeMeeting.status === "LIVE" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                    activeMeeting.status === "Completed" || activeMeeting.status === "ENDED" ? "bg-secondary text-muted-foreground border-border" :
+                    activeMeeting.status === "Cancelled" || activeMeeting.status === "CANCELLED" ? "bg-destructive/10 text-destructive border-destructive/20" :
                     "bg-primary/10 text-primary border-primary/20"
                   }
                 >
-                  {activeMeeting.status === "Live" && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />}
+                  {(activeMeeting.status === "Live" || activeMeeting.status === "LIVE") && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />}
                   {activeMeeting.status}
                 </Badge>
                 {activeMeeting.isRecurring && (
@@ -77,7 +103,7 @@ export function MeetingDrawer() {
                 </h2>
                 <div className="flex items-center gap-2 mt-2 text-primary">
                   <BookOpen className="h-4 w-4" />
-                  <span className="font-medium text-sm">{activeMeeting.courseName}</span>
+                  <span className="font-medium text-sm">{activeMeeting.courseName || "Course Session"}</span>
                 </div>
               </div>
 
@@ -88,7 +114,7 @@ export function MeetingDrawer() {
                     <CalendarIcon className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium uppercase tracking-wider">Date</span>
                   </div>
-                  <p className="text-sm font-semibold text-foreground pl-5">{format(activeMeeting.start, "MMMM d, yyyy")}</p>
+                  <p className="text-sm font-semibold text-foreground pl-5">{format(startDate, "MMMM d, yyyy")}</p>
                 </div>
                 <div className="p-3 rounded-lg border border-border/50 bg-secondary/20 space-y-1">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -96,63 +122,44 @@ export function MeetingDrawer() {
                     <span className="text-xs font-medium uppercase tracking-wider">Time</span>
                   </div>
                   <p className="text-sm font-semibold text-foreground pl-5">
-                    {format(activeMeeting.start, "h:mm a")} - {format(activeMeeting.end, "h:mm a")}
+                    {format(startDate, "h:mm a")} - {format(endDate, "h:mm a")}
                   </p>
                 </div>
               </div>
 
               {/* Join Block */}
-              {activeMeeting.meetLink && activeMeeting.status !== "Cancelled" && (
+              {activeMeeting.status !== "Cancelled" && activeMeeting.status !== "CANCELLED" && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/50 pb-2">Meeting Link</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/50 pb-2">Google Meet Access</h4>
                   <div className="flex items-center gap-2">
-                    <Button className="flex-1 shadow-sm h-11 press-scale" variant={activeMeeting.status === "Live" ? "default" : "secondary"}>
-                      <Video className="mr-2 h-4 w-4" />
-                      {activeMeeting.status === "Live" ? "Join Meeting Now" : "Join Google Meet"}
-                      <ExternalLink className="ml-2 h-3 w-3 opacity-50" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 press-scale" title="Copy Link">
+                    <a
+                      href={activeMeeting.meetLink || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all press-scale"
+                    >
+                      <Video className="h-4 w-4" />
+                      Join Google Meet Class
+                      <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />
+                    </a>
+                    <Button variant="outline" size="icon" onClick={handleCopyLink} className="h-11 w-11 shrink-0 press-scale" title="Copy Link">
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              )}
-
-              {/* Attendance Block */}
-              {activeMeeting.attendance && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" /> Attendance
-                    </h4>
-                    <span className="text-xs font-medium text-foreground">
-                      {Math.round((activeMeeting.attendance.present / activeMeeting.attendance.total) * 100)}% Present
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Progress value={(activeMeeting.attendance.present / activeMeeting.attendance.total) * 100} className="h-2" indicatorClassName="bg-primary" />
-                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                      <span><strong className="text-emerald-500">{activeMeeting.attendance.present}</strong> Present</span>
-                      <span><strong className="text-destructive">{activeMeeting.attendance.absent}</strong> Absent</span>
-                      <span><strong className="text-orange-500">{activeMeeting.attendance.late}</strong> Late</span>
-                    </div>
-                  </div>
-                  
-                  <Button variant="link" className="px-0 h-auto text-xs text-primary press-scale">View detailed attendance report</Button>
                 </div>
               )}
             </div>
 
             {/* Footer Actions */}
             <div className="p-4 border-t border-border/50 bg-background/50 flex items-center gap-2">
-              <Button variant="outline" className="flex-1 shadow-sm press-scale">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Details
-              </Button>
-              <Button variant="outline" className="flex-1 shadow-sm text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent press-scale">
+              <Button
+                variant="outline"
+                onClick={handleCancelMeeting}
+                disabled={deleteMeetingMutation.isPending}
+                className="w-full shadow-sm text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent press-scale"
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Cancel Session
+                {deleteMeetingMutation.isPending ? "Deleting..." : "Delete Session"}
               </Button>
             </div>
           </motion.div>

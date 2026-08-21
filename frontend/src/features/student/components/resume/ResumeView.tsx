@@ -12,7 +12,7 @@ export function ResumeView() {
     lessonTitle: "Stage Presence & Non-Verbal Communication",
     progressPercent: 65,
     timestamp: "18:45 / 28:30",
-    instructor: "Dr. Eleanor Vance",
+    instructor: "Paras (Construction)",
   };
 
   const nextUpLessons = [

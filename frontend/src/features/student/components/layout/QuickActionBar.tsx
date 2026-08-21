@@ -17,7 +17,7 @@ export function QuickActionBar() {
           animate={{ y: 0, opacity: 1, x: "-50%" }}
           exit={{ y: 100, opacity: 0, x: "-50%" }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-6 left-1/2 z-50 flex items-center gap-2 rounded-full backdrop-blur-xl shadow-2xl p-2"
+          className="fixed bottom-20 lg:bottom-6 left-1/2 z-50 hidden lg:flex items-center gap-2 rounded-full backdrop-blur-xl shadow-2xl p-2"
           style={{ background: "rgba(8,12,20,0.9)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           {/* Main Action */}

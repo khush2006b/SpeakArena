@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,8 @@ _E164_RE = re.compile(r"^\+[1-9]\d{1,14}$")
 class RegisterStudentRequest(BaseModel):
     """Request body for POST /auth/register."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     email: EmailStr = Field(
         ...,
         description="Valid email address. Stored verbatim; lookup is case-insensitive.",
@@ -50,6 +52,7 @@ class RegisterStudentRequest(BaseModel):
     )
     full_name: str = Field(
         ...,
+        alias="fullName",
         min_length=2,
         max_length=150,
         description="Full display name. Letters, spaces, hyphens, apostrophes, and dots only.",

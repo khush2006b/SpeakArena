@@ -290,9 +290,9 @@ export function AttendanceView() {
                   </td>
                 </tr>
               ) : (
-                filteredData.map((item) => (
+                filteredData.map((item, idx) => (
                   <tr
-                  key={item.id}
+                  key={item.id ? `att-${item.id}` : `att-idx-${idx}`}
                   style={{
                     borderBottom: '1px solid hsl(var(--border))',
                     background: 'transparent',

@@ -25,8 +25,17 @@ function formatBytes(bytes: number) {
 }
 
 export function ResourcesStep() {
-  const { nextStep, prevStep, courseId } = useBuilderStore();
-  const [files, setFiles] = React.useState<UploadedFile[]>([]);
+  const { nextStep, prevStep, courseId, stagedResources, setStagedResources } = useBuilderStore();
+  const [files, setFiles] = React.useState<UploadedFile[]>(
+    stagedResources.map((r) => ({
+      id: r.id,
+      name: r.name,
+      size: r.size,
+      type: r.type,
+      status: "done",
+      progress: 100,
+    }))
+  );
   const dropRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -38,6 +47,19 @@ export function ResourcesStep() {
       { id: tempId, name: file.name, size: file.size, type: file.type, status: "uploading", progress: 0 },
     ]);
 
+    if (!courseId) {
+      // Stage resource locally when course isn't created in DB yet
+      setFiles((prev) =>
+        prev.map((f) => (f.id === tempId ? { ...f, status: "done", progress: 100 } : f))
+      );
+      setStagedResources((prev) => [
+        ...prev,
+        { id: tempId, name: file.name, size: file.size, type: file.type, file },
+      ]);
+      toast.success(`"${file.name}" added to course resources.`);
+      return;
+    }
+
     try {
       const resourceType = file.type === "application/pdf" ? "pdf" : "document";
       const { uploadUrl, resourceId, key } = await uploadService.getUploadUrl({
@@ -45,7 +67,7 @@ export function ResourcesStep() {
         mimeType: file.type,
         fileSize: file.size,
         resourceType,
-        ...(courseId ? { courseId } : {}),
+        courseId,
       });
 
       await uploadService.uploadToR2(uploadUrl, file, {
@@ -75,15 +97,14 @@ export function ResourcesStep() {
 
   const handleFiles = (fileList: FileList | null) => {
     if (!fileList) return;
-    if (!courseId) {
-      toast.error("Please complete Step 1 first to create a course.");
-      return;
-    }
     Array.from(fileList).forEach(uploadFile);
   };
 
   const handleRemove = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
+    if (!courseId) {
+      setStagedResources((prev) => prev.filter((r) => r.id !== id));
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -101,26 +122,18 @@ export function ResourcesStep() {
         </p>
       </div>
 
-      {!courseId && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          Go back to Step 1 to create the course before uploading resources.
-        </div>
-      )}
-
       {/* Drop Zone */}
       <div
         ref={dropRef}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        onClick={() => courseId && inputRef.current?.click()}
+        onClick={() => inputRef.current?.click()}
         className={cn(
-          "w-full rounded-xl border-2 border-dashed p-10 flex flex-col items-center justify-center text-center transition-all",
+          "w-full rounded-xl border-2 border-dashed p-10 flex flex-col items-center justify-center text-center transition-all cursor-pointer",
           isDragging
             ? "border-primary bg-primary/5 scale-[1.01]"
-            : "border-border/60 bg-secondary/20 hover:bg-secondary/40 hover:border-primary/30",
-          courseId ? "cursor-pointer" : "opacity-50 cursor-not-allowed"
+            : "border-border/60 bg-secondary/20 hover:bg-secondary/40 hover:border-primary/30"
         )}
       >
         <input
@@ -174,7 +187,7 @@ export function ResourcesStep() {
                     )}
                     {file.status === "done" && (
                       <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Uploaded
+                        <CheckCircle2 className="h-3 w-3" /> Attached
                       </span>
                     )}
                     {file.status === "error" && (

@@ -206,12 +206,13 @@ class PaymentHistoryParams:
     def __init__(
         self,
         page: int = Query(default=1, ge=1),
-        page_size: int = Query(default=20, ge=1, le=100),
+        page_size: Optional[int] = Query(default=None, ge=1, le=100),
+        pageSize: Optional[int] = Query(default=None, ge=1, le=100),
         status: Optional[str] = Query(default=None),
         course_id: Optional[uuid.UUID] = Query(default=None),
     ) -> None:
         self.page = page
-        self.page_size = page_size
+        self.page_size = page_size or pageSize or 20
         self.status = status
         self.course_id = course_id
 

@@ -61,6 +61,7 @@ from app.core.storage.r2 import (
     make_video_key,
 )
 from app.models.audit import AuditLog
+from app.models.course import Course, CourseEnrollment
 from app.models.chat import ChatRoom
 from app.models.enums import (
     AuditSeverity,
@@ -312,6 +313,9 @@ class CourseService:
             slug = f"{base_slug}-{suffix}"
             suffix += 1
 
+        target_status = getattr(data, "status", CourseStatus.DRAFT) or CourseStatus.DRAFT
+        published_at = datetime.now(timezone.utc) if target_status == CourseStatus.PUBLISHED else None
+
         course = await self._repo.create(
             teacher_id=self._teacher.id,
             title=data.title,
@@ -324,9 +328,11 @@ class CourseService:
             level=data.level or CourseLevel.BEGINNER,
             language=data.language,
             visibility=data.visibility,
+            max_students=data.max_students,
             is_certificate_enabled=data.is_certificate_enabled,
             metadata_=data.metadata,
-            status=CourseStatus.DRAFT,
+            status=target_status,
+            published_at=published_at,
         )
 
         # Assign categories
@@ -393,6 +399,7 @@ class CourseService:
             "level",
             "language",
             "visibility",
+            "max_students",
             "is_certificate_enabled",
         ):
             val = getattr(data, field)
@@ -672,11 +679,9 @@ class MeetingService:
             teacher_id=self._teacher.id,
             title=data.title,
             description=data.description,
-            meet_link=data.meet_link,
-            provider=data.provider,
+            meeting_url=data.meet_link,
             scheduled_at=data.scheduled_at,
             duration_minutes=data.duration_minutes,
-            max_participants=data.max_participants,
             status=MeetingStatus.SCHEDULED,
         )
 
@@ -710,10 +715,13 @@ class MeetingService:
             raise MeetingNotFoundError()
 
         updates: dict[str, Any] = {}
-        for field in ("title", "description", "meet_link", "scheduled_at", "duration_minutes", "max_participants"):
-            val = getattr(data, field)
+        for field in ("title", "description", "scheduled_at", "duration_minutes", "status"):
+            val = getattr(data, field, None)
             if val is not None:
                 updates[field] = val
+
+        if getattr(data, "meet_link", None) is not None:
+            updates["meeting_url"] = data.meet_link
 
         if updates:
             await self._repo.update(meeting, **updates)
@@ -1490,51 +1498,82 @@ class StudentManagementService:
     async def suspend_student(
         self,
         student_id: uuid.UUID,
-        course_id: uuid.UUID,
+        course_id: Optional[uuid.UUID] = None,
         reason: Optional[str] = None,
     ) -> None:
-        """Suspend a student from a specific course.
+        """Suspend a student from a specific course (or all teacher's courses if omitted)."""
+        if course_id:
+            enrollment = await self._repo.get_enrollment(student_id, course_id)
+            enrollments = [enrollment] if enrollment else []
+        else:
+            enrollments = await self._repo.get_student_enrollments(student_id, self._teacher.id)
 
-        Args:
-            student_id: The student UUID.
-            course_id: The course UUID.
-            reason: Optional suspension reason for the audit log.
-
-        Raises:
-            StudentNotFoundError: If not enrolled.
-        """
-        enrollment = await self._repo.get_enrollment(student_id, course_id)
-        if enrollment is None:
+        if not enrollments:
             raise StudentNotFoundError()
 
-        await self._repo.update_enrollment_status(enrollment, EnrollmentStatus.SUSPENDED)
-        _audit(
-            self._db,
-            self._teacher,
-            "student.suspended",
-            "enrollment",
-            enrollment.id,
-            severity=AuditSeverity.WARNING,
-            metadata={"reason": reason, "student_id": str(student_id)},
-        )
+        for e in enrollments:
+            if e:
+                await self._repo.update_enrollment_status(e, EnrollmentStatus.SUSPENDED)
+                _audit(
+                    self._db,
+                    self._teacher,
+                    "student.suspended",
+                    "enrollment",
+                    e.id,
+                    severity=AuditSeverity.WARNING,
+                    metadata={"reason": reason, "student_id": str(student_id)},
+                )
 
     async def unsuspend_student(
-        self, student_id: uuid.UUID, course_id: uuid.UUID
+        self, student_id: uuid.UUID, course_id: Optional[uuid.UUID] = None
     ) -> None:
-        """Restore a suspended student's access to a course.
+        """Restore a suspended student's access to a course (or all teacher's courses if omitted)."""
+        if course_id:
+            enrollment = await self._repo.get_enrollment(student_id, course_id)
+            enrollments = [enrollment] if enrollment else []
+        else:
+            enrollments = await self._repo.get_student_enrollments(student_id, self._teacher.id)
 
-        Args:
-            student_id: The student UUID.
-            course_id: The course UUID.
-
-        Raises:
-            StudentNotFoundError: If enrollment not found.
-        """
-        enrollment = await self._repo.get_enrollment(student_id, course_id)
-        if enrollment is None:
+        if not enrollments:
             raise StudentNotFoundError()
 
-        await self._repo.update_enrollment_status(enrollment, EnrollmentStatus.ACTIVE)
+        for e in enrollments:
+            if e:
+                await self._repo.update_enrollment_status(e, EnrollmentStatus.ACTIVE)
+
+    async def unenroll_student(
+        self,
+        student_id: uuid.UUID,
+        course_id: Optional[uuid.UUID] = None,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Unenroll a student from a specific course (or all teacher's courses if omitted)."""
+        if course_id:
+            enrollment = await self._repo.get_enrollment(student_id, course_id)
+            enrollments = [enrollment] if enrollment else []
+        else:
+            enrollments = await self._repo.get_student_enrollments(student_id, self._teacher.id)
+
+        if not enrollments:
+            raise StudentNotFoundError()
+
+        for e in enrollments:
+            if e:
+                enrollment_id = e.id
+                c_id = e.course_id
+                course = await self._db.get(Course, c_id)
+                if course and course.total_enrollments and course.total_enrollments > 0:
+                    course.total_enrollments -= 1
+                await self._repo.delete_enrollment(e)
+                _audit(
+                    self._db,
+                    self._teacher,
+                    "student.unenrolled",
+                    "enrollment",
+                    enrollment_id,
+                    severity=AuditSeverity.WARNING,
+                    metadata={"reason": reason, "student_id": str(student_id), "course_id": str(c_id)},
+                )
 
     async def block_student(
         self, student_id: uuid.UUID, reason: Optional[str] = None
@@ -1708,6 +1747,15 @@ class AnalyticsService:
         "90d": timedelta(days=90),
         "1y": timedelta(days=365),
         "all": None,
+        "daily": timedelta(days=1),
+        "weekly": timedelta(days=7),
+        "monthly": timedelta(days=30),
+        "yearly": timedelta(days=365),
+        "DAILY": timedelta(days=1),
+        "WEEKLY": timedelta(days=7),
+        "MONTHLY": timedelta(days=30),
+        "YEARLY": timedelta(days=365),
+        "ALL": None,
     }
 
     def __init__(self, db: AsyncSession, teacher: User) -> None:

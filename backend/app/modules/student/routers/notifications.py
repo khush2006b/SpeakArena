@@ -15,28 +15,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.utils.response import paginated_response, success_response
 from app.database import get_db_session
 from app.models.user import User
+from app.modules.auth.dependencies import get_current_user
 from app.modules.student.dependencies import get_current_student
 from app.modules.student.schemas import NotificationFilterParams
 from app.modules.student.service import NotificationService
 
-router = APIRouter(prefix="/notifications", tags=["Student - Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
 @router.get(
     "",
     summary="List notifications",
     description=(
-        "Returns paginated notifications for the student, newest first. "
+        "Returns paginated notifications for the authenticated user, newest first. "
         "Filter by unread_only or notification_type."
     ),
 )
 async def list_notifications(
     filters: NotificationFilterParams = Depends(),
-    student: User = Depends(get_current_student),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
-    """List student notifications."""
-    svc = NotificationService(db, student)
+    """List notifications."""
+    svc = NotificationService(db, user)
     notifications, total = await svc.list_notifications(
         page=filters.page,
         page_size=filters.page_size,
@@ -54,11 +55,11 @@ async def list_notifications(
     description="Returns the count of unread notifications. Used for the notification badge.",
 )
 async def get_unread_count(
-    student: User = Depends(get_current_student),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
     """Return unread notification badge count."""
-    svc = NotificationService(db, student)
+    svc = NotificationService(db, user)
     count = await svc.get_unread_count()
     return success_response({"unread_count": count})
 
@@ -69,11 +70,11 @@ async def get_unread_count(
 )
 async def mark_notification_read(
     notification_id: uuid.UUID,
-    student: User = Depends(get_current_student),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
     """Mark a single notification as read."""
-    svc = NotificationService(db, student)
+    svc = NotificationService(db, user)
     await svc.mark_read(notification_id)
     await db.commit()
     return success_response(message="Notification marked as read.")
@@ -85,11 +86,11 @@ async def mark_notification_read(
     description="Marks all unread notifications as read in a single batch operation.",
 )
 async def mark_all_notifications_read(
-    student: User = Depends(get_current_student),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
     """Mark all unread notifications as read."""
-    svc = NotificationService(db, student)
+    svc = NotificationService(db, user)
     count = await svc.mark_all_read()
     await db.commit()
     return success_response(
@@ -104,11 +105,11 @@ async def mark_all_notifications_read(
 )
 async def delete_notification(
     notification_id: uuid.UUID,
-    student: User = Depends(get_current_student),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> Response:
     """Delete a notification."""
-    svc = NotificationService(db, student)
+    svc = NotificationService(db, user)
     await svc.delete_notification(notification_id)
     await db.commit()
     return Response(status_code=204)

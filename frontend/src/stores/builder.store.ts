@@ -4,6 +4,23 @@ import { ENDPOINTS } from "@/services/api/endpoints";
 
 export type AccessType = "public" | "private";
 
+export interface StagedLesson {
+  id: string;
+  title: string;
+  section: string;
+  type: "video" | "pdf";
+  duration?: string;
+  file?: File;
+}
+
+export interface StagedResource {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  file?: File;
+}
+
 export interface BuilderState {
   // ── Course identity ──────────────────────────────────────────────
   courseId: string | null;
@@ -16,6 +33,11 @@ export interface BuilderState {
   price: number;
   discountedPrice: number | null;
   accessType: AccessType;
+  maxStudents: number;
+
+  // ── Staged Content ───────────────────────────────────────────────
+  stagedLessons: StagedLesson[];
+  stagedResources: StagedResource[];
 
   // ── UI state ─────────────────────────────────────────────────────
   currentStep: number;
@@ -39,30 +61,17 @@ export interface BuilderState {
   setPrice: (price: number) => void;
   setDiscountedPrice: (price: number | null) => void;
   setAccessType: (type: AccessType) => void;
+  setMaxStudents: (count: number) => void;
+  setStagedLessons: (lessons: StagedLesson[] | ((prev: StagedLesson[]) => StagedLesson[])) => void;
+  setStagedResources: (resources: StagedResource[] | ((prev: StagedResource[]) => StagedResource[])) => void;
   setDirty: (dirty: boolean) => void;
-  setLastSaved: (time: string) => void;
+  setLastSaved: (time: string | null) => void;
   clearError: () => void;
 
   // ── API actions ───────────────────────────────────────────────────
-  /**
-   * Creates a new draft course on the backend.
-   * Called when teacher clicks "Continue to Curriculum" on Step 1.
-   * Returns the created courseId on success.
-   */
   createCourse: () => Promise<string | null>;
-
-  /**
-   * Saves current field state to the backend (PATCH).
-   * Called by the header "Save Draft" button.
-   */
   saveDraft: () => Promise<void>;
-
-  /**
-   * Publishes the course (sets status = PUBLISHED).
-   */
   publishCourse: () => Promise<boolean>;
-
-  /** Reset entire store (after publish or navigating away) */
   reset: () => void;
 }
 
@@ -75,6 +84,9 @@ const DEFAULT_STATE = {
   price: 0,
   discountedPrice: null,
   accessType: "public" as AccessType,
+  maxStudents: 50,
+  stagedLessons: [],
+  stagedResources: [],
   currentStep: 1,
   isDirty: false,
   lastSaved: null,
@@ -106,103 +118,99 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setPrice: (price) => set({ price, isDirty: true }),
   setDiscountedPrice: (price) => set({ discountedPrice: price, isDirty: true }),
   setAccessType: (type) => set({ accessType: type, isDirty: true }),
+  setMaxStudents: (count) => set({ maxStudents: count, isDirty: true }),
+  setStagedLessons: (updater) =>
+    set((state) => ({
+      stagedLessons: typeof updater === "function" ? updater(state.stagedLessons) : updater,
+      isDirty: true,
+    })),
+  setStagedResources: (updater) =>
+    set((state) => ({
+      stagedResources: typeof updater === "function" ? updater(state.stagedResources) : updater,
+      isDirty: true,
+    })),
   setDirty: (dirty) => set({ isDirty: dirty }),
   setLastSaved: (time) => set({ lastSaved: time, isDirty: false }),
   clearError: () => set({ error: null }),
 
-  // ── createCourse ──────────────────────────────────────────────────
+  // ── createCourse (Client-only step transition, no draft DB save) ─
   createCourse: async () => {
-    const { courseId, courseTitle, description, price, accessType } = get();
-
-    // If course already created, just advance
-    if (courseId) return courseId;
+    const { courseTitle } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before continuing." });
       return null;
     }
 
-    set({ isCreating: true, error: null });
+    set({ error: null, currentStep: 2 });
+    return "client-only-draft";
+  },
+
+  // ── saveDraft (No DB save requested by user) ──────────────────────
+  saveDraft: async () => {
+    set({ isDirty: false });
+  },
+
+  // ── publishCourse (Creates course in DB with real data when published) ─
+  publishCourse: async () => {
+    const { courseTitle, description, price, accessType, maxStudents, stagedLessons } = get();
+
+    if (!courseTitle.trim()) {
+      set({ error: "Please enter a course title before publishing." });
+      return false;
+    }
+
+    set({ isPublishing: true, error: null });
     try {
+      // 1. Create course directly in database with status="published"
       const { data } = await apiClient.post<{ data: { id: string } }>(
         ENDPOINTS.COURSES.LIST,
         {
           title: courseTitle.trim(),
           description: description.trim() || undefined,
-          price: price || 0,
+          price: typeof price === "number" ? price : 0,
           currency: "INR",
           language: "en",
           level: "beginner",
           visibility: accessType === "private" ? "private" : "public",
+          max_students: maxStudents || 50,
+          status: "published",
         }
       );
+
       const newCourseId = data?.data?.id ?? (data as any)?.id;
       if (!newCourseId) throw new Error("No course ID returned from server.");
+
+      // 2. Sync any staged video lessons to the new course
+      if (stagedLessons.length > 0) {
+        for (let i = 0; i < stagedLessons.length; i++) {
+          const lesson = stagedLessons[i];
+          try {
+            await apiClient.post(`/api/v1/teacher/courses/${newCourseId}/videos`, {
+              title: lesson.title.trim(),
+              section: lesson.section || "Module 1",
+              sort_order: i + 1,
+              visibility: "private",
+              is_free_preview: false,
+              mime_type: lesson.file?.type || "video/mp4",
+            });
+          } catch (e) {
+            console.warn("Failed to attach staged lesson:", lesson.title, e);
+          }
+        }
+      }
+
       set({
         courseId: newCourseId,
+        isPublishing: false,
         isDirty: false,
-        currentStep: 2,
-        lastSaved: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
-      return newCourseId;
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      const msg =
-        Array.isArray(detail)
-          ? detail.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(" | ")
-          : detail || err?.response?.data?.message || err?.message || "Failed to create course. Check your connection.";
-      set({ error: msg });
-      return null;
-    } finally {
-      set({ isCreating: false });
-    }
-  },
-
-  // ── saveDraft ─────────────────────────────────────────────────────
-  saveDraft: async () => {
-    const { courseId, courseTitle, description, price } = get();
-    if (!courseId) {
-      // No course yet — just mark clean
-      set({ isDirty: false, lastSaved: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) });
-      return;
-    }
-    set({ isSaving: true, error: null });
-    try {
-      await apiClient.patch(ENDPOINTS.COURSES.DETAIL(courseId), {
-        title: courseTitle.trim(),
-        description: description.trim() || undefined,
-        price: price || undefined,
-      });
-      set({
-        isDirty: false,
-        lastSaved: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-    } catch (err: any) {
-      // Silently handle draft save failures — don't block the UI
-      console.warn("Draft save failed:", err?.message);
-      set({ isDirty: false, lastSaved: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) });
-    } finally {
-      set({ isSaving: false });
-    }
-  },
-
-  // ── publishCourse ─────────────────────────────────────────────────
-  publishCourse: async () => {
-    const { courseId } = get();
-    if (!courseId) {
-      set({ error: "No course created yet. Complete Step 1 first." });
-      return false;
-    }
-    set({ isPublishing: true, error: null });
-    try {
-      await apiClient.post(`/api/v1/teacher/courses/${courseId}/publish`);
-      set({ isPublishing: false });
       return true;
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       const msg =
         Array.isArray(detail)
-          ? detail.map((d: any) => d.msg).join(" | ")
+          ? detail.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(" | ")
           : detail || err?.response?.data?.message || err?.message || "Failed to publish course.";
       set({ error: msg, isPublishing: false });
       return false;

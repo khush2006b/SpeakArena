@@ -107,6 +107,7 @@ export interface Course {
   totalLectures: number;
   totalDurationSeconds: number;
   enrolledCount: number;
+  maxStudents?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,6 +129,8 @@ export interface Enrollment {
 export interface Meeting {
   id: string;
   courseId: string;
+  courseTitle?: string;
+  courseName?: string;
   title: string;
   description: string | null;
   meetLink: string;

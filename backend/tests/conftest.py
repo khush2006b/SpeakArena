@@ -166,6 +166,12 @@ def mock_redis() -> AsyncMock:
     return client
 
 
+@pytest.fixture
+def mock_student_user() -> FakeUser:
+    """In-memory student user fixture for unit tests."""
+    return FakeUser(id=uuid.uuid4(), role="student")
+
+
 # ===========================================================================
 # HTTP test client fixture
 # ===========================================================================

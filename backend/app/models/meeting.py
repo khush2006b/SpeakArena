@@ -64,6 +64,55 @@ class Meeting(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         String(512), nullable=True, default=None
     )
 
+    @property
+    def meet_link(self) -> Optional[str]:
+        """Backwards compatible alias for meeting_url."""
+        return self.meeting_url
+
+    @meet_link.setter
+    def meet_link(self, value: Optional[str]) -> None:
+        self.meeting_url = value
+
+    @property
+    def max_participants(self) -> Optional[int]:
+        return getattr(self, "_max_participants", None)
+
+    @max_participants.setter
+    def max_participants(self, value: Optional[int]) -> None:
+        self._max_participants = value
+
+    @property
+    def actual_started_at(self) -> Optional[datetime]:
+        return getattr(self, "_actual_started_at", None)
+
+    @actual_started_at.setter
+    def actual_started_at(self, value: Optional[datetime]) -> None:
+        self._actual_started_at = value
+
+    @property
+    def actual_ended_at(self) -> Optional[datetime]:
+        return getattr(self, "_actual_ended_at", None)
+
+    @actual_ended_at.setter
+    def actual_ended_at(self, value: Optional[datetime]) -> None:
+        self._actual_ended_at = value
+
+    @property
+    def reminder_sent(self) -> bool:
+        return getattr(self, "_reminder_sent", False)
+
+    @reminder_sent.setter
+    def reminder_sent(self, value: bool) -> None:
+        self._reminder_sent = value
+
+    @property
+    def provider(self) -> str:
+        return getattr(self, "_provider", "google_meet")
+
+    @provider.setter
+    def provider(self, value: str) -> None:
+        self._provider = value
+
     # --- Relationships ---
     course: Mapped[Course] = relationship("Course", back_populates="meetings")
     teacher: Mapped[User] = relationship("User", foreign_keys=[teacher_id])

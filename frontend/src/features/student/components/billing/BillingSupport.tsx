@@ -1,54 +1,46 @@
 "use client";
 
 import * as React from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { MessageSquare, AlertCircle, FileText, ArrowRight } from "lucide-react";
 
 export function BillingSupport() {
   return (
-    <div style={{ marginTop: '48px' }}>
-      <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#fff', marginBottom: '24px', margin: '0 0 24px 0' }}>Support & Help</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
+    <div className="mt-12">
+      <h3 className="text-lg font-extrabold text-foreground mb-6">Support &amp; Help</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         
-        <Card style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', cursor: 'pointer', transition: 'background 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
-          <div style={{ height: '40px', width: '40px', borderRadius: '50%', background: 'rgba(79,70,229,0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+        <div className="card-glass p-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl hover-lift cursor-pointer flex flex-col items-start group">
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 text-indigo-400 flex items-center justify-center mb-4 shrink-0">
             <MessageSquare size={20} />
           </div>
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#fff', marginBottom: '4px', margin: '0 0 4px 0' }}>Contact Support</h4>
-          <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '16px', margin: '0 0 16px 0' }}>Chat with our billing team for payment inquiries.</p>
-          <Button variant="link" style={{ padding: 0, height: 'auto', color: '#818cf8', marginTop: 'auto', display: 'flex', alignItems: 'center', fontWeight: 700 }}>
-            Start Chat <ArrowRight size={12} style={{ marginLeft: '4px' }} />
-          </Button>
-        </Card>
+          <h4 className="text-sm font-extrabold text-foreground mb-1">Contact Support</h4>
+          <p className="text-xs text-muted-foreground mb-4 leading-relaxed">Chat with our billing team for payment inquiries.</p>
+          <div className="mt-auto flex items-center gap-1.5 text-xs font-bold text-indigo-400 group-hover:translate-x-0.5 transition-transform">
+            Start Chat <ArrowRight size={13} />
+          </div>
+        </div>
 
-        <Card style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', cursor: 'pointer', transition: 'background 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
-          <div style={{ height: '40px', width: '40px', borderRadius: '50%', background: 'rgba(239,68,68,0.15)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+        <div className="card-glass p-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl hover-lift cursor-pointer flex flex-col items-start group">
+          <div className="h-10 w-10 rounded-xl bg-rose-500/15 border border-rose-500/25 text-rose-400 flex items-center justify-center mb-4 shrink-0">
             <AlertCircle size={20} />
           </div>
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#fff', marginBottom: '4px', margin: '0 0 4px 0' }}>Report an Issue</h4>
-          <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '16px', margin: '0 0 16px 0' }}>Report failed payments or missing course access.</p>
-          <Button variant="link" style={{ padding: 0, height: 'auto', color: '#ef4444', marginTop: 'auto', display: 'flex', alignItems: 'center', fontWeight: 700 }}>
-            Open Ticket <ArrowRight size={12} style={{ marginLeft: '4px' }} />
-          </Button>
-        </Card>
+          <h4 className="text-sm font-extrabold text-foreground mb-1">Report an Issue</h4>
+          <p className="text-xs text-muted-foreground mb-4 leading-relaxed">Report failed payments or missing course access.</p>
+          <div className="mt-auto flex items-center gap-1.5 text-xs font-bold text-rose-400 group-hover:translate-x-0.5 transition-transform">
+            Open Ticket <ArrowRight size={13} />
+          </div>
+        </div>
 
-        <Card style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', cursor: 'pointer', transition: 'background 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
-          <div style={{ height: '40px', width: '40px', borderRadius: '50%', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+        <div className="card-glass p-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl hover-lift cursor-pointer flex flex-col items-start group">
+          <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/25 text-blue-400 flex items-center justify-center mb-4 shrink-0">
             <FileText size={20} />
           </div>
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#fff', marginBottom: '4px', margin: '0 0 4px 0' }}>Refund Policy</h4>
-          <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '16px', margin: '0 0 16px 0' }}>Read our 30-day money-back guarantee terms.</p>
-          <Button variant="link" style={{ padding: 0, height: 'auto', color: '#60a5fa', marginTop: 'auto', display: 'flex', alignItems: 'center', fontWeight: 700 }}>
-            Read Policy <ArrowRight size={12} style={{ marginLeft: '4px' }} />
-          </Button>
-        </Card>
+          <h4 className="text-sm font-extrabold text-foreground mb-1">Refund Policy</h4>
+          <p className="text-xs text-muted-foreground mb-4 leading-relaxed">Read our 30-day money-back guarantee terms.</p>
+          <div className="mt-auto flex items-center gap-1.5 text-xs font-bold text-blue-400 group-hover:translate-x-0.5 transition-transform">
+            Read Policy <ArrowRight size={13} />
+          </div>
+        </div>
 
       </div>
     </div>

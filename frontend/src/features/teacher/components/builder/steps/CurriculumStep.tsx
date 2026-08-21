@@ -8,14 +8,14 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable
+  useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, Video, FileText, Trash2, Loader2 } from "lucide-react";
@@ -103,19 +103,24 @@ function SortableLessonItem({
 }
 
 export function CurriculumStep() {
-  const { nextStep, prevStep, courseId } = useBuilderStore();
+  const { nextStep, prevStep, courseId, stagedLessons, setStagedLessons } = useBuilderStore();
   const [lessons, setLessons] = React.useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = React.useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+  const [newLessonTitle, setNewLessonTitle] = React.useState("");
+  const [isAddingLesson, setIsAddingLesson] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Fetch existing lessons when courseId is available
+  // Fetch existing lessons when courseId is available (editing existing course)
   React.useEffect(() => {
-    if (!courseId) return;
+    if (!courseId) {
+      setLessons(stagedLessons.map((l) => ({ id: l.id, title: l.title, type: l.type })));
+      return;
+    }
     setLoadingLessons(true);
     apiClient
       .get(`/api/v1/teacher/courses/${courseId}/videos`)
@@ -141,7 +146,7 @@ export function CurriculumStep() {
         // Silently ignore — will start with empty list
       })
       .finally(() => setLoadingLessons(false));
-  }, [courseId]);
+  }, [courseId, stagedLessons]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -149,20 +154,41 @@ export function CurriculumStep() {
       setLessons((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        if (!courseId) {
+          setStagedLessons(reordered.map((l) => ({ id: l.id, title: l.title, section: "Module 1", type: l.type })));
+        }
+        return reordered;
       });
     }
   };
 
   const handleDelete = async (lessonId: string) => {
     setLessons((prev) => prev.filter((l) => l.id !== lessonId));
-    if (courseId) {
+    if (!courseId) {
+      setStagedLessons((prev) => prev.filter((l) => l.id !== lessonId));
+    } else {
       try {
         await apiClient.delete(`/api/v1/teacher/courses/${courseId}/videos/${lessonId}`);
       } catch {
         toast.error("Could not delete lesson from server.");
       }
     }
+  };
+
+  const handleAddStagedLesson = () => {
+    if (!newLessonTitle.trim()) return;
+    const newLesson = {
+      id: `staged-${Date.now()}`,
+      title: newLessonTitle.trim(),
+      section: "Module 1",
+      type: "video" as const,
+    };
+    setStagedLessons((prev) => [...prev, newLesson]);
+    setLessons((prev) => [...prev, { id: newLesson.id, title: newLesson.title, type: newLesson.type }]);
+    setNewLessonTitle("");
+    setIsAddingLesson(false);
+    toast.success("Lesson added to curriculum!");
   };
 
   const handleUploadSuccess = (data: any) => {
@@ -177,20 +203,22 @@ export function CurriculumStep() {
     toast.success("Video lesson added to curriculum!");
   };
 
+  const handleAddClick = () => {
+    if (courseId) {
+      setIsUploadModalOpen(true);
+    } else {
+      setIsAddingLesson(true);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Curriculum Builder</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Drag and drop lessons to reorder your curriculum.
+          Add and reorder lessons for your course curriculum.
         </p>
       </div>
-
-      {!courseId && (
-        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
-          ⚠️ Go back to Step 1 and create the course first before adding lessons.
-        </div>
-      )}
 
       <div className="bg-secondary/10 border border-border/50 rounded-xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
@@ -199,13 +227,38 @@ export function CurriculumStep() {
             variant="outline"
             size="sm"
             className="h-8 press-scale"
-            onClick={() => setIsUploadModalOpen(true)}
-            disabled={!courseId}
+            onClick={handleAddClick}
           >
             <Plus className="h-3 w-3 mr-1.5" />
-            Add Video
+            Add Lesson
           </Button>
         </div>
+
+        {isAddingLesson && (
+          <div className="mb-4 p-4 rounded-lg border border-primary/30 bg-card space-y-3">
+            <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Lesson Title</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newLessonTitle}
+                onChange={(e) => setNewLessonTitle(e.target.value)}
+                placeholder="e.g. Lesson 1: Getting Started"
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddStagedLesson();
+                  if (e.key === "Escape") setIsAddingLesson(false);
+                }}
+              />
+              <Button size="sm" onClick={handleAddStagedLesson} disabled={!newLessonTitle.trim()}>
+                Add
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setIsAddingLesson(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         {loadingLessons ? (
           <div className="flex items-center gap-3 py-8 justify-center text-muted-foreground">
@@ -214,15 +267,12 @@ export function CurriculumStep() {
           </div>
         ) : lessons.length === 0 ? (
           <div
-            onClick={() => courseId && setIsUploadModalOpen(true)}
-            className={cn(
-              "border-2 border-dashed border-border/60 rounded-lg p-8 text-center transition-colors",
-              courseId ? "hover:border-primary/40 hover:bg-primary/5 cursor-pointer" : "opacity-50 cursor-not-allowed"
-            )}
+            onClick={handleAddClick}
+            className="border-2 border-dashed border-border/60 rounded-lg p-8 text-center transition-colors hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
           >
             <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm font-medium text-foreground">Add your first video lesson</p>
-            <p className="text-xs text-muted-foreground mt-1">Click to upload MP4, WebM, or MOV</p>
+            <p className="text-sm font-medium text-foreground">Add your first lesson</p>
+            <p className="text-xs text-muted-foreground mt-1">Click to add lesson topics to curriculum</p>
           </div>
         ) : (
           <DndContext

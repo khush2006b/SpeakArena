@@ -39,17 +39,23 @@ class MeetingRepository:
         """Initialize the repository with an async DB session."""
         self._db = db
 
-    async def create(self, data: dict[str, Any]) -> Meeting:
+    async def create(
+        self,
+        data: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Meeting:
         """Insert a new Meeting record and flush to obtain the server-generated ID.
 
         Args:
-            data: Dict of column-name to value mappings. Must include all
-                required Meeting columns except auto-generated ones.
+            data: Dict of column-name to value mappings.
+            **kwargs: Column-name to value keyword arguments.
 
         Returns:
             Meeting: The newly created, flushed Meeting ORM instance.
         """
-        meeting = Meeting(**data)
+        payload = dict(data) if data else {}
+        payload.update(kwargs)
+        meeting = Meeting(**payload)
         self._db.add(meeting)
         await self._db.flush()
         await self._db.refresh(meeting)
@@ -322,34 +328,44 @@ class MeetingRepository:
         return list(result.scalars().all())
 
     async def update(
-        self, meeting_id: uuid.UUID, data: dict[str, Any]
+        self,
+        meeting: Union[uuid.UUID, Meeting],
+        data: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> Optional[Meeting]:
         """Apply a partial update to a Meeting row.
 
         Args:
-            meeting_id: UUID of the meeting to update.
+            meeting: UUID or Meeting instance to update.
             data: Dict of column updates to apply.
+            **kwargs: Column updates as keyword arguments.
 
         Returns:
             Meeting | None: Updated meeting, or None if not found.
         """
+        mid = meeting.id if isinstance(meeting, Meeting) else meeting
+        payload = dict(data) if data else {}
+        payload.update(kwargs)
+        if not payload:
+            return await self.get_by_id(mid)
         await self._db.execute(
             update(Meeting)
-            .where(Meeting.id == meeting_id, Meeting.deleted_at.is_(None))
-            .values(**data)
+            .where(Meeting.id == mid, Meeting.deleted_at.is_(None))
+            .values(**payload)
         )
-        return await self.get_by_id(meeting_id)
+        return await self.get_by_id(mid)
 
-    async def soft_delete(self, meeting_id: uuid.UUID) -> None:
+    async def soft_delete(self, meeting: Union[uuid.UUID, Meeting]) -> None:
         """Soft-delete a meeting by setting deleted_at to now.
 
         Args:
-            meeting_id: UUID of the meeting to soft-delete.
+            meeting: UUID or Meeting instance to soft-delete.
         """
+        mid = meeting.id if isinstance(meeting, Meeting) else meeting
         now = datetime.now(timezone.utc)
         await self._db.execute(
             update(Meeting)
-            .where(Meeting.id == meeting_id)
+            .where(Meeting.id == mid)
             .values(deleted_at=now)
         )
 

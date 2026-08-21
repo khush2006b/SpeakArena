@@ -23,7 +23,7 @@ export default function RevenueCharts() {
             <Skeleton className="w-full h-full bg-white/5 rounded-xl" />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trends || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={Array.isArray(trends) ? trends : (trends as any)?.data_points || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />

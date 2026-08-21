@@ -53,7 +53,7 @@ export function AddStudentModal() {
     setIsSubmitting(true);
     try {
       // Post to enrollment endpoint
-      await apiClient.post(`/api/v1/courses/${selectedCourseId}/enroll`);
+      await apiClient.post(`/api/v1/courses/${selectedCourseId}/enroll`, { student_id: selectedStudentId });
       toast.success("Student successfully enrolled in course!");
       queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
       setAddModalOpen(false);

@@ -1,16 +1,16 @@
 export const MOCK_PROFILE = {
   personalInfo: {
-    fullName: "Dr. Eleanor Vance",
-    professionalTitle: "Certified Master English Educator & Linguist",
-    shortBio: "Empowering non-native speakers, executives, and students to master fluent Spoken English and confident public speaking.",
-    detailedAbout: "With over 12 years of international teaching experience in phonetics, accent reduction, and business communication, I have dedicated my career to helping students speak English naturally and effortlessly. My teaching methodology combines live Google Meet interactive practice, phonetic sound drills, and personalized feedback.",
-    languages: ["English (Native)", "Spanish (Fluent)", "French (Conversational)"],
-    timezone: "America/New_York",
-    location: "New York, NY"
+    fullName: "Paras (Construction)",
+    professionalTitle: "Founder & Peer English Mentor",
+    shortBio: "Empowering students and young professionals to speak English fluently, overcome stage fear, and crack interviews with real practice.",
+    detailedAbout: "As a student founder, I built SpeakArena because textbooks don't build real-world fluency. I help peers practice natural spoken English, master pronunciation rhythm, and build unshakeable confidence in live interactive sessions.",
+    languages: ["English", "Hindi"],
+    timezone: "Asia/Kolkata",
+    location: "India"
   },
   professionalInfo: {
-    teachingExperience: "12+ Years",
-    qualifications: "Ph.D. in Applied Linguistics & TESOL Certified",
+    teachingExperience: "2+ Years Peer Coaching",
+    qualifications: "Founder @ SpeakArena & Public Speaking Circle Lead",
     specializations: ["Spoken English & Phonetics", "Accent Reduction", "Executive Communication", "IELTS Band 8+ Prep"],
     teachingStyle: "Interactive Live Practice, Speech Drills, Immediate Pronunciation Feedback",
   },

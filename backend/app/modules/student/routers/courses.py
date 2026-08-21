@@ -52,6 +52,42 @@ async def list_courses(
 
 
 @router.get(
+    "/explore",
+    summary="Explore all published courses",
+    description="Returns all published courses with an is_enrolled boolean for the authenticated student.",
+)
+async def explore_courses(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    search: Optional[str] = Query(default=None),
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Explore published courses catalog."""
+    svc = CourseService(db, student)
+    courses, total = await svc.list_explore(page=page, page_size=page_size, search=search)
+    return paginated_response(courses, page=page, page_size=page_size, total=total)
+
+
+@router.post(
+    "/{course_id}/enroll",
+    summary="Enroll in a course",
+    description="Enrolls the current student in a published course.",
+    status_code=200,
+)
+async def enroll_course(
+    course_id: uuid.UUID,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Enroll student in course."""
+    svc = CourseService(db, student)
+    result = await svc.enroll(course_id)
+    await db.commit()
+    return success_response(result, message=result.get("message", "Enrolled successfully."))
+
+
+@router.get(
     "/recently-viewed",
     summary="Recently viewed courses",
     description="Returns the last 5 courses the student accessed content from.",
@@ -84,6 +120,22 @@ async def get_course(
     svc = CourseService(db, student)
     data = await svc.get_course_detail(course_id)
     await db.commit()
+    return success_response(data)
+
+
+@router.get(
+    "/{course_id}/progress",
+    summary="Course progress",
+    description="Returns completion percentage and progress details for an enrolled course.",
+)
+async def get_course_progress(
+    course_id: uuid.UUID,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return course progress for an enrolled student."""
+    svc = CourseService(db, student)
+    data = await svc.get_course_progress(course_id)
     return success_response(data)
 
 

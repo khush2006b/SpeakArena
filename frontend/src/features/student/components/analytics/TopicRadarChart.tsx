@@ -3,29 +3,61 @@
 import * as React from "react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Card } from "@/components/ui/card";
-import { MOCK_TOPIC_DATA } from "../../constants/analytics.mock";
+import { apiClient } from "@/services/api/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function TopicRadarChart() {
-  // To avoid hydration mismatch with recharts ResponsiveContainer
   const [isMounted, setIsMounted] = React.useState(false);
-  React.useEffect(() => setIsMounted(true), []);
+  const [data, setData] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  if (!isMounted) {
-    return <Card style={{ padding: '24px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', height: '350px' }} />;
+  React.useEffect(() => {
+    setIsMounted(true);
+    async function loadData() {
+      try {
+        const response = await apiClient.get('/api/v1/profile');
+        const scores = response.data.skills || {};
+        setData([
+          { topic: "Pronunciation", mastery: scores.pronunciation || 0 },
+          { topic: "Fluency", mastery: scores.fluency || 0 },
+          { topic: "Vocabulary", mastery: scores.vocabulary || 0 },
+          { topic: "Grammar", mastery: scores.grammar || 0 },
+          { topic: "Listening", mastery: scores.listening || 0 },
+          { topic: "Confidence", mastery: scores.confidence || 0 },
+        ]);
+      } catch (error) {
+        console.error("Failed to load skills", error);
+        setData([
+          { topic: "Pronunciation", mastery: 0 },
+          { topic: "Fluency", mastery: 0 },
+          { topic: "Vocabulary", mastery: 0 },
+          { topic: "Grammar", mastery: 0 },
+          { topic: "Listening", mastery: 0 },
+          { topic: "Confidence", mastery: 0 },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (!isMounted || loading) {
+    return <Skeleton className="h-[350px] w-full rounded-[18px]" />;
   }
 
   return (
-    <Card style={{ padding: '24px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
-      <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, marginBottom: '8px' }}>Skill Mastery</h3>
-      <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0, marginBottom: '16px' }}>Your proficiency across different computer science topics.</p>
+    <Card className="p-6 bg-card border-border rounded-[18px] flex flex-col h-full">
+      <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider m-0 mb-2">Skill Mastery</h3>
+      <p className="text-xs text-muted-foreground m-0 mb-4">Your English skills radar across key speaking dimensions.</p>
       
-      <div style={{ flex: 1, minHeight: '250px', width: '100%' }}>
+      <div className="flex-1 min-h-[250px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={MOCK_TOPIC_DATA}>
-            <PolarGrid stroke="rgba(255,255,255,0.07)" strokeDasharray="3 3" />
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+            <PolarGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
             <PolarAngleAxis 
               dataKey="topic" 
-              tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 500 }}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11, fontWeight: 500 }}
             />
             <PolarRadiusAxis 
               angle={30} 
@@ -34,14 +66,14 @@ export function TopicRadarChart() {
               axisLine={false} 
             />
             <Tooltip 
-              contentStyle={{ backgroundColor: '#080c14', borderColor: 'rgba(255,255,255,0.07)', borderRadius: '8px', color: '#fff' }}
-              itemStyle={{ color: '#4f46e5' }}
+              contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+              itemStyle={{ color: 'hsl(var(--primary))' }}
             />
             <Radar
               name="Mastery %"
               dataKey="mastery"
-              stroke="#4f46e5"
-              fill="#4f46e5"
+              stroke="hsl(var(--primary))"
+              fill="hsl(var(--primary))"
               fillOpacity={0.3}
             />
           </RadarChart>

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Presentation, FileText, Users, CalendarDays,
   CreditCard, BarChart3, MessageSquare, Settings, ChevronLeft,
-  Mic2, GraduationCap, X,
+  Mic2, GraduationCap, X, ClipboardCheck,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -25,6 +25,7 @@ const NAVIGATION = [
       { name: "Courses", href: "/teacher/courses", icon: Presentation },
       { name: "Resources", href: "/teacher/resources", icon: FileText },
       { name: "Students", href: "/teacher/students", icon: Users },
+      { name: "Tests & Grades", href: "/teacher/tests", icon: ClipboardCheck },
       { name: "Attendance", href: "/teacher/attendance", icon: GraduationCap },
       { name: "Meetings", href: "/teacher/meetings", icon: CalendarDays },
     ],

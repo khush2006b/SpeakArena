@@ -96,6 +96,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await conn.execute(text("ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';"))
             await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'in_app';"))
             await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';"))
+            await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;"))
+            await conn.execute(text("UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;"))
         logger.info("Database connection and schema migrations verified.")
     except Exception as exc:
         logger.critical("Database startup failed: %s", exc, exc_info=True)

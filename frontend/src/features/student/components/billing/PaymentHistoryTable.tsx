@@ -69,67 +69,72 @@ export function PaymentHistoryTable() {
   };
 
   return (
-    <div className="card-glass overflow-hidden">
+    <div className="card-glass border border-border/50 rounded-2xl overflow-hidden shadow-xl bg-card/80 backdrop-blur-xl">
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="table-glass">
-          <thead>
+        <table className="w-full text-left border-collapse text-sm">
+          <thead className="bg-white/5 border-b border-border/60">
             <tr>
-              <th className="w-72">Course ID</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Payment Method</th>
-              <th className="text-right">Invoice</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Course / Transaction ID</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Amount</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Status</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Date</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Payment Method</th>
+              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground text-right">Invoice</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border/40">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="h-32 text-center">
-                  <Loader2 size={24} className="animate-spin mx-auto text-muted-foreground" />
+                <td colSpan={6} className="h-40 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground opacity-60" />
                 </td>
               </tr>
             ) : filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="h-32 text-center text-muted-foreground">
-                  No transactions found.
+                <td colSpan={6} className="py-16 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <CreditCard className="w-8 h-8 text-muted-foreground/40" />
+                    <p className="text-sm font-semibold text-muted-foreground m-0">No transactions found.</p>
+                  </div>
                 </td>
               </tr>
             ) : (
               filteredTransactions.map((t) => (
                 <tr
                   key={t.id}
-                  className="cursor-pointer transition-colors"
+                  className="cursor-pointer hover:bg-white/[0.03] transition-colors"
                   onClick={() => setSelectedTransaction(t)}
                 >
-                  <td>
-                    <div className="flex flex-col">
-                      <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[280px]">{t.courseId}</span>
-                      <span className="text-xs text-muted-foreground mt-1 font-mono">{t.id}</span>
+                  <td className="p-4 sm:p-5">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-foreground truncate max-w-[280px]">
+                        {(t as any).course_title || (t as any).courseTitle || t.courseId || "SpeakArena Course"}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">ID: {t.id}</span>
                     </div>
                   </td>
-                  <td className="font-extrabold">
-                    ${(t.amount / 100).toFixed(2)}
+                  <td className="p-4 sm:p-5 font-extrabold text-foreground">
+                    ₹{t.amount.toLocaleString()}
                   </td>
-                  <td>
+                  <td className="p-4 sm:p-5">
                     <StatusBadge status={t.status} />
                   </td>
-                  <td className="text-muted-foreground">
-                    {format(parseISO(t.createdAt), "MMM d, yyyy")}
+                  <td className="p-4 sm:p-5 text-muted-foreground text-xs font-medium">
+                    {t.createdAt ? format(parseISO(t.createdAt), "MMM d, yyyy") : "N/A"}
                   </td>
-                  <td>
+                  <td className="p-4 sm:p-5">
                     <PaymentMethod method={(t as any).paymentMethod} />
                   </td>
-                  <td className="text-right">
+                  <td className="p-4 sm:p-5 text-right">
                     <button
-                      className="btn-ghost text-primary h-8 px-3 text-sm press-scale disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="btn-ghost text-indigo-400 hover:text-indigo-300 h-8 px-3 text-xs font-semibold press-scale disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10"
                       disabled={t.status.toLowerCase() === "failed"}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (t.status.toLowerCase() !== "failed") window.open("#", "_blank");
                       }}
                     >
-                      <Download size={14} /> PDF
+                      <Download size={13} /> PDF
                     </button>
                   </td>
                 </tr>

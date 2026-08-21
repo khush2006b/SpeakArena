@@ -14,6 +14,7 @@ export { paymentService } from "./payment.service";
 export { uploadService } from "./upload.service";
 export { profileService } from "./profile.service";
 export { analyticsService } from "./analytics.service";
+export { testService } from "./test.service";
 
 // Socket client singletons
 export {

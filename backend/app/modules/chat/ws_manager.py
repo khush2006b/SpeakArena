@@ -61,6 +61,7 @@ logger = logging.getLogger(__name__)
 
 _CHANNEL_ROOM = "chat:room:{room_id}"
 _CHANNEL_PRESENCE = "chat:presence:{room_id}"
+_CHANNEL_USER = "chat:user:{user_id}"
 _KEY_ONLINE = "chat:online:{user_id}"
 _KEY_MUTE = "chat:mute:{room_id}:{user_id}"
 _KEY_LOCK = "chat:lock:{room_id}"
@@ -76,27 +77,18 @@ TYPING_EXPIRE_SECONDS: int = 5  # Auto-clear typing indicator after 5s
 
 
 def room_channel(room_id: str) -> str:
-    """Return the Redis Pub/Sub channel name for a room's message events.
-
-    Args:
-        room_id: Chat room UUID string.
-
-    Returns:
-        str: Redis channel name.
-    """
+    """Return the Redis Pub/Sub channel name for a room's message events."""
     return _CHANNEL_ROOM.format(room_id=room_id)
 
 
 def presence_channel(room_id: str) -> str:
-    """Return the Redis Pub/Sub channel name for a room's presence events.
-
-    Args:
-        room_id: Chat room UUID string.
-
-    Returns:
-        str: Redis channel name.
-    """
+    """Return the Redis Pub/Sub channel name for a room's presence events."""
     return _CHANNEL_PRESENCE.format(room_id=room_id)
+
+
+def user_channel(user_id: str) -> str:
+    """Return the Redis Pub/Sub channel name for a specific user's private messages."""
+    return _CHANNEL_USER.format(user_id=user_id)
 
 
 # ===========================================================================
@@ -108,24 +100,24 @@ class ConnectionManager:
     """Manages local WebSocket connections and coordinates Redis Pub/Sub.
 
     One singleton instance per FastAPI process. Tracks all active WebSocket
-    connections grouped by room_id. Broadcasts outbound events by publishing
-    to Redis so all instances (local and remote) receive the event.
-
-    Thread Safety:
-        All operations are async; asyncio's single-threaded event loop
-        ensures safe access to the in-memory connection dict.
+    connections grouped by room_id and user_id. Broadcasts outbound events
+    by publishing to Redis so all instances (local and remote) receive the event.
     """
 
     def __init__(self) -> None:
         """Initialize the connection manager."""
         # room_id -> list of (websocket, user_id) tuples
         self._connections: dict[str, list[tuple[WebSocket, str]]] = defaultdict(list)
+        # user_id -> list of websocket connections
+        self._user_connections: dict[str, list[WebSocket]] = defaultdict(list)
         # websocket -> room_id for fast reverse lookup on disconnect
         self._ws_to_room: dict[int, str] = {}
         # websocket -> user_id
         self._ws_to_user: dict[int, str] = {}
         # room_id -> active Redis pubsub subscription task
         self._room_listener_tasks: dict[str, asyncio.Task] = {}
+        # user_id -> active Redis pubsub subscription task
+        self._user_listener_tasks: dict[str, asyncio.Task] = {}
 
     async def ensure_room_subscription(self, redis: Redis, room_id: str) -> None:
         """Ensure a single Redis Pub/Sub subscriber task is running for the room."""
@@ -134,6 +126,14 @@ class ConnectionManager:
             pubsub_redis = redis.client()
             task = asyncio.create_task(self.start_subscription_listener(pubsub_redis, room_id))
             self._room_listener_tasks[room_id] = task
+
+    async def ensure_user_subscription(self, redis: Redis, user_id: str) -> None:
+        """Ensure a single Redis Pub/Sub subscriber task is running for the user's private channel."""
+        task = self._user_listener_tasks.get(user_id)
+        if task is None or task.done():
+            pubsub_redis = redis.client()
+            task = asyncio.create_task(self.start_user_subscription_listener(pubsub_redis, user_id))
+            self._user_listener_tasks[user_id] = task
 
     # -----------------------------------------------------------------------
     # Connection lifecycle
@@ -158,6 +158,7 @@ class ConnectionManager:
 
         ws_key = id(websocket)
         self._connections[room_id].append((websocket, user_id))
+        self._user_connections[user_id].append(websocket)
         self._ws_to_room[ws_key] = room_id
         self._ws_to_user[ws_key] = user_id
 
@@ -187,21 +188,20 @@ class ConnectionManager:
         websocket: WebSocket,
         redis: Redis,
     ) -> tuple[str, str]:
-        """Remove a WebSocket from the connection registry.
-
-        Called on both clean disconnect and error disconnect. Cleans up
-        Redis presence tracking and removes the local connection entry.
-
-        Args:
-            websocket: The WebSocket being disconnected.
-            redis: Async Redis client.
-
-        Returns:
-            tuple[str, str]: (room_id, user_id) of the disconnected socket.
-        """
+        """Remove a WebSocket from the connection registry."""
         ws_key = id(websocket)
         room_id = self._ws_to_room.pop(ws_key, "")
         user_id = self._ws_to_user.pop(ws_key, "")
+
+        if user_id and user_id in self._user_connections:
+            self._user_connections[user_id] = [
+                ws for ws in self._user_connections[user_id] if id(ws) != ws_key
+            ]
+            if len(self._user_connections[user_id]) == 0:
+                self._user_connections.pop(user_id, None)
+                task = self._user_listener_tasks.pop(user_id, None)
+                if task and not task.done():
+                    task.cancel()
 
         if room_id:
             self._connections[room_id] = [
@@ -253,16 +253,7 @@ class ConnectionManager:
         room_id: str,
         envelope: WSEnvelope,
     ) -> None:
-        """Publish an event to the room's Redis Pub/Sub channel.
-
-        The event is received by all FastAPI instances subscribed to
-        this channel (including the current one via the listener task).
-
-        Args:
-            redis: Async Redis client.
-            room_id: Target room UUID string.
-            envelope: The outbound event envelope to broadcast.
-        """
+        """Publish an event to the room's Redis Pub/Sub channel."""
         await redis.publish(
             room_channel(room_id),
             envelope.to_json(),
@@ -274,15 +265,24 @@ class ConnectionManager:
         room_id: str,
         envelope: WSEnvelope,
     ) -> None:
-        """Publish a presence event to the room's presence channel.
-
-        Args:
-            redis: Async Redis client.
-            room_id: Target room UUID string.
-            envelope: The presence event envelope.
-        """
+        """Publish a presence event to the room's presence channel."""
         await redis.publish(
             presence_channel(room_id),
+            envelope.to_json(),
+        )
+
+    async def send_to_user_channel(
+        self,
+        redis: Redis,
+        user_id: str,
+        envelope: WSEnvelope,
+    ) -> None:
+        """Publish a private message event to a specific user's Redis channel.
+
+        Routes across all FastAPI instances to reach all of the user's connections.
+        """
+        await redis.publish(
+            user_channel(user_id),
             envelope.to_json(),
         )
 
@@ -292,16 +292,7 @@ class ConnectionManager:
         room_id: str,
         envelope: WSEnvelope,
     ) -> None:
-        """Send a private message to a specific user's WebSocket connections.
-
-        Only sends to local connections on this instance. For cross-instance
-        private messaging, use a dedicated private channel.
-
-        Args:
-            user_id: Target user UUID string.
-            room_id: Room containing the user.
-            envelope: The event envelope to send.
-        """
+        """Send a private message to a specific user's local WebSocket connections."""
         payload = envelope.to_json()
         for ws, uid in list(self._connections.get(room_id, [])):
             if uid == user_id:
@@ -319,14 +310,7 @@ class ConnectionManager:
         room_id: str,
         raw_message: str,
     ) -> None:
-        """Deliver a raw JSON string to all local WebSocket connections in a room.
-
-        Called by the Redis subscriber task when a Pub/Sub message arrives.
-
-        Args:
-            room_id: Target room UUID string.
-            raw_message: Serialized JSON envelope string.
-        """
+        """Deliver a raw JSON string to all local WebSocket connections in a room."""
         dead: list[WebSocket] = []
         for ws, user_id in list(self._connections.get(room_id, [])):
             try:
@@ -342,6 +326,56 @@ class ConnectionManager:
             ]
             self._ws_to_room.pop(ws_key, None)
             self._ws_to_user.pop(ws_key, None)
+
+    async def _deliver_local_user(
+        self,
+        user_id: str,
+        raw_message: str,
+    ) -> None:
+        """Deliver a raw JSON string to all local WebSocket connections for a user."""
+        dead: list[WebSocket] = []
+        for ws in list(self._user_connections.get(user_id, [])):
+            try:
+                await ws.send_text(raw_message)
+            except Exception:
+                dead.append(ws)
+
+        for ws in dead:
+            ws_key = id(ws)
+            if user_id in self._user_connections:
+                self._user_connections[user_id] = [
+                    w for w in self._user_connections[user_id] if id(w) != ws_key
+                ]
+
+    async def start_user_subscription_listener(
+        self,
+        redis: Redis,
+        user_id: str,
+    ) -> None:
+        """Start a long-lived Redis Pub/Sub listener for a user's private channel."""
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(user_channel(user_id))
+        logger.info("Redis Pub/Sub user listener started for user=%s", user_id)
+        try:
+            async for raw in pubsub.listen():
+                if raw["type"] != "message":
+                    continue
+                data = raw["data"]
+                if isinstance(data, bytes):
+                    data = data.decode("utf-8")
+                await self._deliver_local_user(user_id, data)
+        except asyncio.CancelledError:
+            logger.info("Redis Pub/Sub user listener cancelled for user=%s", user_id)
+        except Exception as exc:
+            logger.error(
+                "Redis Pub/Sub user listener error for user=%s: %s", user_id, exc
+            )
+        finally:
+            try:
+                await pubsub.unsubscribe()
+                await pubsub.aclose()
+            except Exception:
+                pass
 
     # -----------------------------------------------------------------------
     # Redis Subscriber task

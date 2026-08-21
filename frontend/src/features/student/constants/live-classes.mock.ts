@@ -29,8 +29,8 @@ export const MOCK_LIVE_CLASSES: LiveClass[] = [
     courseTitle: "React Architecture",
     topic: "Next.js App Router Deep Dive",
     teacher: {
-      name: "Sarah Chen",
-      avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
+      name: "Paras (Construction)",
+      avatar: "/images/paras_teacher.png",
       role: "Senior Frontend Engineer"
     },
     // Starts in 15 minutes
@@ -59,8 +59,8 @@ export const MOCK_LIVE_CLASSES: LiveClass[] = [
     courseTitle: "React Architecture",
     topic: "Server Actions & Mutations",
     teacher: {
-      name: "Sarah Chen",
-      avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
+      name: "Paras (Construction)",
+      avatar: "/images/paras_teacher.png",
       role: "Senior Frontend Engineer"
     },
     // Started 30 mins ago
@@ -88,8 +88,8 @@ export const MOCK_LIVE_CLASSES: LiveClass[] = [
     courseTitle: "React Architecture",
     topic: "React 19 Hooks",
     teacher: {
-      name: "Sarah Chen",
-      avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
+      name: "Paras (Construction)",
+      avatar: "/images/paras_teacher.png",
       role: "Senior Frontend Engineer"
     },
     // Past class with recording

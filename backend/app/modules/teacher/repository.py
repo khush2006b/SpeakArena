@@ -27,7 +27,7 @@ from typing import Any, Optional, Sequence
 
 from sqlalchemy import Select, and_, case, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.auth import UserSession
 from app.models.chat import ChatRoom, Message
@@ -197,6 +197,7 @@ class CourseRepository:
         data_stmt = (
             select(Course)
             .where(and_(*conditions))
+            .options(selectinload(Course.enrollments))
             .order_by(order)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -388,7 +389,11 @@ class MeetingRepository:
         Returns:
             Meeting: The newly created meeting.
         """
-        meeting = Meeting(**kwargs)
+        if "meet_link" in kwargs:
+            kwargs["meeting_url"] = kwargs.pop("meet_link")
+        valid_cols = {c.name for c in Meeting.__table__.columns}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_cols}
+        meeting = Meeting(**filtered_kwargs)
         self._db.add(meeting)
         await self._db.flush()
         await self._db.refresh(meeting)
@@ -453,8 +458,9 @@ class MeetingRepository:
 
         data_stmt = (
             select(Meeting)
+            .options(joinedload(Meeting.course))
             .where(and_(*conditions))
-            .order_by(Meeting.scheduled_at.asc())
+            .order_by(Meeting.scheduled_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -524,8 +530,12 @@ class MeetingRepository:
         Returns:
             Meeting: The updated meeting.
         """
+        if "meet_link" in kwargs:
+            kwargs["meeting_url"] = kwargs.pop("meet_link")
+        valid_cols = {c.name for c in Meeting.__table__.columns}
         for key, value in kwargs.items():
-            setattr(meeting, key, value)
+            if key in valid_cols or hasattr(meeting, key):
+                setattr(meeting, key, value)
         await self._db.flush()
         return meeting
 
@@ -1298,7 +1308,7 @@ class AnalyticsRepository:
                 "student_name": r.student_name,
                 "student_email": r.student_email,
                 "course_title": r.course_title,
-                "enrolled_at": r.enrolled_at,
+                "enrolled_at": r.enrolled_at.isoformat() if r.enrolled_at else None,
                 "amount_paid": float(r.amount_paid or 0),
             }
             for r in rows
@@ -1447,17 +1457,17 @@ class StudentManagementRepository:
 
         items = [
             {
-                "enrollment_id": r.enrollment_id,
-                "student_id": r.student_id,
+                "enrollment_id": str(r.enrollment_id),
+                "student_id": str(r.student_id),
                 "student_name": r.student_name,
                 "student_email": r.student_email,
                 "student_avatar_r2_key": r.student_avatar_r2_key,
-                "course_id": r.course_id,
+                "course_id": str(r.course_id),
                 "course_title": r.course_title,
                 "enrollment_status": r.enrollment_status,
-                "enrolled_at": r.enrolled_at,
-                "progress_percent": r.progress_percent,
-                "completed_at": r.completed_at,
+                "enrolled_at": r.enrolled_at.isoformat() if r.enrolled_at else None,
+                "progress_percent": float(r.progress_percent or 0.0),
+                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
                 "payment_amount": float(r.payment_amount) if r.payment_amount else None,
             }
             for r in rows
@@ -1560,30 +1570,30 @@ class StudentManagementRepository:
             )
         )
         enrollment_rows = (await self._db.execute(enrollments_stmt)).all()
-        if not enrollment_rows:
-            return None
-
         profile = user.student_profile
         enrollments = [
             {
-                "enrollment_id": r.CourseEnrollment.id,
-                "student_id": student_id,
+                "enrollment_id": str(r.CourseEnrollment.id),
+                "id": str(r.CourseEnrollment.id),
+                "student_id": str(student_id),
                 "student_name": user.full_name,
                 "student_email": user.email,
                 "student_avatar_r2_key": user.avatar_r2_key,
-                "course_id": r.CourseEnrollment.course_id,
+                "course_id": str(r.CourseEnrollment.course_id),
                 "course_title": r.course_title,
-                "enrollment_status": r.CourseEnrollment.status,
-                "enrolled_at": r.CourseEnrollment.enrolled_at,
-                "progress_percent": r.CourseEnrollment.progress_percent,
-                "completed_at": r.CourseEnrollment.completed_at,
+                "enrollment_status": r.CourseEnrollment.status.value if hasattr(r.CourseEnrollment.status, "value") else str(r.CourseEnrollment.status),
+                "status": r.CourseEnrollment.status.value if hasattr(r.CourseEnrollment.status, "value") else str(r.CourseEnrollment.status),
+                "enrolled_at": r.CourseEnrollment.enrolled_at.isoformat() if r.CourseEnrollment.enrolled_at else None,
+                "progress_percent": float(getattr(r.CourseEnrollment, "progress_percentage", getattr(r.CourseEnrollment, "progress_percent", 0.0)) or 0.0),
+                "completed_at": r.CourseEnrollment.completed_at.isoformat() if r.CourseEnrollment.completed_at else None,
                 "payment_amount": float(r.payment_amount) if r.payment_amount else None,
             }
             for r in enrollment_rows
         ]
 
         return {
-            "student_id": user.id,
+            "id": str(user.id),
+            "student_id": str(user.id),
             "full_name": user.full_name,
             "email": user.email,
             "avatar_r2_key": user.avatar_r2_key,
@@ -1592,7 +1602,7 @@ class StudentManagementRepository:
             "college": profile.college if profile else None,
             "graduation_year": profile.graduation_year if profile else None,
             "preferred_language": profile.preferred_language if profile else "en",
-            "total_courses_enrolled": profile.total_courses_enrolled if profile else 0,
+            "total_courses_enrolled": profile.total_courses_enrolled if profile else len(enrollments),
             "total_courses_completed": profile.total_courses_completed if profile else 0,
             "enrollments": enrollments,
         }
@@ -1619,6 +1629,23 @@ class StudentManagementRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_student_enrollments(
+        self,
+        student_id: uuid.UUID,
+        teacher_id: uuid.UUID,
+    ) -> list[CourseEnrollment]:
+        """Fetch all enrollment records for a student in courses belonging to a teacher."""
+        stmt = (
+            select(CourseEnrollment)
+            .join(Course, Course.id == CourseEnrollment.course_id)
+            .where(
+                CourseEnrollment.student_id == student_id,
+                Course.teacher_id == teacher_id,
+                Course.deleted_at.is_(None),
+            )
+        )
+        return list((await self._db.execute(stmt)).scalars().all())
+
     async def update_enrollment_status(
         self,
         enrollment: CourseEnrollment,
@@ -1636,6 +1663,22 @@ class StudentManagementRepository:
         enrollment.status = status
         await self._db.flush()
         return enrollment
+
+    async def delete_enrollment(self, enrollment: CourseEnrollment) -> None:
+        """Delete an enrollment record (unenroll student).
+
+        Args:
+            enrollment: The enrollment record to delete.
+        """
+        course_id = enrollment.course_id
+        await self._db.delete(enrollment)
+        await self._db.flush()
+
+        if course_id:
+            course = (await self._db.execute(select(Course).where(Course.id == course_id))).scalar_one_or_none()
+            if course and course.total_enrollments and course.total_enrollments > 0:
+                course.total_enrollments -= 1
+                await self._db.flush()
 
     async def get_student(self, student_id: uuid.UUID) -> Optional[User]:
         """Fetch a student user record.

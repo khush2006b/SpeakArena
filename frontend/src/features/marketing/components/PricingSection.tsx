@@ -91,7 +91,7 @@ export function PricingSection() {
         </div>
 
         {/* 3-col pricing cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "stretch" }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
           {TIERS.map((tier) => (
             <div
               key={tier.name}
@@ -132,7 +132,7 @@ export function PricingSection() {
 
                 {/* CTA Button */}
                 <Link
-                  href="/sign-up"
+                  href="/register"
                   style={{
                     display: "block", width: "100%", textAlign: "center",
                     padding: "13px 0", borderRadius: 11, fontSize: 15, fontWeight: 700,

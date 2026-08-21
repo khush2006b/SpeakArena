@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Rocket, ArrowLeft, Loader2 } from "lucide-react";
+import { Rocket, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBuilderStore } from "@/stores/builder.store";
@@ -11,21 +11,12 @@ export function BuilderHeader() {
   const router = useRouter();
   const {
     courseTitle,
-    isDirty,
-    isSaving,
     isPublishing,
-    lastSaved,
-    saveDraft,
     publishCourse,
-    courseId,
   } = useBuilderStore();
 
-  const handleSave = async () => {
-    await saveDraft();
-  };
-
   const handlePublish = async () => {
-    if (!courseId) return;
+    if (!courseTitle.trim()) return;
     const ok = await publishCourse();
     if (ok) {
       router.push("/teacher/courses");
@@ -86,9 +77,9 @@ export function BuilderHeader() {
             <Badge
               variant="outline"
               style={{
-                background: "rgba(245,158,11,0.15)",
-                color: "#f59e0b",
-                border: "1px solid rgba(245,158,11,0.25)",
+                background: "rgba(124,58,237,0.15)",
+                color: "hsl(var(--primary))",
+                border: "1px solid rgba(124,58,237,0.25)",
                 fontSize: "10px",
                 textTransform: "uppercase",
                 padding: "0 6px",
@@ -96,78 +87,20 @@ export function BuilderHeader() {
                 flexShrink: 0,
               }}
             >
-              Draft
+              New Course
             </Badge>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-            {isSaving ? (
-              <>
-                <Loader2 style={{ height: "12px", width: "12px", color: "hsl(var(--muted-foreground))", animation: "spin 1s linear infinite" }} />
-                <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))" }}>Saving...</span>
-              </>
-            ) : isDirty ? (
-              <>
-                <div style={{ height: "6px", width: "6px", borderRadius: "50%", background: "#f59e0b" }} />
-                <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))" }}>Unsaved changes</span>
-              </>
-            ) : (
-              <>
-                <Save style={{ height: "12px", width: "12px", color: "hsl(var(--muted-foreground))" }} />
-                <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))" }}>
-                  Saved {lastSaved ? `at ${lastSaved}` : "just now"}
-                </span>
-              </>
-            )}
-          </div>
+          <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))", marginTop: "2px" }}>
+            Will be saved to database when published
+          </span>
         </div>
       </div>
 
       {/* Right: Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <Button
-          variant="outline"
-          onClick={handleSave}
-          disabled={(!isDirty && !!courseId) || isSaving}
-          style={{
-            height: "36px",
-            background: "hsl(var(--border))",
-            border: "1px solid hsl(var(--border))",
-            color: "hsl(var(--muted-foreground))",
-            borderRadius: "10px",
-            transition: "all 0.2s",
-            opacity: ((!isDirty && !!courseId) || isSaving) ? 0.5 : 1,
-          }}
-        >
-          {isSaving ? (
-            <Loader2 style={{ height: "14px", width: "14px", marginRight: "8px", animation: "spin 1s linear infinite" }} />
-          ) : (
-            <Save style={{ height: "16px", width: "16px", marginRight: "8px" }} />
-          )}
-          Save Draft
-        </Button>
-
-        <Button
-          variant="outline"
-          disabled={!courseId}
-          onClick={() => courseId && window.open(`/teacher/courses/${courseId}/preview`, "_blank")}
-          style={{
-            height: "36px",
-            background: "hsl(var(--border))",
-            border: "1px solid hsl(var(--border))",
-            color: "hsl(var(--muted-foreground))",
-            borderRadius: "10px",
-            transition: "all 0.2s",
-            opacity: !courseId ? 0.5 : 1,
-          }}
-        >
-          <Eye style={{ height: "16px", width: "16px", marginRight: "8px" }} />
-          Preview
-        </Button>
-
-        <Button
           onClick={handlePublish}
-          disabled={!courseId || isPublishing}
+          disabled={!courseTitle.trim() || isPublishing}
           style={{
             height: "36px",
             background: "hsl(var(--primary))",
@@ -176,7 +109,7 @@ export function BuilderHeader() {
             fontWeight: 700,
             border: "none",
             transition: "all 0.2s",
-            opacity: (!courseId || isPublishing) ? 0.6 : 1,
+            opacity: (!courseTitle.trim() || isPublishing) ? 0.6 : 1,
           }}
         >
           {isPublishing ? (
@@ -184,7 +117,7 @@ export function BuilderHeader() {
           ) : (
             <Rocket style={{ height: "16px", width: "16px", marginRight: "8px" }} />
           )}
-          Publish
+          Publish Course
         </Button>
       </div>
     </header>

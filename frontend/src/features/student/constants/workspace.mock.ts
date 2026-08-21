@@ -2,7 +2,7 @@ export const MOCK_WORKSPACE_DATA = {
   course: {
     id: "c-101",
     title: "Advanced Frontend Architecture",
-    teacher: "Sarah Chen",
+    teacher: "Paras (Construction)",
     progress: 65,
     difficulty: "Advanced",
     category: "Engineering",
