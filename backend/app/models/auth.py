@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text, func
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.dialects.postgresql import INET, UUID
 TIMESTAMPTZ = TIMESTAMP(timezone=True)  # noqa: N816
@@ -65,7 +65,7 @@ class RefreshToken(UUIDPrimaryKeyMixin, Base):
         Text, nullable=True, default=None
     )
     issued_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default="NOW()"
+        TIMESTAMPTZ, nullable=False, server_default=func.now()
     )
     expires_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, nullable=False
@@ -144,10 +144,10 @@ class UserSession(UUIDPrimaryKeyMixin, Base):
         Boolean, nullable=False, default=True, server_default="true"
     )
     last_seen_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default="NOW()"
+        TIMESTAMPTZ, nullable=False, server_default=func.now()
     )
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default="NOW()"
+        TIMESTAMPTZ, nullable=False, server_default=func.now()
     )
 
     # --- Relationships ---
@@ -180,7 +180,7 @@ class PasswordResetToken(UUIDPrimaryKeyMixin, Base):
         TIMESTAMPTZ, nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default="NOW()"
+        TIMESTAMPTZ, nullable=False, server_default=func.now()
     )
 
     # --- Relationships ---
@@ -232,7 +232,7 @@ class EmailVerificationToken(UUIDPrimaryKeyMixin, Base):
         TIMESTAMPTZ, nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default="NOW()"
+        TIMESTAMPTZ, nullable=False, server_default=func.now()
     )
 
     # --- Relationships ---
