@@ -137,12 +137,14 @@ def _set_rt_cookie(
         raw_refresh_token: The raw (un-hashed) refresh token string.
         max_age: Cookie ``Max-Age`` in seconds.
     """
+    samesite_val = "none" if settings.is_production else "lax"
+    secure_val = True if settings.is_production else False
     response.set_cookie(
         key=COOKIE_REFRESH_TOKEN,
         value=raw_refresh_token,
         httponly=True,
-        secure=settings.is_production,
-        samesite="lax",
+        secure=secure_val,
+        samesite=samesite_val,
         path=COOKIE_REFRESH_TOKEN_PATH,
         max_age=max_age,
     )
@@ -150,11 +152,13 @@ def _set_rt_cookie(
 
 def _clear_rt_cookie(response: JSONResponse) -> None:
     """Delete the refresh token cookie from the client browser."""
+    samesite_val = "none" if settings.is_production else "lax"
+    secure_val = True if settings.is_production else False
     response.delete_cookie(
         key=COOKIE_REFRESH_TOKEN,
         httponly=True,
-        secure=settings.is_production,
-        samesite="lax",
+        secure=secure_val,
+        samesite=samesite_val,
         path=COOKIE_REFRESH_TOKEN_PATH,
     )
 
