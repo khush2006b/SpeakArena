@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # --- Database ---
     DATABASE_URL: str  # Async URL: postgresql+asyncpg://...
-    DATABASE_SYNC_URL: str  # Sync URL: postgresql+psycopg2://...
+    DATABASE_SYNC_URL: str = ""  # Sync URL: postgresql+psycopg2://...
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
@@ -89,6 +89,34 @@ class Settings(BaseSettings):
     RATE_LIMIT_REGISTER_PER_HOUR: int = 100
     RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR: int = 50
     RATE_LIMIT_DEFAULT_PER_MINUTE: int = 500
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_async_db_url(cls, v: Any) -> str:
+        if isinstance(v, str) and v.strip():
+            url = v.strip()
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
+        return str(v) if v else ""
+
+    @field_validator("DATABASE_SYNC_URL", mode="before")
+    @classmethod
+    def assemble_sync_db_url(cls, v: Any, info: Any) -> str:
+        if isinstance(v, str) and v.strip():
+            url = v.strip()
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg2://"):
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            return url
+        data = info.data if hasattr(info, "data") else {}
+        db_url = data.get("DATABASE_URL", "")
+        if db_url:
+            return db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        return ""
 
     @field_validator("APP_ENV")
     @classmethod
