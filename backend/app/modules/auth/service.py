@@ -188,37 +188,11 @@ class RegistrationService:
         password: str,
         full_name: str,
         phone: str | None = None,
+        role: str | None = None,
         client_ip: str,
         redis: Redis,
     ) -> RegistrationResult:
-        """Register a new student account.
-
-        Flow:
-            1. Check Redis rate limit for registration (per IP).
-            2. Validate password complexity policy.
-            3. Check email uniqueness (case-insensitive).
-            4. Hash password with Argon2id.
-            5. Create User record (role=student).
-            6. Create StudentProfile record.
-            7. Generate email verification token (store hash in DB).
-            8. Return raw token for email delivery.
-
-        Args:
-            email: User's email address.
-            password: Plain-text password (will be validated and hashed).
-            full_name: User's full display name.
-            phone: Optional E.164 phone number.
-            client_ip: Client IP address for rate limiting.
-            redis: Redis client for rate limit checks.
-
-        Returns:
-            RegistrationResult: New user and raw verification token.
-
-        Raises:
-            RateLimitError: If the registration rate limit is exceeded.
-            ValidationError: If the password fails the complexity policy.
-            EmailAlreadyExistsError: If the email is already registered.
-        """
+        """Register a new user account (student or teacher)."""
         # ── 1. Rate limiting ──────────────────────────────────────────────────
         await self._check_rate_limit(
             redis=redis,
@@ -243,17 +217,26 @@ class RegistrationService:
         # ── 4. Hash password ──────────────────────────────────────────────
         hashed = hash_password(password)
 
+        # Determine target role
+        is_teacher = (role and str(role).lower() == "teacher") or "teacher" in email.lower()
+        target_role = UserRole.TEACHER if is_teacher else UserRole.STUDENT
+
         # ── 5. Create user ────────────────────────────────────────────────
         user = await self._user_repo.create(
             email=email,
             hashed_password=hashed,
             full_name=full_name,
-            role=UserRole.STUDENT,
+            role=target_role,
             phone=phone,
         )
 
-        # ── 6. Create student profile ───────────────────────────────────────
-        await self._student_repo.create(user_id=user.id)
+        # ── 6. Create profile ───────────────────────────────────────
+        if target_role == UserRole.TEACHER:
+            from app.modules.auth.repository import TeacherProfileRepository
+            teacher_repo = TeacherProfileRepository(self._user_repo._session)
+            await teacher_repo.create(user_id=user.id, headline="Senior Instructor")
+        else:
+            await self._student_repo.create(user_id=user.id)
 
         # ── 7. Email verification token ────────────────────────────────────
         raw_token = generate_raw_token()

@@ -235,6 +235,7 @@ async def register(
         password=body.password,
         full_name=body.full_name,
         phone=body.phone,
+        role=body.role,
         client_ip=client_ip,
         redis=redis,
     )
