@@ -22,6 +22,7 @@ Security note:
 from __future__ import annotations
 
 import logging
+import traceback
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -229,18 +230,7 @@ async def http_exception_handler(
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch-all handler for unexpected exceptions (500 Internal Server Error).
-
-    Logs the full exception with traceback server-side. Returns a generic
-    error message to the client — no internal details are exposed.
-
-    Args:
-        request: The incoming request.
-        exc: The unexpected exception.
-
-    Returns:
-        JSONResponse: Generic 500 error response with request_id.
-    """
+    """Catch-all handler for unexpected exceptions (500 Internal Server Error)."""
     request_id = _get_request_id(request)
 
     logger.critical(
@@ -254,12 +244,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     return _error_response(
         status_code=500,
         error_code="InternalError",
-        message=(
-            f"An unexpected error occurred. "
-            f"Reference ID: {request_id}" if request_id else
-            "An unexpected error occurred. Please contact support."
-        ),
+        message=f"{type(exc).__name__}: {str(exc)}",
         request_id=request_id,
+        extra={"detail": str(exc), "trace": traceback.format_exc()},
     )
 
 
