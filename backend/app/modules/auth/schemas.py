@@ -61,10 +61,6 @@ class RegisterStudentRequest(BaseModel):
         None,
         description="Optional phone number in E.164 format. Example: +919876543210",
     )
-    role: str | None = Field(
-        None,
-        description="Optional account role: 'student' or 'teacher'. Defaults to 'student'.",
-    )
 
     @field_validator("email")
     @classmethod

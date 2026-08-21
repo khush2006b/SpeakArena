@@ -188,11 +188,10 @@ class RegistrationService:
         password: str,
         full_name: str,
         phone: str | None = None,
-        role: str | None = None,
         client_ip: str,
         redis: Redis,
     ) -> RegistrationResult:
-        """Register a new user account (student or teacher)."""
+        """Register a new student account."""
         # ── 1. Rate limiting ──────────────────────────────────────────────────
         await self._check_rate_limit(
             redis=redis,
@@ -217,26 +216,17 @@ class RegistrationService:
         # ── 4. Hash password ──────────────────────────────────────────────
         hashed = hash_password(password)
 
-        # Determine target role
-        is_teacher = (role and str(role).lower() == "teacher") or "teacher" in email.lower()
-        target_role = UserRole.TEACHER if is_teacher else UserRole.STUDENT
-
         # ── 5. Create user ────────────────────────────────────────────────
         user = await self._user_repo.create(
             email=email,
             hashed_password=hashed,
             full_name=full_name,
-            role=target_role,
+            role=UserRole.STUDENT,
             phone=phone,
         )
 
-        # ── 6. Create profile ───────────────────────────────────────
-        if target_role == UserRole.TEACHER:
-            from app.modules.auth.repository import TeacherProfileRepository
-            teacher_repo = TeacherProfileRepository(self._user_repo._session)
-            await teacher_repo.create(user_id=user.id, headline="Senior Instructor")
-        else:
-            await self._student_repo.create(user_id=user.id)
+        # ── 6. Create student profile ───────────────────────────────────────
+        await self._student_repo.create(user_id=user.id)
 
         # ── 7. Email verification token ────────────────────────────────────
         raw_token = generate_raw_token()
