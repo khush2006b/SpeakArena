@@ -113,6 +113,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
         # Back-fill max_students for any rows that got 0
         "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
+        # ── videos: columns added after initial schema ───────────────────────
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS section VARCHAR(200) DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS hls_r2_key_prefix VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS resolution_width SMALLINT DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS resolution_height SMALLINT DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS processing_error TEXT DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
+        # ── pdfs: columns added after initial schema ─────────────────────────
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS section VARCHAR(200) DEFAULT NULL;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS r2_object_key VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS page_count INTEGER DEFAULT NULL;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_downloadable BOOLEAN NOT NULL DEFAULT TRUE;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';",
     ]
     for patch_sql in _schema_patches:
         try:
