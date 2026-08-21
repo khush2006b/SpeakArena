@@ -93,15 +93,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Apply incremental schema patches (non-fatal if table not yet created by migrations)
     _schema_patches = [
+        # ── pre-existing patches ────────────────────────────────────────────
         "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';",
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'in_app';",
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
-        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;",
-        "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
+        # ── courses: columns added after initial schema ──────────────────────
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS short_description VARCHAR(500) DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS promo_video_r2_key VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS original_price NUMERIC(10,2) DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lectures SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_enrollments INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_reviews INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS average_rating NUMERIC(3,2) DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_certificate_enabled BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
+        # Back-fill max_students for any rows that got 0
+        "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
     ]
     for patch_sql in _schema_patches:
         try:
