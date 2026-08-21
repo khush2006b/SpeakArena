@@ -76,17 +76,22 @@ def create_application() -> FastAPI:
 
     # TrustedHostMiddleware: rejects requests with Host headers not in the
     # allowed list to prevent Host header injection. Allow '*' in development.
-    allowed_hosts = (
-        [h.replace("https://", "").replace("http://", "").split("/")[0]
-         for h in settings.CORS_ALLOWED_ORIGINS]
-        if settings.is_production
-        else ["*"]
-    )
+    origins = settings.cors_origins_list
+    allowed_hosts = [
+        h.replace("https://", "").replace("http://", "").split("/")[0]
+        for h in origins
+    ]
+    if "*" in origins or not allowed_hosts or settings.is_development:
+        allowed_hosts = ["*"]
+    else:
+        # Always allow onrender.com subdomains and localhost
+        allowed_hosts.extend(["*.onrender.com", "onrender.com", "localhost", "127.0.0.1"])
+
     application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ALLOWED_ORIGINS,
+        allow_origins=origins if "*" not in origins else ["*"],
         allow_credentials=True,  # Required for HttpOnly refresh token cookie.
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],

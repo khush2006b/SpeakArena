@@ -78,7 +78,9 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
     # --- CORS ---
-    CORS_ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ALLOWED_ORIGINS: Any = ["http://localhost:3000"]
+    CORS_ORIGINS: Any = ""
+    ALLOWED_HOSTS: Any = ""
 
     # --- Rate Limiting ---
     # NOTE: These are high limits suitable for development.
@@ -111,6 +113,25 @@ class Settings(BaseSettings):
     def r2_endpoint_url(self) -> str:
         """Construct the Cloudflare R2 S3-compatible endpoint URL."""
         return f"https://{self.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS origins from CORS_ALLOWED_ORIGINS, CORS_ORIGINS, or ALLOWED_HOSTS."""
+        import json
+        raw = self.CORS_ALLOWED_ORIGINS or self.CORS_ORIGINS or self.ALLOWED_HOSTS or ["*"]
+        if isinstance(raw, list):
+            return [str(item).strip() for item in raw if item]
+        if isinstance(raw, str):
+            raw_str = raw.strip()
+            if raw_str.startswith("[") and raw_str.endswith("]"):
+                try:
+                    parsed = json.loads(raw_str)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if item]
+                except Exception:
+                    pass
+            return [item.strip() for item in raw_str.split(",") if item.strip()]
+        return ["*"]
 
 
 @lru_cache(maxsize=1)
