@@ -125,10 +125,11 @@ HEALTHCHECK \
     --retries=3 \
     CMD curl -fsS http://localhost:8000/health/live || exit 1
 
-# Production entrypoint: Gunicorn with Uvicorn workers
+# Production entrypoint: run Alembic migrations then start Gunicorn with Uvicorn workers
 # Adjust GUNICORN_WORKERS via environment variable (recommended: 2 × CPU cores)
 CMD ["sh", "-c", \
-    "exec gunicorn app.main:app \
+    "/venv/bin/alembic upgrade head && \
+    exec gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers ${GUNICORN_WORKERS} \
     --bind 0.0.0.0:${PORT:-8000} \

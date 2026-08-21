@@ -82,21 +82,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis startup failed (%s) — proceeding with database fallback.", exc)
 
     # ── 4. Database ────────────────────────────────────────────────────────
+    # First verify basic connectivity
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-            await conn.execute(text("ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;"))
-            await conn.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';"))
-            await conn.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';"))
-            await conn.execute(text("ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';"))
-            await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'in_app';"))
-            await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';"))
-            await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;"))
-            await conn.execute(text("UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;"))
-        logger.info("Database connection and schema migrations verified.")
+        logger.info("Database connection verified.")
     except Exception as exc:
-        logger.critical("Database startup failed: %s", exc, exc_info=True)
+        logger.critical("Database connectivity check failed: %s", exc, exc_info=True)
         raise
+
+    # Apply incremental schema patches (non-fatal if table not yet created by migrations)
+    _schema_patches = [
+        "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'video/mp4';",
+        "ALTER TABLE videos ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
+        "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/pdf';",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'in_app';",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;",
+        "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
+    ]
+    for patch_sql in _schema_patches:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text(patch_sql))
+        except Exception as patch_exc:
+            # Non-fatal: table may not exist yet (migrations handle creation)
+            logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
+
+    logger.info("Database startup complete.")
 
     # ── 5. Ready ───────────────────────────────────────────────────────────
     logger.info("%s is ready to serve requests.", settings.APP_NAME)
