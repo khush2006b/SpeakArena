@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers
-revision = "20260822_0002_add_short_description"
+revision = "0002"
 down_revision = "0001"
 branch_labels = None
 depends_on = None
