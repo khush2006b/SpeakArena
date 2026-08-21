@@ -171,34 +171,37 @@ def _attach_production_handlers(root: logging.Logger) -> None:
     stdout_handler.setLevel(logging.INFO)
     root.addHandler(stdout_handler)
 
-    # 2. General rotating file handler (all INFO+ records).
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    # 2. Optional rotating file handlers (if file system is writable).
+    try:
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
 
-    app_file_handler = logging.handlers.TimedRotatingFileHandler(
-        filename=log_dir / "app.log",
-        when="midnight",
-        interval=1,
-        backupCount=30,
-        encoding="utf-8",
-        utc=True,
-    )
-    app_file_handler.setFormatter(json_fmt)
-    app_file_handler.setLevel(logging.INFO)
-    root.addHandler(app_file_handler)
+        app_file_handler = logging.handlers.TimedRotatingFileHandler(
+            filename=log_dir / "app.log",
+            when="midnight",
+            interval=1,
+            backupCount=30,
+            encoding="utf-8",
+            utc=True,
+        )
+        app_file_handler.setFormatter(json_fmt)
+        app_file_handler.setLevel(logging.INFO)
+        root.addHandler(app_file_handler)
 
-    # 3. Error-only rotating file handler (90-day retention for post-mortems).
-    error_file_handler = logging.handlers.TimedRotatingFileHandler(
-        filename=log_dir / "error.log",
-        when="midnight",
-        interval=1,
-        backupCount=90,
-        encoding="utf-8",
-        utc=True,
-    )
-    error_file_handler.setFormatter(json_fmt)
-    error_file_handler.setLevel(logging.ERROR)
-    root.addHandler(error_file_handler)
+        # 3. Error-only rotating file handler (90-day retention for post-mortems).
+        error_file_handler = logging.handlers.TimedRotatingFileHandler(
+            filename=log_dir / "error.log",
+            when="midnight",
+            interval=1,
+            backupCount=90,
+            encoding="utf-8",
+            utc=True,
+        )
+        error_file_handler.setFormatter(json_fmt)
+        error_file_handler.setLevel(logging.ERROR)
+        root.addHandler(error_file_handler)
+    except Exception as exc:
+        sys.stderr.write(f"Warning: File log initialization skipped ({exc})\n")
 
 
 def _attach_development_handlers(root: logging.Logger, *, debug: bool) -> None:

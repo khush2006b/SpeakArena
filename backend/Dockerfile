@@ -104,6 +104,9 @@ ENV PATH="/venv/bin:$PATH" \
     GUNICORN_MAX_REQUESTS=1000 \
     GUNICORN_MAX_REQUESTS_JITTER=100
 
+# Create log directory with proper permissions for speakarena user
+RUN mkdir -p /app/logs && chown -R speakarena:speakarena /app/logs
+
 # Security: ensure no world-writable files
 RUN find /app -type d -exec chmod 755 {} + \
     && find /app -type f -exec chmod 644 {} +
