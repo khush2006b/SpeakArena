@@ -147,7 +147,13 @@ async def list_categories(
     description="Returns a paginated list of all courses owned by the teacher. Supports filtering by status, visibility, and search.",
 )
 async def list_courses(
-    filters: CourseFilterParams = Depends(),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None),
+    visibility: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
@@ -155,13 +161,13 @@ async def list_courses(
     try:
         svc = CourseService(db, teacher)
         courses, total = await svc.list_courses(
-            page=filters.page,
-            page_size=filters.page_size,
-            status=filters.status,
-            visibility=filters.visibility,
-            search=filters.search,
-            sort_by=filters.sort_by,
-            sort_order=filters.sort_order,
+            page=page,
+            page_size=page_size,
+            status=status,
+            visibility=visibility,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
         items = [
             {
@@ -182,7 +188,7 @@ async def list_courses(
             for c in courses
         ]
         return paginated_response(
-            items, page=filters.page, page_size=filters.page_size, total=total
+            items, page=page, page_size=page_size, total=total
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
@@ -976,35 +982,42 @@ async def unpin_announcement(
     description="Returns paginated meetings. Filter by course, status, or upcoming only.",
 )
 async def list_meetings(
-    filters: MeetingFilterParams = Depends(),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    course_id: Optional[uuid.UUID] = Query(None),
+    status: Optional[str] = Query(None),
+    upcoming_only: bool = Query(False),
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
     """List teacher's meetings."""
-    svc = MeetingService(db, teacher)
-    meetings, total = await svc.list_meetings(
-        page=filters.page,
-        page_size=filters.page_size,
-        course_id=filters.course_id,
-        status=filters.status,
-        upcoming_only=filters.upcoming_only,
-    )
-    items = [
-        {
-            "id": str(m.id),
-            "course_id": str(m.course_id),
-            "course_title": (m.course.title if ("course" in m.__dict__ and m.course) else "Course Session"),
-            "title": m.title,
-            "status": m.status,
-            "scheduled_at": m.scheduled_at.isoformat(),
-            "duration_minutes": m.duration_minutes,
-            "meet_link": m.meet_link,
-            "provider": getattr(m, "provider", "google_meet"),
-            "created_at": m.created_at.isoformat(),
-        }
-        for m in meetings
-    ]
-    return paginated_response(items, page=filters.page, page_size=filters.page_size, total=total)
+    try:
+        svc = MeetingService(db, teacher)
+        meetings, total = await svc.list_meetings(
+            page=page,
+            page_size=page_size,
+            course_id=course_id,
+            status=status,
+            upcoming_only=upcoming_only,
+        )
+        items = [
+            {
+                "id": str(m.id),
+                "course_id": str(m.course_id),
+                "course_title": (m.course.title if ("course" in m.__dict__ and m.course) else "Course Session"),
+                "title": m.title,
+                "status": m.status,
+                "scheduled_at": m.scheduled_at.isoformat(),
+                "duration_minutes": m.duration_minutes,
+                "meet_link": m.meet_link,
+                "provider": getattr(m, "provider", "google_meet"),
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in meetings
+        ]
+        return paginated_response(items, page=page, page_size=page_size, total=total)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
 
 
 @router.post(
