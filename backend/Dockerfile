@@ -128,9 +128,9 @@ CMD ["sh", "-c", \
     "exec gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers ${GUNICORN_WORKERS} \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:${PORT:-8000} \
     --timeout ${GUNICORN_TIMEOUT} \
-    --keepalive ${GUNICORN_KEEPALIVE} \
+    --keep-alive ${GUNICORN_KEEPALIVE} \
     --max-requests ${GUNICORN_MAX_REQUESTS} \
     --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
     --access-logfile - \
