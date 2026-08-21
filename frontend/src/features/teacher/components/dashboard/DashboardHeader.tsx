@@ -9,8 +9,8 @@ export function DashboardHeader() {
   const [name, setName] = React.useState("Teacher");
 
   React.useEffect(() => {
-    apiClient.get("/api/v1/profile").then(({ data }) => {
-      setName(data.full_name || data.first_name || "Teacher");
+    apiClient.get("/api/v1/auth/teacher/profile").then(({ data }) => {
+      setName(data?.data?.full_name || data?.data?.first_name || data?.full_name || data?.first_name || "Teacher");
     }).catch(() => {});
   }, []);
   
