@@ -116,22 +116,37 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Parse CORS origins from CORS_ALLOWED_ORIGINS, CORS_ORIGINS, or ALLOWED_HOSTS."""
+        """Parse CORS origins from environment variables with sensible production defaults."""
         import json
-        raw = self.CORS_ALLOWED_ORIGINS or self.CORS_ORIGINS or self.ALLOWED_HOSTS or ["*"]
+        default_origins = [
+            "https://speak-arena.vercel.app",
+            "https://speakarena.onrender.com",
+            "http://localhost:3000",
+            "http://localhost:8000",
+        ]
+        raw = self.CORS_ALLOWED_ORIGINS or self.CORS_ORIGINS or self.ALLOWED_HOSTS or []
+        res = list(default_origins)
         if isinstance(raw, list):
-            return [str(item).strip() for item in raw if item]
-        if isinstance(raw, str):
+            res.extend([str(item).strip().rstrip("/") for item in raw if item and item != "*"])
+        elif isinstance(raw, str) and raw.strip():
             raw_str = raw.strip()
             if raw_str.startswith("[") and raw_str.endswith("]"):
                 try:
                     parsed = json.loads(raw_str)
                     if isinstance(parsed, list):
-                        return [str(item).strip() for item in parsed if item]
+                        res.extend([str(item).strip().rstrip("/") for item in parsed if item and item != "*"])
                 except Exception:
                     pass
-            return [item.strip() for item in raw_str.split(",") if item.strip()]
-        return ["*"]
+            else:
+                res.extend([item.strip().rstrip("/") for item in raw_str.split(",") if item.strip() and item.strip() != "*"])
+        # Remove duplicates while preserving order
+        seen = set()
+        out = []
+        for origin in res:
+            if origin not in seen:
+                seen.add(origin)
+                out.append(origin)
+        return out
 
 
 @lru_cache(maxsize=1)

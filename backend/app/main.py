@@ -81,17 +81,14 @@ def create_application() -> FastAPI:
         h.replace("https://", "").replace("http://", "").split("/")[0]
         for h in origins
     ]
-    if "*" in origins or not allowed_hosts or settings.is_development:
-        allowed_hosts = ["*"]
-    else:
-        # Always allow onrender.com subdomains and localhost
-        allowed_hosts.extend(["*.onrender.com", "onrender.com", "localhost", "127.0.0.1"])
+    allowed_hosts.extend(["*.onrender.com", "*.vercel.app", "onrender.com", "vercel.app", "localhost", "127.0.0.1"])
 
-    application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+    application.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"] if settings.is_development else allowed_hosts)
 
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=origins if "*" not in origins else ["*"],
+        allow_origins=origins,
+        allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com",
         allow_credentials=True,  # Required for HttpOnly refresh token cookie.
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
