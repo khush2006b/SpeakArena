@@ -101,6 +101,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS max_students INTEGER NOT NULL DEFAULT 50;",
         "UPDATE courses SET max_students = 50 WHERE max_students IS NULL OR max_students = 0;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS short_description VARCHAR(500) DEFAULT NULL;",
     ]
     for patch_sql in _schema_patches:
         try:
