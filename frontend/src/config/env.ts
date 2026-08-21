@@ -20,15 +20,15 @@ function getEnvVar(key: string, fallback?: string): string {
 
 export const env = {
   // API
-  apiUrl: getEnvVar("NEXT_PUBLIC_API_URL", "http://localhost:8000"),
+  apiUrl: getEnvVar("NEXT_PUBLIC_API_URL", "https://speakarena.onrender.com"),
   socketUrl: getEnvVar(
     "NEXT_PUBLIC_SOCKET_URL",
-    process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000",
+    process.env["NEXT_PUBLIC_API_URL"] ?? "https://speakarena.onrender.com",
   ),
 
   // App
   appName: getEnvVar("NEXT_PUBLIC_APP_NAME", "SpeakArena"),
-  appUrl: getEnvVar("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
+  appUrl: getEnvVar("NEXT_PUBLIC_APP_URL", "https://speak-arena.vercel.app"),
 
   // Razorpay (public key only — secret NEVER exposed to client)
   razorpayKeyId: getEnvVar("NEXT_PUBLIC_RAZORPAY_KEY_ID", "rzp_test_placeholder"),

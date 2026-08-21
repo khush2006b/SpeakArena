@@ -75,7 +75,7 @@ const nativeInputStyle: React.CSSProperties = {
 
 /** Redirect to backend Google OAuth — the backend issues the token after callback */
 function handleGoogleLogin() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://speakarena.onrender.com";
   // Backend must expose GET /api/v1/auth/google/login which redirects to Google
   window.location.href = `${apiBase}/api/v1/auth/google/login`;
 }

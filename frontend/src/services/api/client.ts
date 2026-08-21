@@ -14,10 +14,8 @@
 
 import axios, { type AxiosInstance } from "axios";
 
-// Use absolute URL on the server (RSC), but relative URL in the browser (proxy)
-const BASE_URL = typeof window === "undefined"
-  ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
-  : "";
+// Use production Render URL fallback if NEXT_PUBLIC_API_URL is not set
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://speakarena.onrender.com";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
