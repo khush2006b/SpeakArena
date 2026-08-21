@@ -75,16 +75,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await RedisClient.connect()
         if not await RedisClient.ping():
-            if settings.is_production:
-                raise ConnectionError("Redis PING returned falsy after connection.")
-            logger.warning("Redis ping failed — proceeding in development mode without active Redis pool.")
+            logger.warning("Redis ping returned falsy — proceeding with fallback mode.")
         else:
             logger.info("Redis connection verified.")
     except Exception as exc:
-        if settings.is_production:
-            logger.critical("Redis startup failed: %s", exc, exc_info=True)
-            raise
-        logger.warning("Redis startup skipped in development mode (%s).", exc)
+        logger.warning("Redis startup failed (%s) — proceeding with database fallback.", exc)
 
     # ── 4. Database ────────────────────────────────────────────────────────
     try:
