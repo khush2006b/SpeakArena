@@ -449,7 +449,11 @@ class MeetingRepository:
         if course_id:
             conditions.append(Meeting.course_id == course_id)
         if status:
-            conditions.append(Meeting.status == status)
+            if "," in status:
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                conditions.append(Meeting.status.in_(statuses))
+            else:
+                conditions.append(Meeting.status == status)
         if upcoming_only:
             conditions.append(Meeting.scheduled_at > datetime.now(timezone.utc))
 

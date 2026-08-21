@@ -88,7 +88,7 @@ class MeetingFilterParams(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
     course_id: Optional[uuid.UUID] = None
-    status: Optional[MeetingStatus] = None
+    status: Optional[str] = None
     upcoming_only: bool = False
 
 
