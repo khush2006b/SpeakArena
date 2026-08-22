@@ -102,8 +102,8 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe — visible on md+ screens (768px+) */}
-            <div className="hidden md:flex" style={{ flex: 1, position: "relative", minHeight: 380 }}>
+            {/* RIGHT: Globe — always visible, stacks below on mobile */}
+            <div className="flex w-full md:w-auto" style={{ flex: 1, position: "relative", minHeight: 320, minWidth: 260 }}>
               <GlobeIllustration />
             </div>
 
