@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   GraduationCap,
+  ArrowLeft,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -169,6 +170,7 @@ export function TeacherCommunicationView() {
   // Section collapse state
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
   const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   // Messages
   const [messages, setMessages] = useState<BackendMessage[]>([]);
@@ -625,15 +627,7 @@ export function TeacherCommunicationView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        style={{
-          width: 300,
-          background: "#0b0f1a",
-          borderRight: "1px solid hsl(var(--border))",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          overflowY: "auto",
-        }}
+        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-[300px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-border`}
       >
         {/* App Name / Branding */}
         <div
@@ -684,7 +678,10 @@ export function TeacherCommunicationView() {
           </div>
           <button
             className="ch-item"
-            onClick={() => setActiveChannel({ type: "announcements" })}
+            onClick={() => {
+              setActiveChannel({ type: "announcements" });
+              setMobileShowChat(true);
+            }}
             style={{
               width: "100%",
               display: "flex",
@@ -805,17 +802,18 @@ export function TeacherCommunicationView() {
                   No courses yet.
                 </div>
               ) : (
-                courses.map((course, idx) => {
+                courses.map((c, idx) => {
                   const isActive =
                     activeChannel.type === "course" &&
-                    activeChannel.course.id === course.id;
+                    activeChannel.course.id === c.id;
                   return (
                     <button
-                      key={course.id || `c-${idx}`}
+                      key={c.id}
                       className="ch-item"
-                      onClick={() =>
-                        setActiveChannel({ type: "course", course })
-                      }
+                      onClick={() => {
+                        setActiveChannel({ type: "course", course: c });
+                        setMobileShowChat(true);
+                      }}
                       style={{
                         width: "100%",
                         display: "flex",
@@ -1009,9 +1007,10 @@ export function TeacherCommunicationView() {
                       <button
                         key={`st-${st.student_id}-${idx}`}
                         className="st-item"
-                        onClick={() =>
-                          setActiveChannel({ type: "dm", student: st })
-                        }
+                        onClick={() => {
+                          setActiveChannel({ type: "dm", student: st });
+                          setMobileShowChat(true);
+                        }}
                         style={{
                           width: "100%",
                           display: "flex",
@@ -1138,15 +1137,7 @@ export function TeacherCommunicationView() {
 
       {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
       <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          background: "hsl(var(--background))",
-          position: "relative",
-          minWidth: 0,
-        }}
+        className={`${mobileShowChat ? "flex" : "hidden md:flex"} flex-1 flex-col h-full bg-background relative min-w-0`}
       >
         {/* Chat Header */}
         <div
@@ -1163,6 +1154,13 @@ export function TeacherCommunicationView() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={() => setMobileShowChat(false)}
+              className="md:hidden p-2 -ml-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
+              aria-label="Back to channels"
+            >
+              <ArrowLeft style={{ width: 18, height: 18 }} />
+            </button>
             {/* Channel icon */}
             <div
               style={{

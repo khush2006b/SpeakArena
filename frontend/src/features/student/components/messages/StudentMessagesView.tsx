@@ -23,6 +23,7 @@ import {
   Sparkles,
   Circle,
   Info,
+  ArrowLeft,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -180,6 +181,7 @@ export function StudentMessagesView() {
 
   // Misc
   const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   // Refs
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -624,15 +626,7 @@ export function StudentMessagesView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        style={{
-          width: 290,
-          background: "#0b0f1a",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          overflowY: "auto",
-        }}
+        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-[290px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-white/5`}
       >
         {/* Branding */}
         <div
@@ -691,9 +685,10 @@ export function StudentMessagesView() {
           {courses.length > 0 ? (
             <button
               className="ch-item"
-              onClick={() =>
-                setActiveChannel({ type: "announcements", course: courses[0] })
-              }
+              onClick={() => {
+                setActiveChannel({ type: "announcements", course: courses[0] });
+                setMobileShowChat(true);
+              }}
               style={{
                 width: "100%",
                 display: "flex",
@@ -844,11 +839,12 @@ export function StudentMessagesView() {
                     activeChannel.course.id === course.id;
                   return (
                     <button
-                      key={course.id || `c-${idx}`}
+                      key={course.id}
                       className="ch-item"
-                      onClick={() =>
-                        setActiveChannel({ type: "course", course })
-                      }
+                      onClick={() => {
+                        setActiveChannel({ type: "course", course });
+                        setMobileShowChat(true);
+                      }}
                       style={{
                         width: "100%",
                         display: "flex",
@@ -989,9 +985,10 @@ export function StudentMessagesView() {
                     <button
                       key={`dm-${teacherId}`}
                       className="ch-item"
-                      onClick={() =>
-                        setActiveChannel({ type: "teacher_dm", course })
-                      }
+                      onClick={() => {
+                        setActiveChannel({ type: "teacher_dm", course });
+                        setMobileShowChat(true);
+                      }}
                       style={{
                         width: "100%",
                         display: "flex",
@@ -1144,14 +1141,7 @@ export function StudentMessagesView() {
 
       {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
       <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          background: "#080c14",
-          minWidth: 0,
-        }}
+        className={`${mobileShowChat ? "flex" : "hidden md:flex"} flex-1 flex-col h-full bg-[#080c14] min-w-0`}
       >
         {/* Chat Header */}
         <div
@@ -1168,6 +1158,13 @@ export function StudentMessagesView() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={() => setMobileShowChat(false)}
+              className="md:hidden p-2 -ml-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
+              aria-label="Back to channels"
+            >
+              <ArrowLeft style={{ width: 18, height: 18 }} />
+            </button>
             <div
               style={{
                 width: 38,
