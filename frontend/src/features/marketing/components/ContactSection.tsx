@@ -5,7 +5,7 @@ import { Mail, Phone, MapPin, Clock, Send, Twitter, Linkedin, Github } from "luc
 
 const CONTACT_ITEMS = [
   { icon: Mail, label: "Email us", lines: ["support@speakarena.com", "enterprise@speakarena.com"], color: "#818cf8" },
-  { icon: Phone, label: "Call us", lines: ["+91 98765 43210"], color: "#34d399" },
+  { icon: Phone, label: "Call us", lines: ["+91 93898 52850"], color: "#34d399" },
   { icon: MapPin, label: "Visit us", lines: ["New Delhi, India"], color: "#f87171" },
   { icon: Clock, label: "Business hours", lines: ["Monday – Friday", "9:00 AM – 6:00 PM (PST)"], color: "#fbbf24" },
 ];
