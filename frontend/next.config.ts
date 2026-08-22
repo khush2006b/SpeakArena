@@ -93,16 +93,9 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Redirect www to non-www
+  // Domain redirects are handled automatically by Vercel's Edge network
   async redirects() {
-    return [
-      {
-        source: "/(.*)",
-        has: [{ type: "host", value: "www.speakarena.com" }],
-        destination: "https://speakarena.com/:path*",
-        permanent: true,
-      },
-    ];
+    return [];
   },
 
   // Proxy API requests to backend in development to avoid CORS and SameSite cookie issues
