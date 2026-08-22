@@ -85,6 +85,7 @@ router = APIRouter(prefix="/teacher", tags=["Teacher"])
 # DB Patch Diagnostic & Fix
 # ===========================================================================
 
+from sqlalchemy import text
 from app.database import Base
 
 @router.get("/db-patch", summary="Apply DB Schema Patches")
