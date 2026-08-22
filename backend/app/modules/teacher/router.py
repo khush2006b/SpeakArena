@@ -128,6 +128,10 @@ async def run_db_patches(
         "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_count SMALLINT NOT NULL DEFAULT 0;",
         "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ DEFAULT NULL;",
         "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID DEFAULT NULL;",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_role VARCHAR(20) DEFAULT NULL;",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) DEFAULT NULL;",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id UUID DEFAULT NULL;",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS request_id VARCHAR(36) DEFAULT NULL;",
     ]
     results = []
     for sql in patches:
