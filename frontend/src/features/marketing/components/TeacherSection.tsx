@@ -56,7 +56,7 @@ export function TeacherSection() {
               {/* Teacher Image */}
               <img
                 src="/images/paras_teacher.png"
-                alt="Expert English Coach"
+                alt="Paras (Construction)"
                 style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
               />
               {/* Gradient overlay */}
@@ -67,7 +67,7 @@ export function TeacherSection() {
                   <GraduationCap style={{ width: 12, height: 12, color: "#818cf8" }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Founder & Mentor</span>
                 </div>
-                <h3 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 6px 0", lineHeight: 1.2 }}>Expert English Coach</h3>
+                <h3 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 6px 0", lineHeight: 1.2 }}>Paras (Construction)</h3>
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Peer Mentor · SpeakArena</p>
               </div>
             </div>
