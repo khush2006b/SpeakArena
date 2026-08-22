@@ -38,7 +38,7 @@ function GlobeIllustration() {
 
       {/* Floating info cards */}
       {/* Top-right */}
-      <div style={{ position: "absolute", top: "6%", right: "3%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
+      <div style={{ position: "absolute", top: "6%", right: "8%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>A</div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Speaking</div>
@@ -65,7 +65,7 @@ function GlobeIllustration() {
         </div>
       </div>
       {/* Bottom-right */}
-      <div style={{ position: "absolute", bottom: "8%", right: "2%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
+      <div style={{ position: "absolute", bottom: "8%", right: "8%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Pronunciation</div>
         <div style={{ fontSize: 11, color: "#fbbf24" }}>⭐ 4.9 · 1,240 students</div>
       </div>
@@ -102,8 +102,8 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe — clipped so it never bleeds past viewport */}
-            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420, overflow: "hidden", maxWidth: "52%" }}>
+            {/* RIGHT: Globe — visible on lg screens */}
+            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420 }}>
               <GlobeIllustration />
             </div>
 
