@@ -63,7 +63,7 @@ export function AgendaPanel() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-secondary/40 rounded-xl border border-border/60">
+        <div className="flex items-center gap-1.5 p-1 bg-secondary/40 rounded-xl border border-border/60 overflow-x-auto max-w-full">
           {(["ALL", "LIVE", "SCHEDULED", "ENDED"] as const).map((filter) => (
             <button
               key={filter}

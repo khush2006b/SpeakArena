@@ -72,7 +72,7 @@ export function FeaturesSection() {
       <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: "70%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.4), transparent)" }} />
       <div style={{ position: "absolute", top: -80, left: "50%", transform: "translateX(-50%)", width: 600, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -93,11 +93,11 @@ export function FeaturesSection() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
+              className="p-5 sm:p-6"
               style={{
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 18,
-                padding: "28px 24px",
                 transition: "border-color 0.2s, transform 0.2s, background 0.2s",
                 cursor: "default",
                 position: "relative",

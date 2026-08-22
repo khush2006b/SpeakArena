@@ -28,7 +28,7 @@ export function StudentHeader() {
           <button
             onClick={toggleSidebar}
             className="btn-ghost press-scale"
-            style={{ width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 10 }}
+            style={{ width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10 }}
             aria-label="Open sidebar"
           >
             <Menu style={{ width: 18, height: 18 }} />
@@ -75,7 +75,7 @@ export function StudentHeader() {
           {/* Notifications */}
           <button
             className="btn-ghost press-scale"
-            style={{ position: "relative", width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 10 }}
+            style={{ position: "relative", width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10 }}
             aria-label="Notifications"
           >
             <Bell style={{ width: 17, height: 17 }} />

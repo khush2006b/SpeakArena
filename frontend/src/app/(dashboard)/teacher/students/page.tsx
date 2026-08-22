@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function StudentsPage() {
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 pb-24 space-y-8 min-h-screen flex flex-col">
+    <div className="mx-auto w-full py-8 pb-24 space-y-8 min-h-screen flex flex-col">
       <StudentHeader />
       <StudentStats />
       

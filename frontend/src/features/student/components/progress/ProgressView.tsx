@@ -37,7 +37,7 @@ export function ProgressView() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8 min-h-screen bg-background">
+      <div className="mx-auto w-full py-8 space-y-8 bg-background">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-60 w-full" />
@@ -55,7 +55,7 @@ export function ProgressView() {
   const completedCourses = profile?.total_courses_completed || 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8 min-h-screen bg-background relative overflow-hidden">
+    <div className="mx-auto w-full py-8 space-y-8 bg-background relative overflow-hidden">
       <div className="grid-bg absolute inset-0 opacity-40 pointer-events-none" />
       <div className="glow-indigo absolute pointer-events-none" style={{ width: 400, height: 400, top: -100, left: "50%", transform: "translateX(-50%)" }} />
 

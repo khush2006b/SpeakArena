@@ -56,7 +56,7 @@ export function ContactSection() {
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)" }} />
       <div style={{ position: "absolute", bottom: 0, right: 0, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,70,229,0.07) 0%, transparent 70%)", transform: "translate(30%, 30%)", pointerEvents: "none" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -76,7 +76,7 @@ export function ContactSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
           {/* ─── LEFT: Form ──────────────────────────────────────────── */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 22, padding: "40px 40px" }}>
+          <div className="p-5 sm:p-8 lg:p-10" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 22 }}>
             <h3 style={{ fontSize: 22, fontWeight: 800, color: "#f1f5f9", margin: "0 0 32px 0" }}>Send us a message</h3>
 
             {sent ? (

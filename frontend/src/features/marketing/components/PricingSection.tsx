@@ -74,7 +74,7 @@ export function PricingSection() {
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)" }} />
       <div style={{ position: "absolute", top: "30%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,70,229,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -91,7 +91,7 @@ export function PricingSection() {
         </div>
 
         {/* 3-col pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
           {TIERS.map((tier) => (
             <div
               key={tier.name}
@@ -103,7 +103,6 @@ export function PricingSection() {
                 border: tier.featured ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 22,
                 overflow: "hidden",
-                transform: tier.featured ? "scale(1.03)" : "scale(1)",
                 transition: "transform 0.2s",
               }}
             >
@@ -112,7 +111,7 @@ export function PricingSection() {
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #4f46e5, #818cf8, #a78bfa)" }} />
               )}
 
-              <div style={{ padding: "36px 32px 28px 32px" }}>
+              <div className="p-6 sm:p-8">
                 {/* Badge */}
                 {tier.badge && (
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 100, padding: "4px 12px", marginBottom: 20 }}>

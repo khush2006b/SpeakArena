@@ -49,14 +49,14 @@ export function CourseGrid({ courses }: CourseGridProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
             
             {/* Quick Actions (Top Right) */}
-            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity -translate-y-2 group-hover:translate-y-0 duration-300">
+            <div className="absolute top-3 right-3 flex gap-2 opacity-100 transition-opacity -translate-y-2 group-hover:translate-y-0 duration-300">
               <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 border-none press-scale" onClick={(e) => { e.stopPropagation(); /* Handle bookmark */}}>
                 <Bookmark className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Play Button Overlay (Center) */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-90 group-hover:scale-100">
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-300 transform scale-90 group-hover:scale-100">
               <div className="h-14 w-14 rounded-full flex items-center justify-center shadow-2xl backdrop-blur-sm bg-primary/90 text-primary-foreground">
                 <Play className="h-6 w-6 fill-current ml-1" />
               </div>

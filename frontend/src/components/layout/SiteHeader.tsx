@@ -106,7 +106,7 @@ export function SiteHeader() {
                 </Link>
                 <Link
                   href={ROUTES.REGISTER}
-                  className="btn-primary press-scale"
+                  className="btn-primary press-scale hidden sm:inline-flex"
                   style={{ padding: "7px 16px", fontSize: 13, borderRadius: 9 }}
                 >
                   Sign up

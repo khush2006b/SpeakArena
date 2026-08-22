@@ -87,7 +87,7 @@ function CourseCard({ course }: { course: Course }) {
           <div className="absolute right-3 top-3 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/50 backdrop-blur-md border border-white/10 text-foreground hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/50 backdrop-blur-md border border-white/10 text-foreground hover:bg-white/10 transition-colors opacity-100 focus:opacity-100">
                   {deleteMutation.isPending || updateMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

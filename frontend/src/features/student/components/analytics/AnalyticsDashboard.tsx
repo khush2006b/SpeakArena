@@ -12,7 +12,7 @@ import { Download } from "lucide-react";
 
 export function AnalyticsDashboard() {
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-20 bg-background relative overflow-hidden">
+    <div className="min-h-screen pb-20 bg-background relative overflow-hidden">
       <div className="grid-bg absolute inset-0 opacity-40 pointer-events-none" />
       <div className="glow-indigo absolute pointer-events-none" style={{ width: 400, height: 400, top: -100, left: "50%", transform: "translateX(-50%)" }} />
 
@@ -33,7 +33,7 @@ export function AnalyticsDashboard() {
         <AnalyticsSummary />
 
         {/* 2. Middle Row: Heatmap + Progress Ring */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <ContributionHeatmap />
           </div>
@@ -43,7 +43,7 @@ export function AnalyticsDashboard() {
         </div>
 
         {/* 3. Bottom Row: Radar Chart + AI Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <TopicRadarChart />
           </div>

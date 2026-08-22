@@ -14,12 +14,12 @@ export const metadata: Metadata = {
 
 export default function AnalyticsPage() {
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 pb-24 space-y-8 min-h-screen flex flex-col">
+    <div className="mx-auto w-full py-8 pb-24 space-y-8 min-h-screen flex flex-col">
       <AnalyticsHeader />
       <InsightsPanel />
       
       {/* Chart Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <TrendCharts />
         </div>

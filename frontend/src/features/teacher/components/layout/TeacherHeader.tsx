@@ -32,7 +32,7 @@ export function TeacherHeader() {
       <button
         onClick={() => document.getElementById('teacher-mobile-menu-trigger')?.click()}
         className="lg:hidden btn-ghost press-scale"
-        style={{ width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 10, flexShrink: 0 }}
+        style={{ width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10, flexShrink: 0 }}
         aria-label="Open sidebar"
       >
         <Menu style={{ width: 18, height: 18 }} />
@@ -78,7 +78,7 @@ export function TeacherHeader() {
         <button
           onClick={toggleNotificationDrawer}
           className="btn-ghost press-scale"
-          style={{ position: "relative", width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 10 }}
+          style={{ position: "relative", width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10 }}
           aria-label="Notifications"
         >
           <Bell style={{ width: 16, height: 16 }} />

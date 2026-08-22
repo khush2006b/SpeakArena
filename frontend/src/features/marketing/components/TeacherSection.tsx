@@ -39,7 +39,7 @@ export function TeacherSection() {
       <div style={{ position: "absolute", top: 0, right: 0, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)", transform: "translate(30%, -30%)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: 0, left: 0, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.05) 0%, transparent 70%)", transform: "translate(-30%, 30%)", pointerEvents: "none" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
 
           {/* ─── LEFT: Portrait + Stats ──────────────────────────────── */}
@@ -75,9 +75,9 @@ export function TeacherSection() {
             {/* Stats 2×2 grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {STATS.map((s) => (
-                <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "20px 20px" }}>
+                <div key={s.label} className="p-3 sm:p-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
                   <s.icon style={{ width: 20, height: 20, color: s.color, marginBottom: 12 }} />
-                  <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", lineHeight: 1, marginBottom: 6 }}>{s.value}</div>
+                  <div className="text-2xl sm:text-3xl" style={{ fontWeight: 800, color: "#fff", lineHeight: 1, marginBottom: 6 }}>{s.value}</div>
                   <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>{s.label}</div>
                 </div>
               ))}
@@ -121,7 +121,7 @@ export function TeacherSection() {
 
             {/* CTA */}
             <Link
-              href="/student/courses"
+              href="/courses"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 10,
                 background: "#4f46e5", color: "#fff", fontSize: 15, fontWeight: 700,

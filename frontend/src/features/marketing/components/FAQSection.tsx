@@ -54,7 +54,7 @@ export function FAQSection() {
     <section style={{ width: "100%", background: "#0b0e18", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 56 }}>
@@ -109,9 +109,10 @@ export function FAQSection() {
               >
                 <button
                   onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                  className="p-4 sm:p-6"
                   style={{
                     width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "22px 24px", background: "none", border: "none", cursor: "pointer", textAlign: "left", gap: 16,
+                    background: "none", border: "none", cursor: "pointer", textAlign: "left", gap: 16,
                   }}
                 >
                   <span style={{ fontSize: 16, fontWeight: 600, color: openIdx === i ? "#e5e7eb" : "#d1d5db", lineHeight: 1.4 }}>
@@ -126,7 +127,7 @@ export function FAQSection() {
                 </button>
 
                 {openIdx === i && (
-                  <div style={{ padding: "0 24px 24px 24px" }}>
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                     <p style={{ fontSize: 15, color: "#9ca3af", lineHeight: 1.75, margin: 0 }}>{faq.answer}</p>
                   </div>
                 )}

@@ -19,7 +19,7 @@ export default function TeacherDashboardPage() {
       <StatCards />
 
       {/* Row 2: Revenue Chart (wide) + Today's Schedule (narrow) */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <RevenueChart />
         </div>
@@ -29,7 +29,7 @@ export default function TeacherDashboardPage() {
       </div>
 
       {/* Row 3: Payments Table (wide) + Activity + Quick Links (narrow) */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <RecentPaymentsTable />
         </div>

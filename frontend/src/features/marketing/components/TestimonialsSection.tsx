@@ -78,7 +78,7 @@ export function TestimonialsSection() {
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)" }} />
 
       {/* Header */}
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 56, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 20 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", display: "inline-block" }} />
@@ -94,7 +94,7 @@ export function TestimonialsSection() {
       </div>
 
       {/* Marquee container */}
-      <div style={{ position: "relative", paddingBottom: 96 }}>
+      <div className="pb-16 sm:pb-20 lg:pb-28" style={{ position: "relative" }}>
         {/* Fade masks */}
         <div style={{ position: "absolute", top: 0, left: 0, width: "12%", height: "100%", background: "linear-gradient(90deg, #0b0e18, transparent)", zIndex: 20, pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: 0, right: 0, width: "12%", height: "100%", background: "linear-gradient(270deg, #0b0e18, transparent)", zIndex: 20, pointerEvents: "none" }} />
@@ -123,7 +123,7 @@ export function TestimonialsSection() {
               <div
                 key={i}
                 style={{
-                  width: 360,
+                  width: "clamp(280px, 80vw, 360px)",
                   flexShrink: 0,
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(255,255,255,0.07)",

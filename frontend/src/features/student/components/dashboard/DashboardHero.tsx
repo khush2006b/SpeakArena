@@ -49,7 +49,7 @@ export function DashboardHero() {
   }, []);
 
   return (
-    <div className="relative w-full h-[350px] md:h-[450px] lg:h-[500px] overflow-hidden group card-glass" style={{ background: "hsl(var(--card))" }}>
+    <div className="relative w-full min-h-[350px] md:min-h-[450px] lg:min-h-[500px] h-auto overflow-hidden group card-glass" style={{ background: "hsl(var(--card))" }}>
       <div className="grid-bg absolute inset-0 opacity-40 pointer-events-none" />
       <div className="glow-indigo absolute pointer-events-none" style={{ width: 400, height: 400, top: -100, left: "50%", transform: "translateX(-50%)" }} />
       

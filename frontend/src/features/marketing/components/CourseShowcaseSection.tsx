@@ -61,7 +61,7 @@ export function CourseShowcaseSection() {
     <section id="courses" style={{ width: "100%", background: "#080c14", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg,transparent,rgba(99,102,241,0.3),transparent)" }} />
 
-      <div className="w-full px-6 sm:px-12 lg:px-20" style={{ paddingTop: 96, paddingBottom: 100, position: "relative", zIndex: 10 }}>
+      <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 56, gap: 24, flexWrap: "wrap" }}>
@@ -78,7 +78,7 @@ export function CourseShowcaseSection() {
             </p>
           </div>
           <Link
-            href="/student/courses"
+            href="/courses"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "#818cf8", textDecoration: "none", border: "1px solid rgba(129,140,248,0.3)", borderRadius: 10, padding: "10px 20px", transition: "background 0.15s", whiteSpace: "nowrap" as const }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.1)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
@@ -98,11 +98,11 @@ export function CourseShowcaseSection() {
             <p style={{ fontSize: 14 }}>Our first courses will be available shortly. Check back soon!</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
               <Link
                 key={course.id}
-                href="/student/courses"
+                href="/courses"
                 style={{
                   display: "flex", flexDirection: "column",
                   background: "rgba(255,255,255,0.03)",
