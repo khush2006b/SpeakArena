@@ -25,6 +25,8 @@ export const ENDPOINTS = {
     LIST: `${API_V1}/courses`,
     STUDENT_LIST: `${API_V1}/courses`,
     TEACHER_LIST: `${API_V1}/teacher/courses`,
+    TEACHER_CREATE: `${API_V1}/teacher/courses`,
+    TEACHER_PUBLISH: (id: string) => `${API_V1}/teacher/courses/${id}/publish`,
     DETAIL: (id: string) => `${API_V1}/courses/${id}`,
     TEACHER_DETAIL: (id: string) => `${API_V1}/teacher/courses/${id}`,
     ENROLL: (id: string) => `${API_V1}/courses/${id}/enroll`,

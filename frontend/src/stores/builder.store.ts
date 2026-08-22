@@ -162,9 +162,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     set({ isPublishing: true, error: null });
     try {
-      // 1. Create course directly in database with status="published"
-      const { data } = await apiClient.post<{ data: { id: string } }>(
-        ENDPOINTS.COURSES.LIST,
+      // 1. Create the course as a draft via the TEACHER endpoint
+      const { data: createData } = await apiClient.post<{ data: { id: string } }>(
+        ENDPOINTS.COURSES.TEACHER_CREATE,
         {
           title: courseTitle.trim(),
           description: description.trim() || undefined,
@@ -174,14 +174,16 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           level: "beginner",
           visibility: accessType === "private" ? "private" : "public",
           max_students: maxStudents || 50,
-          status: "published",
         }
       );
 
-      const newCourseId = data?.data?.id ?? (data as any)?.id;
+      const newCourseId = createData?.data?.id ?? (createData as any)?.id;
       if (!newCourseId) throw new Error("No course ID returned from server.");
 
-      // 2. Sync any staged video lessons to the new course
+      // 2. Publish the course via the teacher publish endpoint
+      await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(newCourseId));
+
+      // 3. Sync any staged video lessons to the new course
       if (stagedLessons.length > 0) {
         for (let i = 0; i < stagedLessons.length; i++) {
           const lesson = stagedLessons[i];
