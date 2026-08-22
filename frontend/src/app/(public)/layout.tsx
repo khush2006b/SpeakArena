@@ -8,10 +8,10 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0d1117] selection:bg-indigo-500/20">
+    <div className="flex min-h-screen flex-col bg-[#0d1117] selection:bg-indigo-500/20 overflow-x-hidden">
       <SiteHeader />
       
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 w-full overflow-x-hidden">{children}</main>
       
       <SiteFooter />
     </div>

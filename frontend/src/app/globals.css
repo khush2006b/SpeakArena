@@ -137,6 +137,7 @@
 
   html {
     @apply scroll-smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -144,6 +145,7 @@
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
     /* Optional: very subtle grain overlay for pure premium feel */
     background-image: radial-gradient(circle at top center, rgba(255,255,255,0.03) 0%, transparent 40%);
+    overflow-x: hidden;
   }
 
   /* Refined, easing focus ring */

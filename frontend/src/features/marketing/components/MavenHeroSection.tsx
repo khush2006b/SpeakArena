@@ -80,9 +80,9 @@ export function MavenHeroSection() {
   // Shared horizontal padding matching the navbar: px-6 sm:px-12 lg:px-20
 
   return (
-    <div className="w-full bg-[#0d1117] text-white">
+    <div className="w-full bg-[#0d1117] text-white overflow-x-hidden">
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
-      <section style={{ position: "relative", width: "100%", overflow: "hidden" }}>
+      <section style={{ position: "relative", width: "100%", overflow: "hidden", maxWidth: "100vw" }}>
         {/* Grid bg */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "44px 44px", pointerEvents: "none" }} />
         {/* Right-side glow */}
@@ -102,8 +102,8 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe */}
-            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420 }}>
+            {/* RIGHT: Globe — clipped so it never bleeds past viewport */}
+            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420, overflow: "hidden", maxWidth: "52%" }}>
               <GlobeIllustration />
             </div>
 
