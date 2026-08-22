@@ -15,10 +15,13 @@
 import axios, { type AxiosInstance } from "axios";
 
 const rawEnvUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-const BASE_URL =
-  rawEnvUrl && rawEnvUrl !== "/" && !rawEnvUrl.includes("vercel.app")
-    ? rawEnvUrl
-    : "https://speakarena.onrender.com";
+
+// In the browser, use relative "" so API requests go through Next.js rewrite proxy (/api/v1/...)
+// This ensures cookies are First-Party (same-origin: speakarena.com) and not blocked by browser ITP / 3rd-party cookie policies.
+const isBrowser = typeof window !== "undefined";
+const BASE_URL = isBrowser
+  ? ""
+  : (rawEnvUrl && rawEnvUrl !== "/" ? rawEnvUrl : "https://speakarena.onrender.com");
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,

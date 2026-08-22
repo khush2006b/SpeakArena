@@ -64,15 +64,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const maxAge = 60 * 60 * 24 * 30;
           document.cookie = `sa_auth=1; path=/; max-age=${maxAge}; SameSite=Lax`;
           document.cookie = `sa_role=${user?.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        } else if (!cancelled) {
-          setAccessToken(null);
-          clearUser();
         }
       } catch {
-        // 401 or network error — treat as unauthenticated guest
+        // 401 or network error — only clear if there was no stored session token
         if (!cancelled) {
-          setAccessToken(null);
-          clearUser();
+          const { user: currentStoredUser } = useAuthStore.getState();
+          if (!currentStoredUser) {
+            setAccessToken(null);
+            clearUser();
+          }
         }
       } finally {
         if (!cancelled) {

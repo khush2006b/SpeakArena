@@ -40,19 +40,42 @@ interface AuthActions {
 
 type AuthStore = AuthState & AuthActions;
 
-export const useAuthStore = create<AuthStore>()((set) => ({
-  user: null,
-  isInitialized: false,
-  isAuthenticated: false,
-  accessToken: null,
+let initialUser: User | null = null;
+let initialToken: string | null = null;
+if (typeof window !== "undefined") {
+  try {
+    const cachedUser = localStorage.getItem("sa_user");
+    if (cachedUser) initialUser = JSON.parse(cachedUser);
+    initialToken = localStorage.getItem("sa_at");
+  } catch {}
+}
 
-  setUser: (user, accessToken) =>
-    set({ user, accessToken, isAuthenticated: Boolean(user && accessToken) }),
+export const useAuthStore = create<AuthStore>()((set) => ({
+  user: initialUser,
+  isInitialized: Boolean(initialUser && initialToken),
+  isAuthenticated: Boolean(initialUser && initialToken),
+  accessToken: initialToken,
+
+  setUser: (user, accessToken) => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("sa_user", JSON.stringify(user));
+        localStorage.setItem("sa_at", accessToken);
+      } catch {}
+    }
+    set({ user, accessToken, isAuthenticated: Boolean(user && accessToken) });
+  },
 
   clearUser: () => {
     if (typeof document !== "undefined") {
       document.cookie = "sa_auth=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
       document.cookie = "sa_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    }
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("sa_user");
+        localStorage.removeItem("sa_at");
+      } catch {}
     }
     set({ user: null, accessToken: null, isAuthenticated: false });
   },
@@ -60,7 +83,13 @@ export const useAuthStore = create<AuthStore>()((set) => ({
   setInitialized: () => set({ isInitialized: true }),
 
   updateUser: (patch) =>
-    set((state) =>
-      state.user ? { user: { ...state.user, ...patch } } : state
-    ),
+    set((state) => {
+      const newUser = state.user ? { ...state.user, ...patch } : null;
+      if (newUser && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sa_user", JSON.stringify(newUser));
+        } catch {}
+      }
+      return { user: newUser };
+    }),
 }));

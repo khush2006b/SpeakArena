@@ -18,6 +18,11 @@ import type { APIError } from "@/types";
 // ---------------------------------------------------------------------------
 
 let accessToken: string | null = null;
+if (typeof window !== "undefined") {
+  try {
+    accessToken = localStorage.getItem("sa_at");
+  } catch {}
+}
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -26,12 +31,23 @@ let failedQueue: Array<{
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
-  // Access token is kept in memory ONLY — never persisted to storage.
-  // (The sa_auth and sa_role cookies for middleware routing are managed by
-  //  AuthProvider and useAuthQueries — not here.)
+  if (typeof window !== "undefined") {
+    try {
+      if (token) {
+        localStorage.setItem("sa_at", token);
+      } else {
+        localStorage.removeItem("sa_at");
+      }
+    } catch {}
+  }
 }
 
 export function getAccessToken(): string | null {
+  if (!accessToken && typeof window !== "undefined") {
+    try {
+      accessToken = localStorage.getItem("sa_at");
+    } catch {}
+  }
   return accessToken;
 }
 
