@@ -133,7 +133,7 @@ function mapPaginatedCourses(raw: any, fallbackPage: number): PaginatedResponse<
 // ---------------------------------------------------------------------------
 
 export const courseService = {
-  /** GET /teacher/courses or /courses — list teacher or student courses */
+  /** GET /api/v1/teacher/courses — list teacher-owned courses (teacher only) */
   list: async (
     pagination?: PaginationConfig,
     filters?: FilterConfig,
@@ -144,13 +144,10 @@ export const courseService = {
     if (filters?.search) params.search = filters.search;
     if (filters?.status) params.status = filters.status;
 
-    try {
-      const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.TEACHER_LIST, { params });
-      return mapPaginatedCourses(data, pagination?.page ?? 1);
-    } catch {
-      const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.STUDENT_LIST, { params });
-      return mapPaginatedCourses(data, pagination?.page ?? 1);
-    }
+    // Always use the teacher endpoint — never fall back to /api/v1/courses
+    // (that endpoint is student-only and returns 403 for teachers)
+    const { data } = await apiClient.get<any>(ENDPOINTS.COURSES.TEACHER_LIST, { params });
+    return mapPaginatedCourses(data, pagination?.page ?? 1);
   },
 
   /** GET /courses/:id or /teacher/courses/:id */

@@ -33,9 +33,9 @@ export function CourseShowcaseSection() {
 
   useEffect(() => {
     apiClient
-      .get("/api/v1/courses", { params: { page: 1, page_size: 6 } })
+      .get("/api/v1/courses/explore", { params: { page: 1, page_size: 6 } })
       .then(({ data }) => {
-        const raw = data?.data?.items ?? data?.items ?? [];
+        const raw = data?.data?.items ?? data?.items ?? data?.data ?? [];
         if (Array.isArray(raw) && raw.length > 0) {
           const mapped: DisplayCourse[] = raw.slice(0, 6).map((c: any, i: number) => ({
             id: String(c.id),
