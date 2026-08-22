@@ -20,7 +20,7 @@ from app.models.user import User
 from app.modules.student.dependencies import get_current_student
 from app.modules.student.schemas import CourseSearchParams
 from app.modules.student.service import CourseService
-from app.modules.student.repository import CourseRepository
+from app.modules.student.repository import StudentCourseRepository
 
 _optional_bearer = HTTPBearer(auto_error=False)
 
@@ -68,7 +68,7 @@ async def explore_courses(
     _credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
 ) -> JSONResponse:
     """Explore published courses catalog — open to all roles and anonymous users."""
-    repo = CourseRepository(db)
+    repo = StudentCourseRepository(db)
     courses, total = await repo.list_explore(page=page, page_size=page_size, search=search, student_id=None)
     return paginated_response(courses, page=page, page_size=page_size, total=total)
 
