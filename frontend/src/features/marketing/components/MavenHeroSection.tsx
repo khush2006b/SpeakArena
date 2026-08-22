@@ -89,10 +89,10 @@ export function MavenHeroSection() {
         <div style={{ position: "absolute", top: 0, right: 0, width: "55%", height: "100%", background: "radial-gradient(ellipse at 80% 40%, rgba(79,70,229,0.12) 0%, transparent 65%)", pointerEvents: "none" }} />
 
         <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-20" style={{ position: "relative", zIndex: 10 }}>
-          <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
 
             {/* LEFT: Hero text */}
-            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center" }} className="w-full lg:w-[48%] lg:pr-10 py-12 sm:py-16 lg:py-20">
+            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center" }} className="w-full md:w-[50%] lg:w-[48%] lg:pr-10 py-10 sm:py-14 lg:py-20">
               <h1 style={{ fontSize: "clamp(28px, 5vw, 64px)", fontWeight: 900, color: "#ffffff", lineHeight: 1.08, letterSpacing: "-0.035em", margin: "0 0 22px 0" }}>
                 Your English. Your Voice. Your Progress.<br />
                 <span style={{ fontStyle: "normal", color: "#818cf8" }}>It all starts here.</span>
@@ -102,8 +102,8 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe — visible on lg screens */}
-            <div className="hidden lg:flex" style={{ flex: 1, position: "relative", minHeight: 420 }}>
+            {/* RIGHT: Globe — visible on md+ screens (768px+) */}
+            <div className="hidden md:flex" style={{ flex: 1, position: "relative", minHeight: 380 }}>
               <GlobeIllustration />
             </div>
 
