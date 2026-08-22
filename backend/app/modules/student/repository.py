@@ -315,19 +315,26 @@ class StudentCourseRepository:
 
     async def list_explore(
         self,
-        student_id: uuid.UUID,
+        student_id: Optional[uuid.UUID] = None,
         *,
         page: int = 1,
         page_size: int = 20,
         search: Optional[str] = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Return paginated list of all published courses with is_enrolled flag."""
-        enrolled_stmt = select(CourseEnrollment.course_id).where(
-            CourseEnrollment.student_id == student_id,
-            CourseEnrollment.status == EnrollmentStatus.ACTIVE,
-        )
-        enrolled_res = await self._db.execute(enrolled_stmt)
-        enrolled_ids = set(enrolled_res.scalars().all())
+        """Return paginated list of all published courses with is_enrolled flag.
+
+        When ``student_id`` is None (anonymous or non-student caller), the
+        ``is_enrolled`` field is always False.
+        """
+        if student_id is not None:
+            enrolled_stmt = select(CourseEnrollment.course_id).where(
+                CourseEnrollment.student_id == student_id,
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+            )
+            enrolled_res = await self._db.execute(enrolled_stmt)
+            enrolled_ids = set(enrolled_res.scalars().all())
+        else:
+            enrolled_ids: set = set()
 
         conditions = [
             or_(Course.status == CourseStatus.PUBLISHED, Course.status == "published"),

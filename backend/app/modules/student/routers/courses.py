@@ -11,6 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.utils.response import paginated_response, success_response
@@ -19,6 +20,9 @@ from app.models.user import User
 from app.modules.student.dependencies import get_current_student
 from app.modules.student.schemas import CourseSearchParams
 from app.modules.student.service import CourseService
+from app.modules.student.repository import CourseRepository
+
+_optional_bearer = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/courses", tags=["Student - Courses"])
 
@@ -53,19 +57,19 @@ async def list_courses(
 
 @router.get(
     "/explore",
-    summary="Explore all published courses",
-    description="Returns all published courses with an is_enrolled boolean for the authenticated student.",
+    summary="Explore all published courses (public)",
+    description="Returns all published courses. Works for unauthenticated visitors, students, and teachers.",
 )
 async def explore_courses(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
     search: Optional[str] = Query(default=None),
-    student: User = Depends(get_current_student),
     db: AsyncSession = Depends(get_db_session),
+    _credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
 ) -> JSONResponse:
-    """Explore published courses catalog."""
-    svc = CourseService(db, student)
-    courses, total = await svc.list_explore(page=page, page_size=page_size, search=search)
+    """Explore published courses catalog — open to all roles and anonymous users."""
+    repo = CourseRepository(db)
+    courses, total = await repo.list_explore(page=page, page_size=page_size, search=search, student_id=None)
     return paginated_response(courses, page=page, page_size=page_size, total=total)
 
 
