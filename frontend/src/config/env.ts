@@ -20,11 +20,16 @@ function getEnvVar(key: string, fallback?: string): string {
 
 export const env = {
   // API
-  apiUrl: getEnvVar("NEXT_PUBLIC_API_URL", "https://speakarena.onrender.com"),
-  socketUrl: getEnvVar(
-    "NEXT_PUBLIC_SOCKET_URL",
-    process.env["NEXT_PUBLIC_API_URL"] ?? "https://speakarena.onrender.com",
-  ),
+  apiUrl:
+    process.env["NEXT_PUBLIC_API_URL"] &&
+    !process.env["NEXT_PUBLIC_API_URL"].includes("vercel.app")
+      ? process.env["NEXT_PUBLIC_API_URL"]
+      : "https://speakarena.onrender.com",
+  socketUrl:
+    process.env["NEXT_PUBLIC_SOCKET_URL"] &&
+    !process.env["NEXT_PUBLIC_SOCKET_URL"].includes("vercel.app")
+      ? process.env["NEXT_PUBLIC_SOCKET_URL"]
+      : "https://speakarena.onrender.com",
 
   // App
   appName: getEnvVar("NEXT_PUBLIC_APP_NAME", "SpeakArena"),

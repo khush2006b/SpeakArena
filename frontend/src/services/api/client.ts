@@ -14,8 +14,11 @@
 
 import axios, { type AxiosInstance } from "axios";
 
-// Use production Render URL fallback if NEXT_PUBLIC_API_URL is not set
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://speakarena.onrender.com";
+const rawEnvUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const BASE_URL =
+  rawEnvUrl && rawEnvUrl !== "/" && !rawEnvUrl.includes("vercel.app")
+    ? rawEnvUrl
+    : "https://speakarena.onrender.com";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
