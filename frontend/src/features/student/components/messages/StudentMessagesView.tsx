@@ -602,7 +602,7 @@ export function StudentMessagesView() {
     <div
       style={{
         display: "flex",
-        height: "calc(100vh - 4rem)",
+        height: "calc(100dvh - 4rem)",
         width: "100%",
         background: "#080c14",
         color: "#f1f5f9",
@@ -694,7 +694,7 @@ export function StudentMessagesView() {
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "9px 10px",
+                padding: "11px 10px",
                 borderRadius: 8,
                 background:
                   activeChannel?.type === "announcements"
@@ -850,7 +850,7 @@ export function StudentMessagesView() {
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
-                        padding: "9px 10px",
+                        padding: "11px 10px",
                         borderRadius: 8,
                         background: isActive
                           ? "rgba(99,102,241,0.12)"
@@ -1389,8 +1389,9 @@ export function StudentMessagesView() {
                     />
                   )}
                   <div
+                    className="max-w-[85%] sm:max-w-[65%]"
                     style={{
-                      maxWidth: "65%",
+                      minWidth: 80,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: isSelf ? "flex-end" : "flex-start",
@@ -1597,11 +1598,13 @@ export function StudentMessagesView() {
               backdropFilter: "blur(10px)",
             }}
           >
-            <Avatar
-              name={(user as any)?.full_name || user?.fullName || "You"}
-              size={34}
-              gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
-            />
+            <div className="hidden sm:flex">
+              <Avatar
+                name={(user as any)?.full_name || user?.fullName || "You"}
+                size={34}
+                gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
+              />
+            </div>
             <input
               id="chat-message-input"
               className="msg-input"
@@ -1681,6 +1684,7 @@ export function StudentMessagesView() {
       {/* ── RIGHT INFO PANEL ─────────────────────────────────────────────────── */}
       {showInfoPanel && (
         <div
+          className="hidden md:flex"
           style={{
             width: 260,
             background: "#0b0f1a",

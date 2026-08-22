@@ -8,8 +8,8 @@ export const metadata = {
 
 export default function PublicCoursesPage() {
   return (
-    <div className="py-12">
+    <>
       <CourseShowcaseSection />
-    </div>
+    </>
   );
 }

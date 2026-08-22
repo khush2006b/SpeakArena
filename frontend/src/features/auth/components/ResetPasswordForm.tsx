@@ -57,7 +57,6 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     WebkitBackdropFilter: "blur(16px)",
     border: "1px solid rgba(255, 255, 255, 0.08)",
     borderRadius: 20,
-    padding: "36px",
     boxShadow: "0 20px 50px rgba(0, 0, 0, 0.4)",
   };
 
@@ -113,7 +112,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   if (isSuccess) {
     return (
-      <div style={cardStyle} className="space-y-6 text-center">
+      <div style={cardStyle} className="p-5 sm:p-8 space-y-6 text-center">
         <div className="flex justify-center">
           <div style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", borderRadius: "50%", width: "64px", height: "64px", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckCircle2 className="h-8 w-8" />
@@ -141,7 +140,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       : null;
 
   return (
-    <div style={cardStyle}>
+    <div style={cardStyle} className="p-5 sm:p-8">
       <div className="space-y-2 text-center lg:text-left mb-6">
         <h1 style={headingStyle}>
           Set new password

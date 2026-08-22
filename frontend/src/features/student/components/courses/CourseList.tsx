@@ -37,7 +37,8 @@ export function CourseList({ courses }: CourseListProps) {
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <Table>
+      <div className="overflow-x-auto">
+        <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <TableHead className="w-[300px]" style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Course</TableHead>
@@ -99,10 +100,10 @@ export function CourseList({ courses }: CourseListProps) {
               <TableCell className="text-sm" style={{ color: "#9ca3af" }}>{course.lastWatched}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} onClick={(e) => { e.stopPropagation(); }}>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} onClick={(e) => { e.stopPropagation(); }}>
                     <Bookmark className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} onClick={(e) => { e.stopPropagation(); }}>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} onClick={(e) => { e.stopPropagation(); }}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </div>
@@ -111,6 +112,7 @@ export function CourseList({ courses }: CourseListProps) {
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

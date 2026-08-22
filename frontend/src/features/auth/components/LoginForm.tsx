@@ -213,7 +213,7 @@ function LoginFormInner() {
           />
 
           {/* ── Remember Me + Forgot Password row ── */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
             <FormField
               control={form.control}
               name="rememberMe"

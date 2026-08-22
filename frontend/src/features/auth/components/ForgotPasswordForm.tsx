@@ -44,7 +44,7 @@ export function ForgotPasswordForm() {
   // ── Success state ──────────────────────────────────────────────────────────
   if (submittedEmail) {
     return (
-      <div className="card-glass p-8 sm:p-10 space-y-6 text-center w-full max-w-md mx-auto relative z-10">
+      <div className="card-glass p-6 sm:p-8 space-y-6 text-center w-full max-w-md mx-auto relative z-10">
         <div className="flex justify-center">
           <div className="bg-emerald-500/15 text-emerald-500 rounded-full w-16 h-16 flex items-center justify-center">
             <CheckCircle2 className="h-8 w-8" />
@@ -86,7 +86,7 @@ export function ForgotPasswordForm() {
     : null;
 
   return (
-    <div className="card-glass p-8 sm:p-10 w-full max-w-md mx-auto relative z-10">
+    <div className="card-glass p-6 sm:p-8 w-full max-w-md mx-auto relative z-10">
       <div className="space-y-2 text-center lg:text-left mb-6">
         <Link
           href="/login"

@@ -604,7 +604,7 @@ export function TeacherCommunicationView() {
     <div
       style={{
         display: "flex",
-        height: "calc(100vh - 4rem)",
+        height: "calc(100dvh - 4rem)",
         width: "100%",
         background: "hsl(var(--background))",
         color: "#f1f5f9",
@@ -967,7 +967,7 @@ export function TeacherCommunicationView() {
                     border: "1px solid hsl(var(--border))",
                     borderRadius: 8,
                     padding: "7px 10px 7px 28px",
-                    fontSize: 12,
+                    fontSize: 16,
                     color: "#f1f5f9",
                     outline: "none",
                     boxSizing: "border-box",
@@ -1467,7 +1467,7 @@ export function TeacherCommunicationView() {
                 borderRadius: 12,
                 padding: "11px 16px",
                 color: "hsl(var(--foreground))",
-                fontSize: 14,
+                fontSize: 16,
                 outline: "none",
                 transition: "border-color 0.2s, box-shadow 0.2s",
               }}
@@ -1507,6 +1507,7 @@ export function TeacherCommunicationView() {
       {/* ── RIGHT INFO PANEL ─────────────────────────────────────────────────── */}
       {showInfoPanel && (
         <div
+          className="hidden md:flex"
           style={{
             width: 270,
             background: "#0b0f1a",
