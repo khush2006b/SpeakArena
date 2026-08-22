@@ -88,7 +88,7 @@ def create_application() -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com",
+        allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.speakarena\.com|https://speakarena\.com",
         allow_credentials=True,  # Required for HttpOnly refresh token cookie.
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],

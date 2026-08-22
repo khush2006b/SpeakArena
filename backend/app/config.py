@@ -147,6 +147,8 @@ class Settings(BaseSettings):
         """Parse CORS origins from environment variables with sensible production defaults."""
         import json
         default_origins = [
+            "https://speakarena.com",
+            "https://www.speakarena.com",
             "https://speak-arena.vercel.app",
             "https://speakarena.onrender.com",
             "http://localhost:3000",
