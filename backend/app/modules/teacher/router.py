@@ -119,6 +119,14 @@ async def run_db_patches(
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS page_count INTEGER;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_downloadable BOOLEAN NOT NULL DEFAULT TRUE;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS slow_mode_seconds SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS pinned_message_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS recipient_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_count SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID DEFAULT NULL;",
     ]
     results = []
     for sql in patches:

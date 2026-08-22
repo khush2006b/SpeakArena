@@ -130,19 +130,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-            # Acquire PostgreSQL transaction-level advisory lock so parallel Gunicorn workers do not deadlock during DDL
             try:
                 await conn.execute(text("SELECT pg_advisory_xact_lock(777888999)"))
             except Exception:
-                pass  # Fallback for SQLite in local dev/tests
-
+                pass
             await conn.run_sync(Base.metadata.create_all)
 
-            for patch_sql in _schema_patches:
-                try:
+        for patch_sql in _schema_patches:
+            try:
+                async with engine.begin() as conn:
                     await conn.execute(text(patch_sql))
-                except Exception as patch_exc:
-                    logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
+            except Exception as patch_exc:
+                logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
 
         logger.info("Database connection and schema initialization complete.")
     except Exception as exc:
