@@ -45,6 +45,14 @@ def upgrade() -> None:
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE course_enrollments ADD COLUMN IF NOT EXISTS progress_percentage NUMERIC(5,2) DEFAULT 0.0;",
         "ALTER TABLE course_categories ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS slow_mode_seconds SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS pinned_message_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS recipient_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id UUID DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_count SMALLINT NOT NULL DEFAULT 0;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID DEFAULT NULL;",
     ]
     for stmt in statements:
         try:
