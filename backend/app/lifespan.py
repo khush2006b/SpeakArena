@@ -116,11 +116,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE course_enrollments ADD COLUMN IF NOT EXISTS progress_percentage NUMERIC(5,2) DEFAULT 0.0;",
         "UPDATE course_enrollments SET progress_percentage = COALESCE(progress_percent, 0.0) WHERE progress_percentage IS NULL OR progress_percentage = 0.0;",
+        "ALTER TABLE course_categories ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();",
     ]
 
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
+            # Acquire PostgreSQL transaction-level advisory lock so parallel Gunicorn workers do not deadlock during DDL
+            try:
+                await conn.execute(text("SELECT pg_advisory_xact_lock(777888999)"))
+            except Exception:
+                pass  # Fallback for SQLite in local dev/tests
+
             await conn.run_sync(Base.metadata.create_all)
 
             for patch_sql in _schema_patches:

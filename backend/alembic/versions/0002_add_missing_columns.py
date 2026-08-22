@@ -43,6 +43,8 @@ def upgrade() -> None:
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS page_count INTEGER;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_downloadable BOOLEAN NOT NULL DEFAULT TRUE;",
         "ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE course_enrollments ADD COLUMN IF NOT EXISTS progress_percentage NUMERIC(5,2) DEFAULT 0.0;",
+        "ALTER TABLE course_categories ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();",
     ]
     for stmt in statements:
         try:
