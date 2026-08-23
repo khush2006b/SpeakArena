@@ -516,14 +516,26 @@ async def upload_thumbnail_direct(
 
     _log.info("Uploading thumbnail via Cloudflare REST API key=%r size=%d bytes", r2_key, len(raw_bytes))
 
-    if not settings.CLOUDFLARE_API_TOKEN:
-        _log.error("CLOUDFLARE_API_TOKEN is not set — cannot upload thumbnail")
+    # Build auth headers — prefer Global API Key (always works), fall back to Bearer token
+    if settings.CLOUDFLARE_API_KEY and settings.CLOUDFLARE_EMAIL:
+        auth_headers = {
+            "X-Auth-Key": settings.CLOUDFLARE_API_KEY,
+            "X-Auth-Email": settings.CLOUDFLARE_EMAIL,
+        }
+        _log.info("Using Global API Key auth for Cloudflare upload")
+    elif settings.CLOUDFLARE_API_TOKEN:
+        auth_headers = {
+            "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
+        }
+        _log.info("Using Bearer token auth for Cloudflare upload")
+    else:
+        _log.error("No Cloudflare credentials set — cannot upload thumbnail")
         return JSONResponse(
             status_code=503,
-            content={"success": False, "error": "Storage upload not configured. Set CLOUDFLARE_API_TOKEN on the server."},
+            content={"success": False, "error": "Storage upload not configured. Set CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL on the server."},
         )
 
-    # Cloudflare REST API for R2 object management — uses api.cloudflare.com (no TLS issues)
+    # Cloudflare REST API for R2 object management — api.cloudflare.com (no TLS issues)
     cf_api_url = (
         f"https://api.cloudflare.com/client/v4/accounts/{settings.R2_ACCOUNT_ID}"
         f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
@@ -533,10 +545,7 @@ async def upload_thumbnail_direct(
         response = await http.put(
             cf_api_url,
             content=raw_bytes,
-            headers={
-                "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
-                "Content-Type": content_type,
-            },
+            headers={**auth_headers, "Content-Type": content_type},
         )
 
     if response.status_code not in (200, 201, 204):
