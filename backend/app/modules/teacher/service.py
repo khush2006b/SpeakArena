@@ -330,6 +330,7 @@ class CourseService:
             visibility=data.visibility,
             max_students=data.max_students,
             is_certificate_enabled=data.is_certificate_enabled,
+            thumbnail_r2_key=data.thumbnail_r2_key,
             metadata_=data.metadata,
             status=target_status,
             published_at=published_at,
@@ -401,6 +402,7 @@ class CourseService:
             "visibility",
             "max_students",
             "is_certificate_enabled",
+            "thumbnail_r2_key",
         ):
             val = getattr(data, field)
             if val is not None:

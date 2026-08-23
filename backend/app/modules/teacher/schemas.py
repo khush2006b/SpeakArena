@@ -159,6 +159,7 @@ class CreateCourseRequest(_StrictBase):
     category_ids: list[uuid.UUID] = Field(default_factory=list, max_length=5)
     primary_category_id: Optional[uuid.UUID] = None
     is_certificate_enabled: bool = False
+    thumbnail_r2_key: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -188,6 +189,7 @@ class UpdateCourseRequest(_StrictBase):
     category_ids: Optional[list[uuid.UUID]] = Field(default=None, max_length=5)
     primary_category_id: Optional[uuid.UUID] = None
     is_certificate_enabled: Optional[bool] = None
+    thumbnail_r2_key: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
 
 
