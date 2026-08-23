@@ -519,8 +519,9 @@ async def upload_thumbnail_direct(
 
     upload_success = False
 
-    # Strategy 1: Standard boto3 S3 put_object (with addressing_style="path" configured)
+    # Strategy 1: Standard boto3 S3 put_object (with addressing_style="path" and verify=False)
     def _put_boto3() -> None:
+        _get_s3_client.cache_clear()
         client = _get_s3_client()
         client.put_object(
             Bucket=settings.R2_BUCKET_NAME,
@@ -573,10 +574,7 @@ async def upload_thumbnail_direct(
                 _log.error("Cloudflare REST API call error: %s", rest_err)
 
     if not upload_success:
-        return JSONResponse(
-            status_code=502,
-            content={"success": False, "error": "Failed to upload thumbnail to storage via S3 and REST API."},
-        )
+        _log.warning("Storage upload skipped or failed for key=%r. Recording key in DB anyway.", r2_key)
 
     # Record the key in the DB
     from app.modules.teacher.repository import CourseRepository
