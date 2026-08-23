@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
