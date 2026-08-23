@@ -385,7 +385,7 @@ class ConfirmVideoUploadRequest(_StrictBase):
     """Request body to mark a video upload as completed."""
 
     file_size_bytes: int = Field(..., ge=1)
-    duration_seconds: Optional[int] = Field(default=None, ge=1)
+    duration_seconds: Optional[int] = Field(default=None, ge=0)
 
 
 class ReorderItem(_StrictBase):
