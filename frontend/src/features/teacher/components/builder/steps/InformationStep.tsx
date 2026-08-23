@@ -31,6 +31,22 @@ export function InformationStep() {
     setThumbnailFile(file);
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setThumbnailPreview(objectUrl);
+    setThumbnailUrl(objectUrl);
+    setThumbnailFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const handleContinue = async () => {
     clearError();
     await createCourse();
@@ -103,6 +119,8 @@ export function InformationStep() {
           />
           <div
             onClick={() => thumbnailInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             className="w-full rounded-xl border-2 border-dashed border-border/60 bg-secondary/20 overflow-hidden transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
           >
             {thumbnailPreview ? (
