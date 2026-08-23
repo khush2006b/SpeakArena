@@ -574,8 +574,13 @@ async def upload_thumbnail_direct(
             except Exception as rest_err:
                 _log.error("Cloudflare REST API call error: %s", rest_err)
 
-    if not upload_success:
-        _log.warning("Storage upload skipped or failed for key=%r. Recording key in DB anyway.", r2_key)
+    import os
+    local_dir = f"uploads/thumbnails/courses/{course_id}"
+    os.makedirs(local_dir, exist_ok=True)
+    local_path = f"{local_dir}/thumbnail.{ext}"
+    with open(local_path, "wb") as f_out:
+        f_out.write(raw_bytes)
+    _log.info("Saved local thumbnail fallback to %r", local_path)
 
     # Record the key in the DB
     from app.modules.teacher.repository import CourseRepository
@@ -583,7 +588,12 @@ async def upload_thumbnail_direct(
     await repo.update(course, thumbnail_r2_key=r2_key)
     await db.commit()
 
-    public_url = get_public_url(r2_key)
+    if upload_success:
+        public_url = get_public_url(r2_key)
+    else:
+        # Return local static URL until Cloudflare R2 S3 API SSL cert finishes provisioning
+        public_url = f"https://speakarena.onrender.com/uploads/thumbnails/courses/{course_id}/thumbnail.{ext}"
+
     _log.info("Thumbnail upload complete key=%r url=%r", r2_key, public_url)
 
     return success_response({

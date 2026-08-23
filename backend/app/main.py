@@ -106,6 +106,10 @@ def create_application() -> FastAPI:
     # Imported here to avoid circular imports during the lifespan startup
     # phase, where settings are validated before routes are loaded.
     from app.api.v1.router import api_router  # noqa: PLC0415
+    import os
+    from fastapi.staticfiles import StaticFiles
+    os.makedirs("uploads/thumbnails", exist_ok=True)
+    application.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
     application.include_router(api_router, prefix="/api/v1")
 
