@@ -232,6 +232,7 @@ def _get_s3_client() -> Any:
         region_name="auto",
         config=Config(
             signature_version="s3v4",
+            s3={"addressing_style": "path"},
         ),
         verify=certifi.where(),  # Use certifi CA bundle — fixes SSLv3 handshake failure on Render/Python 3.13
     )

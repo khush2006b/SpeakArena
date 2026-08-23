@@ -514,51 +514,68 @@ async def upload_thumbnail_direct(
     r2_key = make_thumbnail_key(course_id, ext)
     raw_bytes = await file.read()
 
-    _log.info("Uploading thumbnail via Cloudflare REST API key=%r size=%d bytes", r2_key, len(raw_bytes))
+    _log.info("Uploading thumbnail direct for key=%r size=%d bytes", r2_key, len(raw_bytes))
 
-    # Build auth headers — prefer Global API Key (always works), fall back to Bearer token
-    if settings.CLOUDFLARE_API_KEY and settings.CLOUDFLARE_EMAIL:
-        auth_headers = {
-            "X-Auth-Key": settings.CLOUDFLARE_API_KEY,
-            "X-Auth-Email": settings.CLOUDFLARE_EMAIL,
-        }
-        _log.info("Using Global API Key auth for Cloudflare upload")
-    elif settings.CLOUDFLARE_API_TOKEN:
-        auth_headers = {
-            "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
-        }
-        _log.info("Using Bearer token auth for Cloudflare upload")
-    else:
-        _log.error("No Cloudflare credentials set — cannot upload thumbnail")
-        return JSONResponse(
-            status_code=503,
-            content={"success": False, "error": "Storage upload not configured. Set CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL on the server."},
+    upload_success = False
+
+    # Strategy 1: Standard boto3 S3 put_object (with addressing_style="path" configured)
+    def _put_boto3() -> None:
+        client = _get_s3_client()
+        client.put_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            Key=r2_key,
+            Body=raw_bytes,
+            ContentType=content_type,
         )
 
-    # Cloudflare REST API for R2 object management — api.cloudflare.com (no TLS issues)
-    cf_api_url = (
-        f"https://api.cloudflare.com/client/v4/accounts/{settings.R2_ACCOUNT_ID}"
-        f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
-    )
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(_executor, _put_boto3)
+        _log.info("Thumbnail uploaded successfully via boto3 path-style S3 API key=%r", r2_key)
+        upload_success = True
+    except Exception as s3_err:
+        _log.warning("boto3 S3 upload failed (key=%r): %s. Trying REST API fallback...", r2_key, s3_err)
 
-    async with httpx.AsyncClient(timeout=60.0) as http:
-        response = await http.put(
-            cf_api_url,
-            content=raw_bytes,
-            headers={**auth_headers, "Content-Type": content_type},
-        )
+        # Strategy 2: Cloudflare REST API fallback (api.cloudflare.com)
+        auth_headers: dict[str, str] = {}
+        if settings.CLOUDFLARE_API_KEY and settings.CLOUDFLARE_EMAIL:
+            auth_headers = {
+                "X-Auth-Key": settings.CLOUDFLARE_API_KEY,
+                "X-Auth-Email": settings.CLOUDFLARE_EMAIL,
+            }
+            _log.info("Using Global API Key auth for REST API fallback")
+        elif settings.CLOUDFLARE_API_TOKEN:
+            auth_headers = {
+                "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
+            }
+            _log.info("Using Bearer token auth for REST API fallback")
 
-    if response.status_code not in (200, 201, 204):
-        _log.error(
-            "Cloudflare API R2 upload failed key=%r status=%d body=%r",
-            r2_key, response.status_code, response.text[:500],
-        )
+        if auth_headers:
+            cf_api_url = (
+                f"https://api.cloudflare.com/client/v4/accounts/{settings.R2_ACCOUNT_ID}"
+                f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
+            )
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as http:
+                    response = await http.put(
+                        cf_api_url,
+                        content=raw_bytes,
+                        headers={**auth_headers, "Content-Type": content_type},
+                    )
+                if response.status_code in (200, 201, 204):
+                    _log.info("Thumbnail uploaded successfully via Cloudflare REST API key=%r", r2_key)
+                    upload_success = True
+                else:
+                    _log.error("Cloudflare REST API upload failed key=%r status=%d body=%r", r2_key, response.status_code, response.text[:300])
+            except Exception as rest_err:
+                _log.error("Cloudflare REST API call error: %s", rest_err)
+
+    if not upload_success:
         return JSONResponse(
             status_code=502,
-            content={"success": False, "error": f"R2 upload failed: HTTP {response.status_code} — {response.text[:200]}"},
+            content={"success": False, "error": "Failed to upload thumbnail to storage via S3 and REST API."},
         )
-
-    _log.info("Thumbnail uploaded via Cloudflare API key=%r status=%d", r2_key, response.status_code)
 
     # Record the key in the DB
     from app.modules.teacher.repository import CourseRepository
