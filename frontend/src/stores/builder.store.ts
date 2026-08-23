@@ -220,41 +220,25 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         });
       }
 
-      // 2. Upload thumbnail via presigned URL (Industry Standard direct browser upload to R2)
+      // 2. Upload thumbnail via backend direct upload endpoint
+      // This sends the file to the backend, which uploads to Cloudflare R2 server-side.
+      // This bypasses local ISP/DNS/Proxy TLS blocking of *.r2.cloudflarestorage.com on client browsers.
       const thumbnailFileAtPublish = get().thumbnailFile;
       console.log("[Builder] thumbnailFile at publish time:", thumbnailFileAtPublish?.name, thumbnailFileAtPublish?.size, thumbnailFileAtPublish?.type);
 
       if (thumbnailFileAtPublish) {
         try {
-          const contentType = thumbnailFileAtPublish.type || "image/jpeg";
-          console.log("[Builder] Requesting presigned upload URL from backend...");
+          console.log("[Builder] Uploading thumbnail via backend direct upload endpoint...");
+          const formData = new FormData();
+          formData.append("file", thumbnailFileAtPublish);
 
-          // Step A: Request path-style presigned PUT URL from backend
-          const { data: presignData } = await apiClient.post(
-            `/api/v1/teacher/courses/${targetCourseId}/thumbnail`,
-            { content_type: contentType, file_name: thumbnailFileAtPublish.name }
+          const { data: uploadData } = await apiClient.post(
+            `/api/v1/teacher/courses/${targetCourseId}/thumbnail/upload`,
+            formData
           );
-
-          const presignResult = presignData?.data ?? presignData;
-          const uploadUrl: string = presignResult?.upload_url;
-          console.log("[Builder] Got presigned URL, uploading directly from browser to R2...");
-
-          // Step B: Direct browser PUT to Cloudflare R2 presigned URL
-          const putResponse = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": contentType,
-            },
-            body: thumbnailFileAtPublish,
-          });
-
-          if (!putResponse.ok) {
-            console.error("[Builder] Direct browser PUT to R2 failed:", putResponse.status, await putResponse.text());
-          } else {
-            console.log("[Builder] Thumbnail uploaded directly from browser to R2 successfully (200 OK)");
-          }
+          console.log("[Builder] Thumbnail uploaded via backend successfully:", uploadData);
         } catch (thumbErr) {
-          console.error("[Builder] Failed to upload thumbnail via presigned URL:", thumbErr);
+          console.error("[Builder] Failed to upload thumbnail via backend:", thumbErr);
         }
       } else {
         console.log("[Builder] No thumbnailFile set in store — skipping thumbnail upload.");
