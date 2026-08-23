@@ -83,6 +83,15 @@ from app.modules.teacher.repository import CourseCategoryRepository
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
 
 
+def resolve_course_thumbnail_url(c) -> str | None:
+    if getattr(c, "thumbnail_data", None) is not None:
+        return f"https://speakarena.onrender.com/api/v1/teacher/courses/{c.id}/thumbnail"
+    r2_key = getattr(c, "thumbnail_r2_key", None)
+    if r2_key:
+        return r2.get_public_url(r2_key)
+    return None
+
+
 # ===========================================================================
 # DB Patch Diagnostic & Fix
 # ===========================================================================
@@ -245,7 +254,7 @@ async def list_courses(
                 "visibility": c.visibility,
                 "price": float(c.price),
                 "thumbnail_r2_key": c.thumbnail_r2_key,
-                "thumbnail_url": r2.get_public_url(c.thumbnail_r2_key),
+                "thumbnail_url": resolve_course_thumbnail_url(c),
                 "total_enrollments": c.total_enrollments or 0,
                 "max_students": c.max_students,
                 "total_lectures": c.total_lectures,
@@ -328,7 +337,7 @@ async def get_course(
             "description": course.description,
             "short_description": course.short_description,
             "thumbnail_r2_key": course.thumbnail_r2_key,
-            "thumbnail_url": r2.get_public_url(course.thumbnail_r2_key),
+            "thumbnail_url": resolve_course_thumbnail_url(course),
             "price": float(course.price),
             "original_price": float(course.original_price) if course.original_price else None,
             "currency": course.currency,
@@ -586,17 +595,22 @@ async def upload_thumbnail_direct(
     except Exception as err:
         _log.warning("Could not write local thumbnail fallback: %s", err)
 
-    # Record the key in the DB
+    # Record thumbnail key and raw image bytes in DB for indestructible database storage
     from app.modules.teacher.repository import CourseRepository
     repo = CourseRepository(db)
-    await repo.update(course, thumbnail_r2_key=r2_key)
+    await repo.update(
+        course,
+        thumbnail_r2_key=r2_key,
+        thumbnail_data=raw_bytes,
+        thumbnail_mime=content_type,
+    )
     await db.commit()
 
     if upload_success:
         public_url = get_public_url(r2_key)
     else:
-        # Return local static URL until Cloudflare R2 S3 API SSL cert finishes provisioning
-        public_url = f"https://speakarena.onrender.com/uploads/thumbnails/courses/{course_id}/thumbnail.{ext}"
+        # Return indestructible database thumbnail media URL
+        public_url = f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
 
     _log.info("Thumbnail upload complete key=%r url=%r", r2_key, public_url)
 
@@ -604,6 +618,30 @@ async def upload_thumbnail_direct(
         "r2_key": r2_key,
         "thumbnail_url": public_url,
     }, message="Thumbnail uploaded successfully.")
+
+
+@router.get(
+    "/courses/{course_id}/thumbnail",
+    summary="Get course thumbnail image media",
+    description="Returns the thumbnail image directly from database storage with caching.",
+)
+async def get_course_thumbnail_media(
+    course_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+):
+    from app.models.course import Course
+    from fastapi.responses import Response
+    course = await db.get(Course, course_id)
+    if not course or course.thumbnail_data is None:
+        raise NotFoundError("Course thumbnail not found.")
+    return Response(
+        content=bytes(course.thumbnail_data),
+        media_type=course.thumbnail_mime or "image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 @router.get(

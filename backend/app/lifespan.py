@@ -149,6 +149,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
         # ── courses.thumbnail_r2_key for persistent R2 thumbnail storage ───────
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_r2_key VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_data BYTEA DEFAULT NULL;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_mime VARCHAR(64) DEFAULT NULL;",
     ]
 
     try:

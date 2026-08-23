@@ -137,6 +137,12 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     thumbnail_r2_key: Mapped[Optional[str]] = mapped_column(
         String(512), nullable=True, default=None
     )
+    thumbnail_data: Mapped[Optional[bytes]] = mapped_column(
+        LargeBinary, nullable=True, default=None
+    )
+    thumbnail_mime: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, default=None
+    )
     promo_video_r2_key: Mapped[Optional[str]] = mapped_column(
         String(512), nullable=True, default=None
     )

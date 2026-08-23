@@ -31,6 +31,14 @@ from sqlalchemy.orm import selectinload
 
 from app.core.exceptions.errors import ValidationError
 from app.core.storage import r2
+
+
+def resolve_thumbnail_url(course_id, thumbnail_r2_key) -> str | None:
+    if not thumbnail_r2_key:
+        return None
+    if str(thumbnail_r2_key).startswith("http://") or str(thumbnail_r2_key).startswith("https://"):
+        return str(thumbnail_r2_key)
+    return f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
 from app.models.chat import ChatRoom, Message
 from app.models.course import (
     ContentProgress,
@@ -297,7 +305,7 @@ class StudentCourseRepository:
                 "title": r.title,
                 "slug": r.slug,
                 "thumbnail_r2_key": r.thumbnail_r2_key,
-                "thumbnail_url": r2.get_public_url(r.thumbnail_r2_key),
+                "thumbnail_url": resolve_thumbnail_url(r.course_id, r.thumbnail_r2_key),
                 "level": r.level,
                 "language": r.language,
                 "total_lectures": r.total_lectures,
@@ -373,7 +381,7 @@ class StudentCourseRepository:
                 "description": c.description,
                 "short_description": c.short_description,
                 "thumbnail_r2_key": c.thumbnail_r2_key,
-                "thumbnail_url": r2.get_public_url(c.thumbnail_r2_key),
+                "thumbnail_url": resolve_thumbnail_url(c.id, c.thumbnail_r2_key),
                 "price": float(c.price),
                 "level": c.level,
                 "language": c.language,
@@ -507,7 +515,7 @@ class StudentCourseRepository:
             "description": row.description,
             "short_description": row.short_description,
             "thumbnail_r2_key": row.thumbnail_r2_key,
-            "thumbnail_url": r2.get_public_url(row.thumbnail_r2_key),
+            "thumbnail_url": resolve_thumbnail_url(row.course_id, row.thumbnail_r2_key),
             "level": row.level,
             "language": row.language,
             "total_lectures": row.total_lectures,
@@ -567,7 +575,7 @@ class StudentCourseRepository:
                 "course_id": r.course_id,
                 "title": r.title,
                 "thumbnail_r2_key": r.thumbnail_r2_key,
-                "thumbnail_url": r2.get_public_url(r.thumbnail_r2_key),
+                "thumbnail_url": resolve_thumbnail_url(r.course_id, r.thumbnail_r2_key),
                 "progress_percentage": float(r.progress_percentage),
                 "last_accessed_at": r.last_accessed_at,
             }
