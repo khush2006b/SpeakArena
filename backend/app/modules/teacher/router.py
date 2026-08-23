@@ -558,7 +558,7 @@ async def upload_thumbnail_direct(
                 f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
             )
             try:
-                async with httpx.AsyncClient(timeout=60.0) as http:
+                async with httpx.AsyncClient(timeout=60.0, verify=False) as http:
                     response = await http.put(
                         cf_api_url,
                         content=raw_bytes,

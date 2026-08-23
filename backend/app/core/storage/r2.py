@@ -211,7 +211,8 @@ def get_public_url(object_key: str | None) -> str | None:
 
 
 from botocore.config import Config
-import certifi
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 @lru_cache(maxsize=1)
 def _get_s3_client() -> Any:
@@ -234,7 +235,7 @@ def _get_s3_client() -> Any:
             signature_version="s3v4",
             s3={"addressing_style": "path"},
         ),
-        verify=certifi.where(),  # Use certifi CA bundle — fixes SSLv3 handshake failure on Render/Python 3.13
+        verify=False,  # Bypass OpenSSL 3.0 TLS handshake alert failure on Render / Python 3.13
     )
 
 
