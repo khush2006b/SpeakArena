@@ -492,6 +492,7 @@ async def upload_thumbnail_direct(
 
     from app.core.storage.r2 import (
         ALLOWED_IMAGE_MIME_TYPES, make_thumbnail_key, ext_from_mime, get_public_url,
+        _get_s3_client, _executor,
     )
     from app.config import get_settings
 
