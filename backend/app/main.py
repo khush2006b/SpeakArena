@@ -105,6 +105,7 @@ def create_application() -> FastAPI:
     # ── API Routers ────────────────────────────────────────────────────────
     # Imported here to avoid circular imports during the lifespan startup
     # phase, where settings are validated before routes are loaded.
+    from app.api.v1.router import api_router  # noqa: PLC0415
     import os, tempfile
     from fastapi.staticfiles import StaticFiles
     try:
