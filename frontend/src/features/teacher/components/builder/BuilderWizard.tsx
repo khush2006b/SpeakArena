@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBuilderStore } from "@/stores/builder.store";
 
@@ -13,6 +14,15 @@ import { PreviewStep } from "./steps/PreviewStep";
 
 export function BuilderWizard() {
   const currentStep = useBuilderStore((state) => state.currentStep);
+  const loadCourse = useBuilderStore((state) => state.loadCourse);
+  const searchParams = useSearchParams();
+  const courseIdParam = searchParams.get("courseId");
+
+  React.useEffect(() => {
+    if (courseIdParam) {
+      loadCourse(courseIdParam);
+    }
+  }, [courseIdParam, loadCourse]);
 
   const getStepComponent = () => {
     switch (currentStep) {

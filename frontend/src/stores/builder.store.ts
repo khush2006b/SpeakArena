@@ -71,6 +71,7 @@ export interface BuilderState {
   clearError: () => void;
 
   // ── API actions ───────────────────────────────────────────────────
+  loadCourse: (id: string) => Promise<void>;
   createCourse: () => Promise<string | null>;
   saveDraft: () => Promise<void>;
   publishCourse: () => Promise<boolean>;
@@ -137,6 +138,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setLastSaved: (time) => set({ lastSaved: time, isDirty: false }),
   clearError: () => set({ error: null }),
 
+  // ── loadCourse (Loads existing course for editing) ─────────────────
+  loadCourse: async (id: string) => {
+    try {
+      const { data } = await apiClient.get<any>(`/api/v1/teacher/courses/${id}`);
+      const course = data?.data ?? data;
+      if (course) {
+        set({
+          courseId: course.id,
+          courseTitle: course.title || "",
+          description: course.description || "",
+          price: Number(course.price) || 0,
+          accessType: course.visibility === "private" ? "private" : "public",
+          maxStudents: course.max_students || 50,
+          thumbnailUrl: course.thumbnail_url || null,
+          thumbnailFile: null,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to load existing course into builder:", e);
+    }
+  },
+
   // ── createCourse (Client-only step transition, no draft DB save) ─
   createCourse: async () => {
     const { courseTitle } = get();
@@ -155,9 +178,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ isDirty: false });
   },
 
-  // ── publishCourse (Creates course in DB with real data when published) ─
+  // ── publishCourse (Creates/Updates course in DB and uploads thumbnail) ─
   publishCourse: async () => {
-    const { courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile } = get();
+    const { courseId, courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before publishing." });
@@ -166,23 +189,36 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     set({ isPublishing: true, error: null });
     try {
-      // 1. Create the course as a draft via the TEACHER endpoint
-      const { data: createData } = await apiClient.post<{ data: { id: string } }>(
-        ENDPOINTS.COURSES.TEACHER_CREATE,
-        {
+      let targetCourseId = courseId;
+
+      if (!targetCourseId) {
+        // 1. Create the course as a draft via the TEACHER endpoint
+        const { data: createData } = await apiClient.post<{ data: { id: string } }>(
+          ENDPOINTS.COURSES.TEACHER_CREATE,
+          {
+            title: courseTitle.trim(),
+            description: description.trim() || undefined,
+            price: typeof price === "number" ? price : 0,
+            currency: "INR",
+            language: "en",
+            level: "beginner",
+            visibility: accessType === "private" ? "private" : "public",
+            max_students: maxStudents || 50,
+          }
+        );
+
+        targetCourseId = createData?.data?.id ?? (createData as any)?.id;
+        if (!targetCourseId) throw new Error("No course ID returned from server.");
+      } else {
+        // Update existing course metadata
+        await apiClient.patch(`/api/v1/teacher/courses/${targetCourseId}`, {
           title: courseTitle.trim(),
           description: description.trim() || undefined,
           price: typeof price === "number" ? price : 0,
-          currency: "INR",
-          language: "en",
-          level: "beginner",
           visibility: accessType === "private" ? "private" : "public",
           max_students: maxStudents || 50,
-        }
-      );
-
-      const newCourseId = createData?.data?.id ?? (createData as any)?.id;
-      if (!newCourseId) throw new Error("No course ID returned from server.");
+        });
+      }
 
       // 2. Upload course thumbnail directly to backend if provided
       const thumbnailFileAtPublish = get().thumbnailFile;
@@ -190,12 +226,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
       if (thumbnailFileAtPublish) {
         try {
-          console.log("[Builder] Uploading thumbnail directly to backend...");
+          console.log("[Builder] Uploading thumbnail directly to backend for course:", targetCourseId);
           const formData = new FormData();
           formData.append("file", thumbnailFileAtPublish);
 
           const { data: uploadData } = await apiClient.post(
-            `/api/v1/teacher/courses/${newCourseId}/thumbnail/upload`,
+            `/api/v1/teacher/courses/${targetCourseId}/thumbnail/upload`,
             formData
           );
           console.log("[Builder] Thumbnail uploaded directly successfully:", uploadData);
@@ -207,14 +243,14 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       }
 
       // 3. Publish the course via the teacher publish endpoint
-      await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(newCourseId));
+      await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(targetCourseId));
 
-      // 4. Sync any staged video lessons to the new course
+      // 4. Sync any staged video lessons to the course
       if (stagedLessons.length > 0) {
         for (let i = 0; i < stagedLessons.length; i++) {
           const lesson = stagedLessons[i];
           try {
-            await apiClient.post(`/api/v1/teacher/courses/${newCourseId}/videos`, {
+            await apiClient.post(`/api/v1/teacher/courses/${targetCourseId}/videos`, {
               title: lesson.title.trim(),
               section: lesson.section || "Module 1",
               sort_order: i + 1,
@@ -229,7 +265,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       }
 
       set({
-        courseId: newCourseId,
+        courseId: targetCourseId,
         isPublishing: false,
         isDirty: false,
       });
