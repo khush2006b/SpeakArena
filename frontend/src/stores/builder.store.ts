@@ -184,43 +184,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const newCourseId = createData?.data?.id ?? (createData as any)?.id;
       if (!newCourseId) throw new Error("No course ID returned from server.");
 
-      // 2. Upload course thumbnail to R2 if provided
+      // 2. Upload course thumbnail directly to backend if provided
       const thumbnailFileAtPublish = get().thumbnailFile;
       console.log("[Builder] thumbnailFile at publish time:", thumbnailFileAtPublish?.name, thumbnailFileAtPublish?.size, thumbnailFileAtPublish?.type);
 
       if (thumbnailFileAtPublish) {
         try {
-          console.log("[Builder] Requesting presign URL for thumbnail...");
-          const { data: presignData } = await apiClient.post<any>(
-            `/api/v1/teacher/courses/${newCourseId}/thumbnail`,
+          console.log("[Builder] Uploading thumbnail directly to backend...");
+          const formData = new FormData();
+          formData.append("file", thumbnailFileAtPublish);
+
+          const { data: uploadData } = await apiClient.post(
+            `/api/v1/teacher/courses/${newCourseId}/thumbnail/upload`,
+            formData,
             {
-              content_type: thumbnailFileAtPublish.type || "image/jpeg",
-              file_name: thumbnailFileAtPublish.name || "thumbnail.jpg",
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
             }
           );
-          const uploadInfo = presignData?.data ?? presignData;
-          console.log("[Builder] Presign response:", uploadInfo);
-
-          if (uploadInfo?.upload_url) {
-            console.log("[Builder] Uploading thumbnail to R2:", uploadInfo.upload_url);
-            const putRes = await fetch(uploadInfo.upload_url, {
-              method: "PUT",
-              headers: {
-                "Content-Type": thumbnailFileAtPublish.type || "image/jpeg",
-              },
-              body: thumbnailFileAtPublish,
-            });
-            if (!putRes.ok) {
-              const errText = await putRes.text().catch(() => "");
-              console.error("[Builder] R2 PUT failed:", putRes.status, errText);
-            } else {
-              console.log("[Builder] Thumbnail uploaded successfully to R2, status:", putRes.status);
-            }
-          } else {
-            console.warn("[Builder] No upload_url in presign response, skipping thumbnail upload:", uploadInfo);
-          }
+          console.log("[Builder] Thumbnail uploaded directly successfully:", uploadData);
         } catch (thumbErr) {
-          console.error("[Builder] Failed to upload course thumbnail to R2:", thumbErr);
+          console.error("[Builder] Failed to upload course thumbnail directly:", thumbErr);
         }
       } else {
         console.log("[Builder] No thumbnailFile set in store — skipping thumbnail upload.");

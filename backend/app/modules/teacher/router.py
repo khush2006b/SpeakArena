@@ -24,11 +24,12 @@ Endpoint groups:
 
 from __future__ import annotations
 
+import mimetypes
 import traceback
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File as FastAPIFile
 from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -466,6 +467,78 @@ async def get_thumbnail_upload_url(
     )
     await db.commit()
     return success_response(result)
+
+
+@router.post(
+    "/courses/{course_id}/thumbnail/upload",
+    summary="Direct thumbnail upload",
+    description="Accepts a thumbnail image as multipart/form-data and uploads it directly to R2. Use this instead of the presigned URL flow to avoid CORS issues.",
+)
+async def upload_thumbnail_direct(
+    course_id: uuid.UUID,
+    file: UploadFile = FastAPIFile(...),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Upload a course thumbnail directly through the backend to R2."""
+    import asyncio
+    import logging
+    _log = logging.getLogger(__name__)
+
+    from app.core.storage.r2 import (
+        ALLOWED_IMAGE_MIME_TYPES, make_thumbnail_key, ext_from_mime,
+        get_public_url, _get_s3_client, _executor,
+    )
+    from app.core.exceptions.errors import InvalidUploadTypeError, CourseNotFoundError
+
+    content_type = file.content_type or "image/jpeg"
+    if content_type not in ALLOWED_IMAGE_MIME_TYPES:
+        if file.filename:
+            guessed, _ = mimetypes.guess_type(file.filename)
+            if guessed and guessed in ALLOWED_IMAGE_MIME_TYPES:
+                content_type = guessed
+            else:
+                content_type = "image/jpeg"
+        else:
+            content_type = "image/jpeg"
+
+    svc = CourseService(db, teacher)
+    course = await svc.get_course(course_id)
+
+    ext = ext_from_mime(content_type)
+    r2_key = make_thumbnail_key(course_id, ext)
+
+    raw_bytes = await file.read()
+    _log.info("Uploading thumbnail directly to R2 key=%r size=%d bytes", r2_key, len(raw_bytes))
+
+    from app.config import get_settings
+    settings = get_settings()
+
+    def _put() -> None:
+        client = _get_s3_client()
+        client.put_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            Key=r2_key,
+            Body=raw_bytes,
+            ContentType=content_type,
+        )
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(_executor, _put)
+
+    # Record the key in the DB
+    from app.modules.teacher.repository import CourseRepository
+    repo = CourseRepository(db)
+    await repo.update(course, thumbnail_r2_key=r2_key)
+    await db.commit()
+
+    public_url = get_public_url(r2_key)
+    _log.info("Thumbnail uploaded successfully key=%r url=%r", r2_key, public_url)
+
+    return success_response({
+        "r2_key": r2_key,
+        "thumbnail_url": public_url,
+    }, message="Thumbnail uploaded successfully.")
 
 
 @router.get(

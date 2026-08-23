@@ -1,7 +1,6 @@
 
 import { MavenHeroSection } from "@/features/marketing/components/MavenHeroSection";
 import { FeaturesSection } from "@/features/marketing/components/FeaturesSection";
-import { TeacherSection } from "@/features/marketing/components/TeacherSection";
 import { CourseShowcaseSection } from "@/features/marketing/components/CourseShowcaseSection";
 import { TestimonialsSection } from "@/features/marketing/components/TestimonialsSection";
 import { PricingSection } from "@/features/marketing/components/PricingSection";
@@ -14,8 +13,6 @@ export default function LandingPage() {
       <MavenHeroSection />
 
       <FeaturesSection />
-
-      <TeacherSection />
 
       <CourseShowcaseSection />
 

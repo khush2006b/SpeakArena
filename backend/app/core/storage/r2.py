@@ -78,6 +78,10 @@ ALLOWED_IMAGE_MIME_TYPES: frozenset[str] = frozenset(
         "image/png",
         "image/webp",
         "image/gif",
+        "image/svg+xml",
+        "image/avif",
+        "image/pjpeg",
+        "image/x-png",
     }
 )
 
