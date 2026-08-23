@@ -29,6 +29,7 @@ pydantic-settings==2.6.1
 # --- Storage (Cloudflare R2 via S3-compatible API) ---
 boto3==1.35.81
 botocore==1.35.81
+certifi>=2024.2.2            # Up-to-date CA bundle for R2 TLS (Python 3.13 compat)
 
 # --- Payments ---
 razorpay==1.4.2

@@ -211,6 +211,7 @@ def get_public_url(object_key: str | None) -> str | None:
 
 
 from botocore.config import Config
+import certifi
 
 @lru_cache(maxsize=1)
 def _get_s3_client() -> Any:
@@ -229,7 +230,10 @@ def _get_s3_client() -> Any:
         aws_access_key_id=settings.R2_ACCESS_KEY_ID,
         aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
         region_name="auto",
-        config=Config(signature_version="s3v4"),
+        config=Config(
+            signature_version="s3v4",
+        ),
+        verify=certifi.where(),  # Use certifi CA bundle — fixes SSLv3 handshake failure on Render/Python 3.13
     )
 
 
