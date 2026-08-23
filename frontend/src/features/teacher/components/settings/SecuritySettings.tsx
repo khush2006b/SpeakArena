@@ -10,12 +10,17 @@ import { cn } from "@/lib/utils";
 
 export function SecuritySettings() {
   const [sessions, setSessions] = React.useState<any[]>([]);
+  const [userEmail, setUserEmail] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await apiClient.get("/api/v1/teacher/profile");
+        const profile = response.data?.data || response.data;
+        if (profile?.email) {
+          setUserEmail(profile.email);
+        }
         setSessions(response.data?.security?.activeSessions || []);
       } catch (error) {
       } finally {
@@ -26,13 +31,18 @@ export function SecuritySettings() {
   }, []);
 
   const handleChangePassword = async () => {
+    if (!userEmail) {
+      toast.error("User email not loaded. Please try again.");
+      return;
+    }
     try {
-      await apiClient.post("/api/v1/auth/forgot-password", { email: "teacher@example.com" }); // TODO: Use real teacher email
+      await apiClient.post("/api/v1/auth/forgot-password", { email: userEmail });
       toast.success("Password reset email sent!");
     } catch (error) {
       toast.error("Failed to send password reset email");
     }
   };
+
 
   const handleLogoutAll = () => {
     setSessions(sessions.filter(s => s.isCurrent));

@@ -541,12 +541,13 @@ async def upload_thumbnail_direct(
 
         # Strategy 2: Cloudflare REST API fallback (api.cloudflare.com)
         auth_headers: dict[str, str] = {}
-        if settings.CLOUDFLARE_API_KEY and settings.CLOUDFLARE_EMAIL:
+        api_key = settings.CLOUDFLARE_API_KEY or (settings.CLOUDFLARE_API_TOKEN if settings.CLOUDFLARE_EMAIL else "")
+        if api_key and settings.CLOUDFLARE_EMAIL:
             auth_headers = {
-                "X-Auth-Key": settings.CLOUDFLARE_API_KEY,
+                "X-Auth-Key": api_key,
                 "X-Auth-Email": settings.CLOUDFLARE_EMAIL,
             }
-            _log.info("Using Global API Key auth for REST API fallback")
+            _log.info("Using Global API Key auth (X-Auth-Key + X-Auth-Email) for REST API fallback")
         elif settings.CLOUDFLARE_API_TOKEN:
             auth_headers = {
                 "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
