@@ -472,7 +472,7 @@ async def get_thumbnail_upload_url(
 @router.post(
     "/courses/{course_id}/thumbnail/upload",
     summary="Direct thumbnail upload",
-    description="Accepts a thumbnail image as multipart/form-data and uploads it directly to R2. Use this instead of the presigned URL flow to avoid CORS issues.",
+    description="Accepts a thumbnail image as multipart/form-data and stores it in R2 via the Cloudflare REST API.",
 )
 async def upload_thumbnail_direct(
     course_id: uuid.UUID,
@@ -480,22 +480,19 @@ async def upload_thumbnail_direct(
     teacher: User = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db_session),
 ) -> JSONResponse:
-    """Upload a course thumbnail directly through the backend to R2.
+    """Upload a course thumbnail to R2 via the Cloudflare REST API.
 
-    Strategy: generate a presigned PUT URL server-side (pure cryptography,
-    no outbound network call), then use httpx to PUT the bytes at that URL.
-    This avoids botocore's urllib3 HTTP session which suffers TLS handshake
-    failures against Cloudflare R2 on Render's Python 3.13 containers.
+    Uses https://api.cloudflare.com (not r2.cloudflarestorage.com which has
+    TLS handshake issues on Render's Python 3.13 + some network configurations).
+    Requires CLOUDFLARE_API_TOKEN env var with R2 write permissions.
     """
     import logging
+    import httpx
     _log = logging.getLogger(__name__)
 
-    import httpx
     from app.core.storage.r2 import (
-        ALLOWED_IMAGE_MIME_TYPES, make_thumbnail_key, ext_from_mime,
-        get_public_url, _get_s3_client, _executor,
+        ALLOWED_IMAGE_MIME_TYPES, make_thumbnail_key, ext_from_mime, get_public_url,
     )
-    from app.core.exceptions.errors import CourseNotFoundError
     from app.config import get_settings
 
     content_type = file.content_type or "image/jpeg"
@@ -515,49 +512,46 @@ async def upload_thumbnail_direct(
     settings = get_settings()
     ext = ext_from_mime(content_type)
     r2_key = make_thumbnail_key(course_id, ext)
-
     raw_bytes = await file.read()
-    _log.info("Uploading thumbnail via presign+httpx key=%r size=%d bytes", r2_key, len(raw_bytes))
 
-    # Step 1: Generate presigned PUT URL — pure crypto, no outbound network call
-    import asyncio
-    def _presign() -> str:
-        client = _get_s3_client()
-        return client.generate_presigned_url(
-            "put_object",
-            Params={
-                "Bucket": settings.R2_BUCKET_NAME,
-                "Key": r2_key,
-                "ContentType": content_type,
-            },
-            ExpiresIn=300,  # 5 minutes is plenty
+    _log.info("Uploading thumbnail via Cloudflare REST API key=%r size=%d bytes", r2_key, len(raw_bytes))
+
+    if not settings.CLOUDFLARE_API_TOKEN:
+        _log.error("CLOUDFLARE_API_TOKEN is not set — cannot upload thumbnail")
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "Storage upload not configured. Set CLOUDFLARE_API_TOKEN on the server."},
         )
 
-    loop = asyncio.get_event_loop()
-    presigned_url: str = await loop.run_in_executor(_executor, _presign)
-    _log.info("Presigned PUT URL generated for key=%r", r2_key)
+    # Cloudflare REST API for R2 object management — uses api.cloudflare.com (no TLS issues)
+    cf_api_url = (
+        f"https://api.cloudflare.com/client/v4/accounts/{settings.R2_ACCOUNT_ID}"
+        f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
+    )
 
-    # Step 2: PUT the bytes using httpx — bypasses botocore's broken TLS on Render
     async with httpx.AsyncClient(timeout=60.0) as http:
         response = await http.put(
-            presigned_url,
+            cf_api_url,
             content=raw_bytes,
-            headers={"Content-Type": content_type},
+            headers={
+                "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
+                "Content-Type": content_type,
+            },
         )
 
     if response.status_code not in (200, 201, 204):
         _log.error(
-            "R2 PUT via presigned URL failed key=%r status=%d body=%r",
+            "Cloudflare API R2 upload failed key=%r status=%d body=%r",
             r2_key, response.status_code, response.text[:500],
         )
         return JSONResponse(
             status_code=502,
-            content={"success": False, "error": f"R2 upload failed: HTTP {response.status_code}"},
+            content={"success": False, "error": f"R2 upload failed: HTTP {response.status_code} — {response.text[:200]}"},
         )
 
-    _log.info("Thumbnail PUT to R2 succeeded key=%r status=%d", r2_key, response.status_code)
+    _log.info("Thumbnail uploaded via Cloudflare API key=%r status=%d", r2_key, response.status_code)
 
-    # Step 3: Record the key in the DB
+    # Record the key in the DB
     from app.modules.teacher.repository import CourseRepository
     repo = CourseRepository(db)
     await repo.update(course, thumbnail_r2_key=r2_key)

@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     R2_PRESIGNED_URL_EXPIRY_UPLOAD: int = 900
     R2_PRESIGNED_URL_EXPIRY_STREAM: int = 3600
     R2_PRESIGNED_URL_EXPIRY_DOWNLOAD: int = 1800
+    CLOUDFLARE_API_TOKEN: str = ""  # API token with R2 write permissions (dash.cloudflare.com/profile/api-tokens)
 
     # --- Razorpay ---
     RAZORPAY_KEY_ID: str = ""
