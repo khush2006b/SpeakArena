@@ -17,9 +17,14 @@ import { NotificationBell } from "./NotificationBell";
 export function SiteHeader() {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [searchFocused, setSearchFocused] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
-  const isFullyAuth = isAuthenticated && Boolean(user);
+  const isFullyAuth = mounted && isAuthenticated && Boolean(user);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);

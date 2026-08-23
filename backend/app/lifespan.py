@@ -138,6 +138,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) DEFAULT NULL;",
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id UUID DEFAULT NULL;",
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS request_id VARCHAR(36) DEFAULT NULL;",
+        # ── notifications.actor_id missing from production DB ─────────────────
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id UUID DEFAULT NULL;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url VARCHAR(512) DEFAULT NULL;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) DEFAULT NULL;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id UUID DEFAULT NULL;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel VARCHAR(20) NOT NULL DEFAULT 'in_app';",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_email_sent BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}';",
+        # ── courses.thumbnail_r2_key for persistent R2 thumbnail storage ───────
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_r2_key VARCHAR(512) DEFAULT NULL;",
     ]
 
     try:
