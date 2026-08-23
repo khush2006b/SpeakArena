@@ -18,6 +18,10 @@ export function InformationStep() {
   const [thumbnailPreview, setThumbnailPreview] = React.useState<string | null>(thumbnailUrl);
   const thumbnailInputRef = React.useRef<HTMLInputElement>(null);
 
+  React.useEffect(() => {
+    setThumbnailPreview(thumbnailUrl);
+  }, [thumbnailUrl]);
+
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
