@@ -833,7 +833,7 @@ export function StudentMessagesView() {
                   No enrolled courses.
                 </div>
               ) : (
-                courses.map((course, idx) => {
+                courses.map((course) => {
                   const isActive =
                     activeChannel?.type === "course" &&
                     activeChannel.course.id === course.id;

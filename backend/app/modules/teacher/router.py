@@ -34,6 +34,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis.client import get_redis
+from app.core.storage import r2
 from app.core.utils.response import (
     created_response,
     no_content_response,
@@ -243,6 +244,7 @@ async def list_courses(
                 "visibility": c.visibility,
                 "price": float(c.price),
                 "thumbnail_r2_key": c.thumbnail_r2_key,
+                "thumbnail_url": r2.get_public_url(c.thumbnail_r2_key),
                 "total_enrollments": c.total_enrollments or 0,
                 "max_students": c.max_students,
                 "total_lectures": c.total_lectures,
@@ -325,6 +327,7 @@ async def get_course(
             "description": course.description,
             "short_description": course.short_description,
             "thumbnail_r2_key": course.thumbnail_r2_key,
+            "thumbnail_url": r2.get_public_url(course.thumbnail_r2_key),
             "price": float(course.price),
             "original_price": float(course.original_price) if course.original_price else None,
             "currency": course.currency,

@@ -11,6 +11,7 @@ export function InformationStep() {
     subtitle, setSubtitle,
     description, setDescription,
     thumbnailUrl, setThumbnailUrl,
+    setThumbnailFile,
     createCourse, isCreating, error, clearError,
   } = useBuilderStore();
 
@@ -22,8 +23,8 @@ export function InformationStep() {
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
     setThumbnailPreview(objectUrl);
-    // In production you'd upload to R2 here and setThumbnailUrl(uploadedUrl)
     setThumbnailUrl(objectUrl);
+    setThumbnailFile(file);
   };
 
   const handleContinue = async () => {

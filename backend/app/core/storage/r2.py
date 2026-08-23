@@ -181,10 +181,32 @@ def ext_from_mime(mime_type: str) -> str:
     return ext.lstrip(".").lower()
 
 
+def get_public_url(object_key: str | None) -> str | None:
+    """Build the public CDN/R2 URL for a given object key.
+
+    Args:
+        object_key: The R2 object key or existing URL.
+
+    Returns:
+        str | None: Fully qualified public URL, or None if key is empty.
+    """
+    if not object_key:
+        return None
+    if object_key.startswith("http://") or object_key.startswith("https://"):
+        return object_key
+    settings = get_settings()
+    base = (settings.R2_PUBLIC_URL or "").rstrip("/")
+    if not base:
+        return None
+    return f"{base}/{object_key.lstrip('/')}"
+
+
 # ---------------------------------------------------------------------------
 # R2 client factory
 # ---------------------------------------------------------------------------
 
+
+from botocore.config import Config
 
 @lru_cache(maxsize=1)
 def _get_s3_client() -> Any:
@@ -203,6 +225,7 @@ def _get_s3_client() -> Any:
         aws_access_key_id=settings.R2_ACCESS_KEY_ID,
         aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
         region_name="auto",
+        config=Config(signature_version="s3v4"),
     )
 
 

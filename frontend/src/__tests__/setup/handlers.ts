@@ -11,13 +11,9 @@
 import { http, HttpResponse } from "msw";
 import {
   makeUser,
-  makeStudentProfile,
-  makeTeacherProfile,
   makeCourse,
   makeEnrolledCourse,
   makeNotification,
-  makeLesson,
-  makeMeeting,
   makePaymentOrder,
   makeChatMessage,
   makePaginatedResponse,

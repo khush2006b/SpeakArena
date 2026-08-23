@@ -234,6 +234,7 @@ class UserSchema(BaseModel):
     is_email_verified: bool
     is_active: bool
     avatar_r2_key: str | None = None
+    avatar_url: str | None = None
     last_login_at: datetime | None
     created_at: datetime
 
@@ -250,6 +251,8 @@ class UserSchema(BaseModel):
         Returns:
             UserSchema: Serializable user representation.
         """
+        from app.core.storage import r2
+        avatar_key = getattr(user, "avatar_r2_key", None)
         return cls(
             id=str(getattr(user, "id", "")),
             email=str(getattr(user, "email", "")),
@@ -258,7 +261,8 @@ class UserSchema(BaseModel):
             phone=getattr(user, "phone", None),
             is_email_verified=bool(getattr(user, "is_email_verified", False)),
             is_active=bool(getattr(user, "is_active", True)),
-            avatar_r2_key=getattr(user, "avatar_r2_key", None),
+            avatar_r2_key=avatar_key,
+            avatar_url=r2.get_public_url(avatar_key),
             last_login_at=getattr(user, "last_login_at", None),
             created_at=getattr(user, "created_at"),
         )

@@ -802,7 +802,7 @@ export function TeacherCommunicationView() {
                   No courses yet.
                 </div>
               ) : (
-                courses.map((c, idx) => {
+                courses.map((c) => {
                   const isActive =
                     activeChannel.type === "course" &&
                     activeChannel.course.id === c.id;
@@ -852,7 +852,7 @@ export function TeacherCommunicationView() {
                           letterSpacing: "-0.5px",
                         }}
                       >
-                        {course.title.slice(0, 2).toUpperCase()}
+                        {c.title.slice(0, 2).toUpperCase()}
                       </div>
                       <div
                         style={{
@@ -871,13 +871,13 @@ export function TeacherCommunicationView() {
                             fontSize: 13,
                           }}
                         >
-                          {course.title}
+                          {c.title}
                         </div>
-                        {course.level && (
+                        {c.level && (
                           <div style={{ fontSize: 10, color: "#475569" }}>
-                            {course.level}
-                            {course.total_enrollments !== undefined &&
-                              ` · ${course.total_enrollments} students`}
+                            {c.level}
+                            {c.total_enrollments !== undefined &&
+                              ` · ${c.total_enrollments} students`}
                           </div>
                         )}
                       </div>

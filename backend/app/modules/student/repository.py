@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions.errors import ValidationError
+from app.core.storage import r2
 from app.models.chat import ChatRoom, Message
 from app.models.course import (
     ContentProgress,
@@ -296,12 +297,14 @@ class StudentCourseRepository:
                 "title": r.title,
                 "slug": r.slug,
                 "thumbnail_r2_key": r.thumbnail_r2_key,
+                "thumbnail_url": r2.get_public_url(r.thumbnail_r2_key),
                 "level": r.level,
                 "language": r.language,
                 "total_lectures": r.total_lectures,
                 "total_duration_seconds": r.total_duration_seconds,
                 "teacher_name": r.teacher_name,
                 "teacher_avatar_r2_key": r.teacher_avatar_r2_key,
+                "teacher_avatar_url": r2.get_public_url(r.teacher_avatar_r2_key),
                 "progress_percentage": float(r.progress_percentage or 0.0),
                 "enrollment_status": r.enrollment_status,
                 "enrolled_at": r.enrolled_at,
@@ -370,6 +373,7 @@ class StudentCourseRepository:
                 "description": c.description,
                 "short_description": c.short_description,
                 "thumbnail_r2_key": c.thumbnail_r2_key,
+                "thumbnail_url": r2.get_public_url(c.thumbnail_r2_key),
                 "price": float(c.price),
                 "level": c.level,
                 "language": c.language,
@@ -503,6 +507,7 @@ class StudentCourseRepository:
             "description": row.description,
             "short_description": row.short_description,
             "thumbnail_r2_key": row.thumbnail_r2_key,
+            "thumbnail_url": r2.get_public_url(row.thumbnail_r2_key),
             "level": row.level,
             "language": row.language,
             "total_lectures": row.total_lectures,
@@ -513,6 +518,7 @@ class StudentCourseRepository:
                 "user_id": row.teacher_user_id,
                 "full_name": row.teacher_name,
                 "avatar_r2_key": row.teacher_avatar_r2_key,
+                "avatar_url": r2.get_public_url(row.teacher_avatar_r2_key),
                 "headline": row.teacher_headline,
                 "bio": row.teacher_bio,
                 "total_students": row.teacher_total_students or 0,
@@ -561,6 +567,7 @@ class StudentCourseRepository:
                 "course_id": r.course_id,
                 "title": r.title,
                 "thumbnail_r2_key": r.thumbnail_r2_key,
+                "thumbnail_url": r2.get_public_url(r.thumbnail_r2_key),
                 "progress_percentage": float(r.progress_percentage),
                 "last_accessed_at": r.last_accessed_at,
             }

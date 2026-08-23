@@ -28,6 +28,7 @@ export interface BuilderState {
   subtitle: string;
   description: string;
   thumbnailUrl: string | null;
+  thumbnailFile: File | null;
 
   // ── Pricing ──────────────────────────────────────────────────────
   price: number;
@@ -58,6 +59,7 @@ export interface BuilderState {
   setSubtitle: (subtitle: string) => void;
   setDescription: (description: string) => void;
   setThumbnailUrl: (url: string | null) => void;
+  setThumbnailFile: (file: File | null) => void;
   setPrice: (price: number) => void;
   setDiscountedPrice: (price: number | null) => void;
   setAccessType: (type: AccessType) => void;
@@ -81,6 +83,7 @@ const DEFAULT_STATE = {
   subtitle: "",
   description: "",
   thumbnailUrl: null,
+  thumbnailFile: null,
   price: 0,
   discountedPrice: null,
   accessType: "public" as AccessType,
@@ -115,6 +118,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setSubtitle: (subtitle) => set({ subtitle, isDirty: true }),
   setDescription: (description) => set({ description, isDirty: true }),
   setThumbnailUrl: (url) => set({ thumbnailUrl: url, isDirty: true }),
+  setThumbnailFile: (file) => set({ thumbnailFile: file, isDirty: true }),
   setPrice: (price) => set({ price, isDirty: true }),
   setDiscountedPrice: (price) => set({ discountedPrice: price, isDirty: true }),
   setAccessType: (type) => set({ accessType: type, isDirty: true }),
@@ -153,7 +157,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // ── publishCourse (Creates course in DB with real data when published) ─
   publishCourse: async () => {
-    const { courseTitle, description, price, accessType, maxStudents, stagedLessons } = get();
+    const { courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before publishing." });
@@ -180,10 +184,35 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const newCourseId = createData?.data?.id ?? (createData as any)?.id;
       if (!newCourseId) throw new Error("No course ID returned from server.");
 
-      // 2. Publish the course via the teacher publish endpoint
+      // 2. Upload course thumbnail to R2 if provided
+      if (thumbnailFile) {
+        try {
+          const { data: presignData } = await apiClient.post<any>(
+            `/api/v1/teacher/courses/${newCourseId}/thumbnail`,
+            {
+              content_type: thumbnailFile.type || "image/jpeg",
+              file_name: thumbnailFile.name || "thumbnail.jpg",
+            }
+          );
+          const uploadInfo = presignData?.data ?? presignData;
+          if (uploadInfo?.upload_url) {
+            await fetch(uploadInfo.upload_url, {
+              method: "PUT",
+              headers: {
+                "Content-Type": thumbnailFile.type || "image/jpeg",
+              },
+              body: thumbnailFile,
+            });
+          }
+        } catch (thumbErr) {
+          console.warn("Failed to upload course thumbnail to R2:", thumbErr);
+        }
+      }
+
+      // 3. Publish the course via the teacher publish endpoint
       await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(newCourseId));
 
-      // 3. Sync any staged video lessons to the new course
+      // 4. Sync any staged video lessons to the new course
       if (stagedLessons.length > 0) {
         for (let i = 0; i < stagedLessons.length; i++) {
           const lesson = stagedLessons[i];

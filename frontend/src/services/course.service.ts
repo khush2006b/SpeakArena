@@ -73,12 +73,30 @@ export interface UpdateLectureProgressPayload {
  *                  thumbnail_r2_key, created_at, updated_at, level, language, visibility etc.
  */
 function mapCourse(raw: any): Course {
+  const rawThumb = raw.thumbnail_url ?? raw.thumbnailUrl ?? raw.thumbnail_r2_key ?? null;
+  let thumbnailUrl: string | null = null;
+  if (rawThumb) {
+    if (
+      rawThumb.startsWith("http://") ||
+      rawThumb.startsWith("https://") ||
+      rawThumb.startsWith("data:") ||
+      rawThumb.startsWith("/")
+    ) {
+      thumbnailUrl = rawThumb;
+    } else {
+      const publicBase =
+        process.env.NEXT_PUBLIC_R2_PUBLIC_URL ||
+        "https://pub-2bce22cbeaed5081cb64a95d013888e8.r2.dev";
+      thumbnailUrl = `${publicBase.replace(/\/$/, "")}/${rawThumb.replace(/^\//, "")}`;
+    }
+  }
+
   return {
     id: String(raw.id ?? ""),
     title: raw.title ?? "",
     slug: raw.slug ?? "",
     description: raw.description ?? null,
-    thumbnailUrl: raw.thumbnail_url ?? raw.thumbnailUrl ?? null,
+    thumbnailUrl,
     status: (raw.status ?? "DRAFT").toUpperCase() as CourseStatus,
     teacherId: String(raw.teacher_id ?? raw.teacherId ?? ""),
     teacherName: raw.teacher_name ?? raw.teacherName ?? null,

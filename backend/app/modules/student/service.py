@@ -1099,6 +1099,7 @@ class ProfileService:
             "email": self._student.email,
             "phone": self._student.phone,
             "avatar_r2_key": self._student.avatar_r2_key,
+            "avatar_url": r2.get_public_url(self._student.avatar_r2_key),
             "is_email_verified": self._student.is_email_verified,
             "last_login_at": self._student.last_login_at,
             "created_at": self._student.created_at,
