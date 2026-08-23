@@ -185,28 +185,45 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       if (!newCourseId) throw new Error("No course ID returned from server.");
 
       // 2. Upload course thumbnail to R2 if provided
-      if (thumbnailFile) {
+      const thumbnailFileAtPublish = get().thumbnailFile;
+      console.log("[Builder] thumbnailFile at publish time:", thumbnailFileAtPublish?.name, thumbnailFileAtPublish?.size, thumbnailFileAtPublish?.type);
+
+      if (thumbnailFileAtPublish) {
         try {
+          console.log("[Builder] Requesting presign URL for thumbnail...");
           const { data: presignData } = await apiClient.post<any>(
             `/api/v1/teacher/courses/${newCourseId}/thumbnail`,
             {
-              content_type: thumbnailFile.type || "image/jpeg",
-              file_name: thumbnailFile.name || "thumbnail.jpg",
+              content_type: thumbnailFileAtPublish.type || "image/jpeg",
+              file_name: thumbnailFileAtPublish.name || "thumbnail.jpg",
             }
           );
           const uploadInfo = presignData?.data ?? presignData;
+          console.log("[Builder] Presign response:", uploadInfo);
+
           if (uploadInfo?.upload_url) {
-            await fetch(uploadInfo.upload_url, {
+            console.log("[Builder] Uploading thumbnail to R2:", uploadInfo.upload_url);
+            const putRes = await fetch(uploadInfo.upload_url, {
               method: "PUT",
               headers: {
-                "Content-Type": thumbnailFile.type || "image/jpeg",
+                "Content-Type": thumbnailFileAtPublish.type || "image/jpeg",
               },
-              body: thumbnailFile,
+              body: thumbnailFileAtPublish,
             });
+            if (!putRes.ok) {
+              const errText = await putRes.text().catch(() => "");
+              console.error("[Builder] R2 PUT failed:", putRes.status, errText);
+            } else {
+              console.log("[Builder] Thumbnail uploaded successfully to R2, status:", putRes.status);
+            }
+          } else {
+            console.warn("[Builder] No upload_url in presign response, skipping thumbnail upload:", uploadInfo);
           }
         } catch (thumbErr) {
-          console.warn("Failed to upload course thumbnail to R2:", thumbErr);
+          console.error("[Builder] Failed to upload course thumbnail to R2:", thumbErr);
         }
+      } else {
+        console.log("[Builder] No thumbnailFile set in store — skipping thumbnail upload.");
       }
 
       // 3. Publish the course via the teacher publish endpoint

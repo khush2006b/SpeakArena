@@ -294,9 +294,18 @@ async def generate_presigned_upload_url(
         url: str = await _run_in_executor(_presign)
         logger.debug("R2 presigned upload URL generated key=%r expiry=%ds", object_key, expiry)
         return url
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("R2 presign upload failed key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Failed to generate upload URL. Please try again.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
     except Exception as exc:
-        logger.warning("R2 presign upload failed key=%r: %s. Using local dev mock URL.", object_key, exc)
-        return f"http://localhost:3000/api/v1/mock-upload?key={object_key}"
+        logger.error("R2 presign upload unexpected error key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Storage service unavailable. Please try again.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
 
 
 async def generate_presigned_download_url(
@@ -328,9 +337,18 @@ async def generate_presigned_download_url(
         url: str = await _run_in_executor(_presign)
         logger.debug("R2 presigned download URL generated key=%r expiry=%ds", object_key, expiry)
         return url
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("R2 presign download failed key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Failed to generate download URL. Please try again.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
     except Exception as exc:
-        logger.warning("R2 presign download failed key=%r: %s. Using local dev mock URL.", object_key, exc)
-        return f"http://localhost:3000/api/v1/mock-download?key={object_key}"
+        logger.error("R2 presign download unexpected error key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Storage service unavailable.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
 
 
 async def generate_presigned_stream_url(
@@ -372,9 +390,18 @@ async def generate_presigned_stream_url(
     try:
         url: str = await _run_in_executor(_presign)
         return url
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("R2 presign stream failed key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Failed to generate stream URL. Please try again.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
     except Exception as exc:
-        logger.warning("R2 presign stream failed key=%r: %s. Using local dev mock URL.", object_key, exc)
-        return f"http://localhost:3000/api/v1/mock-stream?key={object_key}"
+        logger.error("R2 presign stream unexpected error key=%r: %s", object_key, exc)
+        raise R2OperationError(
+            message="Storage service unavailable.",
+            detail={"key": object_key, "error": str(exc)},
+        ) from exc
 
 
 async def delete_object(object_key: str) -> bool:
