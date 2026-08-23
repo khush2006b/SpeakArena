@@ -7,6 +7,7 @@ import { LogOut, Settings, User, CreditCard } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth.store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function TeacherProfileMenu() {
   const router = useRouter();
@@ -16,6 +17,9 @@ export function TeacherProfileMenu() {
 
   const teacherName = user?.fullName || (user as any)?.full_name || "Teacher";
   const teacherEmail = user?.email || "teacher@speakarena.com";
+  const initials = teacherName
+    ? teacherName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "T";
 
   const handleLogout = () => {
     clearUser();
@@ -28,15 +32,12 @@ export function TeacherProfileMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full bg-transparent border-none outline-none cursor-pointer transition-transform hover:scale-105 press-scale"
       >
-        <div className="h-9 w-9 rounded-full border border-border overflow-hidden bg-violet-500/10 flex items-center justify-center text-violet-400 font-semibold text-sm relative">
-          <img
-            src="/images/default_avatar.png"
-            alt={teacherName}
-            className="w-full h-full object-cover object-top"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
-          <span className="absolute">PC</span>
-        </div>
+        <Avatar className="h-9 w-9 border border-border">
+          <AvatarImage src={user?.avatarUrl ?? undefined} alt={teacherName} />
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
       </button>
 
       {isOpen && (

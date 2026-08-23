@@ -77,6 +77,9 @@ function CourseCard({ course }: { course: Course }) {
             <img
               src={course.thumbnailUrl}
               alt={course.title}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
               className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
             />
           ) : (

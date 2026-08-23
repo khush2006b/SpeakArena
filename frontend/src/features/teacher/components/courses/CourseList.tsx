@@ -169,7 +169,14 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                         <div style={{ position: 'relative', height: '48px', width: '80px', flexShrink: 0, overflow: 'hidden', borderRadius: '8px', background: 'hsl(var(--border))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid hsl(var(--border))' }} className="hidden sm:flex">
                           {course.thumbnailUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={course.thumbnailUrl} alt={course.title} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+                            <img
+                              src={course.thumbnailUrl}
+                              alt={course.title}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                            />
                           ) : (
                             <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'hsl(var(--border))' }}>{course.title[0]}</span>
                           )}
