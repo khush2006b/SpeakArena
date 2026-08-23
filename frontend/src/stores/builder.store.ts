@@ -196,12 +196,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
           const { data: uploadData } = await apiClient.post(
             `/api/v1/teacher/courses/${newCourseId}/thumbnail/upload`,
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            }
+            formData
           );
           console.log("[Builder] Thumbnail uploaded directly successfully:", uploadData);
         } catch (thumbErr) {

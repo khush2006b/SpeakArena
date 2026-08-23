@@ -72,6 +72,13 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.set("Authorization", `Bearer ${token}`);
     }
+    // For multipart FormData, remove Content-Type so the browser sets the boundary automatically
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+      if (typeof (config.headers as any).delete === "function") {
+        (config.headers as any).delete("Content-Type");
+      }
+    }
     return config;
   },
   (error: unknown) => Promise.reject(error),
