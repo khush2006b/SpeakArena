@@ -574,13 +574,17 @@ async def upload_thumbnail_direct(
             except Exception as rest_err:
                 _log.error("Cloudflare REST API call error: %s", rest_err)
 
-    import os
-    local_dir = f"uploads/thumbnails/courses/{course_id}"
-    os.makedirs(local_dir, exist_ok=True)
-    local_path = f"{local_dir}/thumbnail.{ext}"
-    with open(local_path, "wb") as f_out:
-        f_out.write(raw_bytes)
-    _log.info("Saved local thumbnail fallback to %r", local_path)
+    import os, tempfile
+    upload_dir = os.path.join(tempfile.gettempdir(), "uploads")
+    local_dir = os.path.join(upload_dir, "thumbnails", "courses", str(course_id))
+    try:
+        os.makedirs(local_dir, exist_ok=True)
+        local_path = os.path.join(local_dir, f"thumbnail.{ext}")
+        with open(local_path, "wb") as f_out:
+            f_out.write(raw_bytes)
+        _log.info("Saved local thumbnail fallback to %r", local_path)
+    except Exception as err:
+        _log.warning("Could not write local thumbnail fallback: %s", err)
 
     # Record the key in the DB
     from app.modules.teacher.repository import CourseRepository
