@@ -86,7 +86,7 @@ function mapCourse(raw: any): Course {
     } else {
       const publicBase =
         process.env.NEXT_PUBLIC_R2_PUBLIC_URL ||
-        "https://pub-2bce22cbeaed5081cb64a95d013888e8.r2.dev";
+        "https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev";
       thumbnailUrl = `${publicBase.replace(/\/$/, "")}/${rawThumb.replace(/^\//, "")}`;
     }
   }
