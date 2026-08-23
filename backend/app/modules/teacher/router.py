@@ -519,83 +519,14 @@ async def upload_thumbnail_direct(
     svc = CourseService(db, teacher)
     course = await svc.get_course(course_id)
 
-    settings = get_settings()
     ext = ext_from_mime(content_type)
     r2_key = make_thumbnail_key(course_id, ext)
     raw_bytes = await file.read()
 
-    _log.info("Uploading thumbnail direct for key=%r size=%d bytes", r2_key, len(raw_bytes))
+    _log.info("Saving thumbnail to database for course=%s size=%d bytes mime=%r", course_id, len(raw_bytes), content_type)
 
-    upload_success = False
-
-    # Strategy 1: Standard boto3 S3 put_object (with addressing_style="path" and verify=False)
-    def _put_boto3() -> None:
-        _get_s3_client.cache_clear()
-        client = _get_s3_client()
-        client.put_object(
-            Bucket=settings.R2_BUCKET_NAME,
-            Key=r2_key,
-            Body=raw_bytes,
-            ContentType=content_type,
-        )
-
-    try:
-        import asyncio
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(_executor, _put_boto3)
-        _log.info("Thumbnail uploaded successfully via boto3 path-style S3 API key=%r", r2_key)
-        upload_success = True
-    except Exception as s3_err:
-        _log.warning("boto3 S3 upload failed (key=%r): %s. Trying REST API fallback...", r2_key, s3_err)
-
-        # Strategy 2: Cloudflare REST API fallback (api.cloudflare.com)
-        auth_headers: dict[str, str] = {}
-        api_key = settings.CLOUDFLARE_API_KEY or (settings.CLOUDFLARE_API_TOKEN if settings.CLOUDFLARE_EMAIL else "")
-        if api_key and settings.CLOUDFLARE_EMAIL:
-            auth_headers = {
-                "X-Auth-Key": api_key,
-                "X-Auth-Email": settings.CLOUDFLARE_EMAIL,
-            }
-            _log.info("Using Global API Key auth (X-Auth-Key + X-Auth-Email) for REST API fallback")
-        elif settings.CLOUDFLARE_API_TOKEN:
-            auth_headers = {
-                "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
-            }
-            _log.info("Using Bearer token auth for REST API fallback")
-
-        if auth_headers:
-            cf_api_url = (
-                f"https://api.cloudflare.com/client/v4/accounts/{settings.R2_ACCOUNT_ID}"
-                f"/r2/buckets/{settings.R2_BUCKET_NAME}/objects/{r2_key}"
-            )
-            try:
-                async with httpx.AsyncClient(timeout=60.0, verify=False) as http:
-                    response = await http.put(
-                        cf_api_url,
-                        content=raw_bytes,
-                        headers={**auth_headers, "Content-Type": content_type},
-                    )
-                if response.status_code in (200, 201, 204):
-                    _log.info("Thumbnail uploaded successfully via Cloudflare REST API key=%r", r2_key)
-                    upload_success = True
-                else:
-                    _log.error("Cloudflare REST API upload failed key=%r status=%d body=%r", r2_key, response.status_code, response.text[:300])
-            except Exception as rest_err:
-                _log.error("Cloudflare REST API call error: %s", rest_err)
-
-    import os, tempfile
-    upload_dir = os.path.join(tempfile.gettempdir(), "uploads")
-    local_dir = os.path.join(upload_dir, "thumbnails", "courses", str(course_id))
-    try:
-        os.makedirs(local_dir, exist_ok=True)
-        local_path = os.path.join(local_dir, f"thumbnail.{ext}")
-        with open(local_path, "wb") as f_out:
-            f_out.write(raw_bytes)
-        _log.info("Saved local thumbnail fallback to %r", local_path)
-    except Exception as err:
-        _log.warning("Could not write local thumbnail fallback: %s", err)
-
-    # Record thumbnail key and raw image bytes in DB for indestructible database storage
+    # Save image bytes directly to PostgreSQL — permanent, zero-dependency storage.
+    # R2 upload is attempted in the background if credentials are available.
     from app.modules.teacher.repository import CourseRepository
     repo = CourseRepository(db)
     await repo.update(
@@ -606,13 +537,29 @@ async def upload_thumbnail_direct(
     )
     await db.commit()
 
-    if upload_success:
-        public_url = get_public_url(r2_key)
-    else:
-        # Return indestructible database thumbnail media URL
-        public_url = f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
+    # Best-effort R2 upload in executor (does NOT block response, failure is silent)
+    settings = get_settings()
+    if settings.R2_ACCESS_KEY_ID and settings.R2_SECRET_ACCESS_KEY and settings.R2_BUCKET_NAME:
+        def _try_r2_upload() -> None:
+            try:
+                _get_s3_client.cache_clear()
+                client = _get_s3_client()
+                client.put_object(
+                    Bucket=settings.R2_BUCKET_NAME,
+                    Key=r2_key,
+                    Body=raw_bytes,
+                    ContentType=content_type,
+                )
+                _log.info("Thumbnail also uploaded to Cloudflare R2 key=%r", r2_key)
+            except Exception as r2_err:
+                _log.warning("R2 upload skipped (non-blocking): %s", r2_err)
 
-    _log.info("Thumbnail upload complete key=%r url=%r", r2_key, public_url)
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(_executor, _try_r2_upload)
+
+    public_url = f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
+    _log.info("Thumbnail upload complete url=%r", public_url)
 
     return success_response({
         "r2_key": r2_key,
