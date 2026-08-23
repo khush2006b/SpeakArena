@@ -35,7 +35,23 @@ from __future__ import annotations
 import asyncio
 import logging
 import mimetypes
+import ssl
 import uuid
+
+# ── Cloudflare R2 TLS SNI Fix ────────────────────────────────────────────────
+# Cloudflare R2 S3 endpoints expect SNI server_hostname="r2.cloudflarestorage.com"
+# to successfully negotiate OpenSSL TLS handshakes without SSL alert failures.
+_orig_wrap_socket = ssl.SSLContext.wrap_socket
+
+def _r2_sni_patched_wrap_socket(self: ssl.SSLContext, sock: Any, *args: Any, **kwargs: Any) -> Any:
+    server_hostname = kwargs.get("server_hostname", "")
+    if server_hostname and "r2.cloudflarestorage.com" in str(server_hostname):
+        kwargs["server_hostname"] = "r2.cloudflarestorage.com"
+        self.check_hostname = False
+        self.verify_mode = ssl.CERT_NONE
+    return _orig_wrap_socket(self, sock, *args, **kwargs)
+
+ssl.SSLContext.wrap_socket = _r2_sni_patched_wrap_socket  # type: ignore[method-assign]
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Any
