@@ -171,6 +171,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             AND r2_object_key <> ''
             AND created_at < NOW() - INTERVAL '5 minutes'
         """,
+        # Fix PDFs stuck in pending status (same root cause as videos)
+        """
+        UPDATE pdfs
+        SET
+            upload_status = 'completed',
+            updated_at    = NOW()
+        WHERE
+            upload_status  = 'pending'
+            AND r2_object_key IS NOT NULL
+            AND r2_object_key <> ''
+            AND created_at < NOW() - INTERVAL '5 minutes'
+        """,
     ]
 
     try:

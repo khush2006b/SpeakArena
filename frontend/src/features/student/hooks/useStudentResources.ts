@@ -73,18 +73,27 @@ export function useStudentResources() {
               Promise.all([
                 apiClient.get(`/api/v1/resources/${course.courseId}/videos`).then(r => {
                   const d = r.data;
+                  // Handle { success, data: [...] } or { success, data: { data: [...] } } or plain array
                   let vids: any[] = [];
-                  if (Array.isArray(d?.data)) vids = d.data;
+                  if (Array.isArray(d?.data?.data)) vids = d.data.data;
+                  else if (Array.isArray(d?.data)) vids = d.data;
                   else if (Array.isArray(d)) vids = d;
                   return vids;
-                }).catch(() => []),
+                }).catch((err) => {
+                  console.warn(`[resources] Failed to load videos for course ${course.courseId}:`, err?.response?.data || err?.message);
+                  return [];
+                }),
                 apiClient.get(`/api/v1/resources/${course.courseId}/pdfs`).then(r => {
                   const d = r.data;
                   let pdfs: any[] = [];
-                  if (Array.isArray(d?.data)) pdfs = d.data;
+                  if (Array.isArray(d?.data?.data)) pdfs = d.data.data;
+                  else if (Array.isArray(d?.data)) pdfs = d.data;
                   else if (Array.isArray(d)) pdfs = d;
                   return pdfs;
-                }).catch(() => []),
+                }).catch((err) => {
+                  console.warn(`[resources] Failed to load PDFs for course ${course.courseId}:`, err?.response?.data || err?.message);
+                  return [];
+                }),
               ]).then(([videos, pdfs]) => ({ courseId: course.courseId, videos, pdfs }))
             )
           ).then(results => {
