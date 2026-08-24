@@ -173,10 +173,19 @@ export function ProgressView() {
 
                   <button
                     disabled={!cert.credentialId}
-                    onClick={() => {
+                    onClick={async () => {
                       if (cert.credentialId) {
-                        const dlUrl = `/api/v1/certificates/${cert.credentialId}/download`;
-                        window.open(dlUrl, '_blank');
+                        try {
+                          const res = await apiClient.get(`/api/v1/certificates/${cert.credentialId}/download`, { responseType: "blob" });
+                          const blobUrl = URL.createObjectURL(res.data);
+                          const link = document.createElement("a");
+                          link.href = blobUrl;
+                          link.download = `Certificate-${cert.credentialId}.pdf`;
+                          link.click();
+                          URL.revokeObjectURL(blobUrl);
+                        } catch {
+                          toast.error("Certificate download will be available upon official course completion verification.");
+                        }
                       }
                     }}
                     className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all btn-outline press-scale bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
