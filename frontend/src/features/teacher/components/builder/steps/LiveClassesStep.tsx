@@ -2,10 +2,6 @@
 
 import * as React from "react";
 import { Calendar as CalendarIcon, Clock, Users, Plus, Loader2 } from "lucide-react";
-"use client";
-
-import * as React from "react";
-import { Calendar as CalendarIcon, Clock, Users, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBuilderStore } from "@/stores/builder.store";
 import { apiClient } from "@/services/api/client";
@@ -36,6 +32,17 @@ export function LiveClassesStep() {
         const response = await apiClient.get("/api/v1/teacher/meetings?page=1&page_size=5");
         setMeetings(response.data?.items || []);
       } catch (error) {
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMeetings();
+  }, []);
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between">
+        <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Live Classes</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Schedule live cohort sessions and office hours.
@@ -53,7 +60,7 @@ export function LiveClassesStep() {
             <Loader2 className="h-8 w-8 animate-spin text-primary opacity-60" />
           </div>
         )}
-        
+
         {!isLoading && meetings.length === 0 && (
           <div className="p-8 rounded-xl border-2 border-dashed border-border/60 bg-secondary/10 flex flex-col items-center justify-center text-center">
             <CalendarIcon className="h-10 w-10 text-muted-foreground/50 mb-3" />
