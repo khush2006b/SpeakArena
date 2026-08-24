@@ -99,16 +99,22 @@ function LoginFormInner() {
         password: data.password,
         rememberMe: data.rememberMe ?? false,
       });
-    } catch (error) {
-      if (isValidationError(error)) {
+    } catch (error: any) {
+      if (error?.status === 401 || error?.code === "InvalidCredentials") {
+        form.setError("password", { type: "manual", message: "Incorrect password or email. Please check your credentials." });
+        form.setError("email", { type: "manual", message: "Incorrect password or email." });
+      } else if (isValidationError(error)) {
         mapServerErrorsToForm(error, form.setError as Parameters<typeof mapServerErrorsToForm>[1]);
       }
     }
   }
 
   const isLoading = loginMutation.isPending;
-  const serverError = !isValidationError(loginMutation.error) && loginMutation.error
+  const rawServerError = !isValidationError(loginMutation.error) && loginMutation.error
     ? getErrorMessage(loginMutation.error) : null;
+  const serverError = (loginMutation.error as any)?.status === 401 || (loginMutation.error as any)?.code === "InvalidCredentials"
+    ? "Incorrect password or email address. Please try again."
+    : rawServerError;
 
   return (
     <div style={{ width: "100%" }}>

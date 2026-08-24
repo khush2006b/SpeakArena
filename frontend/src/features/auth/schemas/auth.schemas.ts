@@ -40,8 +40,10 @@ export const registerSchema = z
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters." })
-      .regex(/[A-Z]/, { message: "Include at least one uppercase letter." })
-      .regex(/[0-9]/, { message: "Include at least one number." }),
+      .regex(/[A-Z]/, { message: "Include at least one uppercase letter (A-Z)." })
+      .regex(/[a-z]/, { message: "Include at least one lowercase letter (a-z)." })
+      .regex(/[0-9]/, { message: "Include at least one number (0-9)." })
+      .regex(/[^A-Za-z0-9]/, { message: "Include at least one special character (!@#$%^&*)." }),
     confirmPassword: z.string().min(1, { message: "Please confirm your password." }),
     // Role is always 'student' for public sign-up — not exposed in the UI
     role: z.literal("student").default("student"),
@@ -75,8 +77,10 @@ export const resetPasswordSchema = z
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters." })
-      .regex(/[A-Z]/, { message: "Include at least one uppercase letter." })
-      .regex(/[0-9]/, { message: "Include at least one number." }),
+      .regex(/[A-Z]/, { message: "Include at least one uppercase letter (A-Z)." })
+      .regex(/[a-z]/, { message: "Include at least one lowercase letter (a-z)." })
+      .regex(/[0-9]/, { message: "Include at least one number (0-9)." })
+      .regex(/[^A-Za-z0-9]/, { message: "Include at least one special character (!@#$%^&*)." }),
     confirmPassword: z.string().min(1, { message: "Please confirm your password." }),
   })
   .refine((data) => data.password === data.confirmPassword, {

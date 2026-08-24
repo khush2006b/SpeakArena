@@ -96,16 +96,21 @@ export function RegisterForm() {
   async function onSubmit(data: RegisterValues) {
     try {
       await registerMutation.mutateAsync({ fullName: data.fullName, email: data.email, password: data.password, role: "student" });
-    } catch (error) {
-      if (isValidationError(error)) {
+    } catch (error: any) {
+      if (error?.status === 409 || error?.code === "EmailAlreadyExists") {
+        form.setError("email", { type: "manual", message: "An account with this email address already exists. Please sign in instead." });
+      } else if (isValidationError(error)) {
         mapServerErrorsToForm(error, form.setError as Parameters<typeof mapServerErrorsToForm>[1]);
       }
     }
   }
 
   const isLoading = registerMutation.isPending;
-  const serverError = !isValidationError(registerMutation.error) && registerMutation.error
+  const rawServerError = !isValidationError(registerMutation.error) && registerMutation.error
     ? getErrorMessage(registerMutation.error) : null;
+  const serverError = (registerMutation.error as any)?.status === 409 || (registerMutation.error as any)?.code === "EmailAlreadyExists"
+    ? "An account with this email address already exists. Please sign in instead."
+    : rawServerError;
 
   return (
     <div style={{ width: "100%" }}>
