@@ -130,13 +130,16 @@ class Video(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     def is_accessible(self) -> bool:
         """Return True when the video can be served to enrolled students.
 
-        A video must be published and not soft-deleted to be accessible.
+        A video must be ready/published or upload completed and not soft-deleted to be accessible.
 
         Returns:
-            bool: True when students can stream the video.
+            bool: True when students can stream/download the video.
         """
         return (
-            self.processing_status == VideoProcessingStatus.PUBLISHED
+            (
+                self.processing_status in (VideoProcessingStatus.PUBLISHED, VideoProcessingStatus.READY)
+                or self.upload_status == UploadStatus.COMPLETED
+            )
             and self.deleted_at is None
         )
 
