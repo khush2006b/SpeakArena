@@ -21,7 +21,7 @@ export default function StudentLayout({
 
   return (
     <StudentRoute>
-      <div className="flex min-h-screen w-full bg-background text-foreground transition-colors duration-200">
+      <div className="flex h-screen w-full bg-background text-foreground transition-colors duration-200 overflow-hidden">
         
         {/* Top persistent progress tracking */}
         <LearningProgressBar />
@@ -37,7 +37,7 @@ export default function StudentLayout({
 
           {/* Scrollable Content */}
           <main
-            className={`flex-1 ${
+            className={`flex-1 min-h-0 ${
               isFullBleedPage ? "overflow-hidden" : "overflow-y-auto"
             }`}
           >

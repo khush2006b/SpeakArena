@@ -1158,7 +1158,7 @@ export function StudentMessagesView() {
 
       {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
       <div
-        className="flex-1 flex-col h-full bg-[#080c14] min-w-0"
+        className="flex-1 flex-col h-full min-h-0 bg-[#080c14] min-w-0 overflow-hidden"
         style={{
           display: isMobile && !mobileShowChat ? "none" : "flex",
         }}
@@ -1285,6 +1285,7 @@ export function StudentMessagesView() {
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             padding: "20px 24px",
             display: "flex",
