@@ -22,16 +22,14 @@ export const env = {
   // API
   apiUrl:
     process.env["NEXT_PUBLIC_API_URL"] &&
-    !process.env["NEXT_PUBLIC_API_URL"].includes("vercel.app") &&
-    !process.env["NEXT_PUBLIC_API_URL"].includes("onrender.com")
+    !process.env["NEXT_PUBLIC_API_URL"].includes("vercel.app")
       ? process.env["NEXT_PUBLIC_API_URL"]
-      : "https://www.speakarena.com",
+      : "https://speakarena.onrender.com",
   socketUrl:
     process.env["NEXT_PUBLIC_SOCKET_URL"] &&
-    !process.env["NEXT_PUBLIC_SOCKET_URL"].includes("vercel.app") &&
-    !process.env["NEXT_PUBLIC_SOCKET_URL"].includes("onrender.com")
+    !process.env["NEXT_PUBLIC_SOCKET_URL"].includes("vercel.app")
       ? process.env["NEXT_PUBLIC_SOCKET_URL"]
-      : "https://www.speakarena.com",
+      : "https://speakarena.onrender.com",
 
   // App
   appName: getEnvVar("NEXT_PUBLIC_APP_NAME", "SpeakArena"),

@@ -19,36 +19,24 @@
 import { getAccessToken } from "@/services/api/interceptors";
 
 function getWsUrlBase(): string {
-  if (typeof window !== "undefined") {
-    const socketUrl = process.env["NEXT_PUBLIC_SOCKET_URL"]?.trim();
-    if (socketUrl && !socketUrl.includes("onrender.com")) {
-      return socketUrl.replace(/^http/, "ws");
-    }
-
-    const apiUrl = process.env["NEXT_PUBLIC_API_URL"]?.trim();
-    if (apiUrl && !apiUrl.includes("onrender.com")) {
-      return apiUrl.replace(/^http/, "ws");
-    }
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host =
-      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? `${window.location.hostname}:8000`
-        : window.location.host;
-    return `${protocol}//${host}`;
-  }
-
   const socketUrl = process.env["NEXT_PUBLIC_SOCKET_URL"]?.trim();
-  if (socketUrl && !socketUrl.includes("onrender.com")) {
+  if (socketUrl && socketUrl.length > 0) {
     return socketUrl.replace(/^http/, "ws");
   }
 
   const apiUrl = process.env["NEXT_PUBLIC_API_URL"]?.trim();
-  if (apiUrl && !apiUrl.includes("onrender.com")) {
+  if (apiUrl && apiUrl.length > 0 && !apiUrl.includes("vercel.app")) {
     return apiUrl.replace(/^http/, "ws");
   }
 
-  return "ws://127.0.0.1:8000";
+  if (typeof window !== "undefined") {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.hostname}:8000`;
+    }
+  }
+
+  return "wss://speakarena.onrender.com";
 }
 
 // ---------------------------------------------------------------------------
