@@ -88,62 +88,57 @@ _KEY_ONLINE = "chat:online:{user_id}"
 async def websocket_chat_endpoint(
     websocket: WebSocket,
     room_id: uuid.UUID,
+    token: Optional[str] = Query(None),
 ) -> None:
-    """WebSocket endpoint for real-time course chat.
-
-    Authentication via first message payload:
-        Client sends: {"type": "auth", "payload": {"token": "<jwt>"}}
-
-    Args:
-        websocket: The FastAPI WebSocket connection.
-        room_id: UUID of the chat room to join.
-    """
+    """WebSocket endpoint for real-time course chat."""
     db: Optional[AsyncSession] = None
-    pubsub_redis: Optional[Any] = None
     manager: ConnectionManager = get_manager()
 
-    # ------------------------------------------------------------------
-    # 1. Accept and Authenticate
-    # ------------------------------------------------------------------
     await websocket.accept()
-    
-    try:
-        # Wait for the first message which must be the auth frame
-        auth_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-        auth_frame = InboundFrame.model_validate_json(auth_raw)
-        
-        if auth_frame.type != "auth":
-            await websocket.close(code=4001, reason="Unauthorized: expected auth frame.")
-            return
-            
-        token = auth_frame.payload.get("token")
-        if not token:
-            await websocket.close(code=4001, reason="Unauthorized: missing token.")
-            return
 
-        from app.database import AsyncSessionFactory
-        from app.core.redis.client import RedisClient
-        db = AsyncSessionFactory()
-        redis: Redis = RedisClient.get_pool()
-        actor: Optional[User] = await decode_ws_token(token, db)
+    # Extract auth token (either from query parameter or auth frame)
+    auth_token: Optional[str] = token
+    if not auth_token:
+        try:
+            auth_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+            auth_frame = InboundFrame.model_validate_json(auth_raw)
+            if auth_frame.type == "auth":
+                auth_token = auth_frame.payload.get("token")
+        except Exception as exc:
+            logger.warning("WebSocket auth frame reading failed: %s", exc)
+
+    if not auth_token:
+        await websocket.close(code=4001, reason="Unauthorized: missing token.")
+        return
+
+    from app.database import AsyncSessionFactory
+    from app.core.redis.client import RedisClient
+
+    db = AsyncSessionFactory()
+    try:
+        actor: Optional[User] = await decode_ws_token(auth_token, db)
         if actor is None:
             await websocket.close(code=4001, reason="Unauthorized: invalid token.")
             return
-    except asyncio.TimeoutError:
-        logger.warning("WebSocket auth timed out.")
-        await websocket.close(code=4001, reason="Auth timeout")
-        return
     except Exception as exc:
-        logger.warning("WebSocket auth failed: %s", exc)
+        logger.warning("WebSocket token decoding failed: %s", exc)
         await websocket.close(code=4001, reason="Unauthorized")
         return
+
+    redis: Optional[Redis] = None
+    try:
+        redis = RedisClient.get_pool()
+    except Exception:
+        try:
+            await RedisClient.connect()
+            redis = RedisClient.get_pool()
+        except Exception as r_err:
+            logger.warning("Redis connection unavailable for WS: %s", r_err)
 
     room_id_str = str(room_id)
     user_id_str = str(actor.id)
 
-    # ------------------------------------------------------------------
-    # 2. Validate room access
-    # ------------------------------------------------------------------
+    # Validate room access
     try:
         room_repo = ChatRoomRepository(db)
         mod_repo = ModerationRepository(db)
@@ -160,42 +155,45 @@ async def websocket_chat_endpoint(
                 await websocket.close(code=4003, reason="Not enrolled in this course.")
                 return
     except Exception as exc:
-        logger.error(
-            "Room validation error room=%s user=%s: %s", room_id, actor.id, exc
-        )
+        logger.error("Room validation error room=%s user=%s: %s", room_id, actor.id, exc)
         await websocket.close(code=4500, reason="Internal server error.")
         return
     finally:
         await db.close()
 
-    # ------------------------------------------------------------------
-    # 3. Register with manager
-    # ------------------------------------------------------------------
-    # Note: we already accepted the websocket in step 1, so we need to
-    # update manager.connect to not call websocket.accept() again if it's open.
-    # Actually, we will just use manager._connections directly or update the manager.
-    # We will just let manager.connect do its thing; we can suppress accept error.
-    # To be safe, we'll implement a custom connect logic here or ensure manager doesn't crash.
-    # Wait, `manager.connect` calls `await websocket.accept()`. Calling it twice raises RuntimeError.
-    # Let's bypass manager.connect calling accept by just injecting into the manager.
-    
+    # Register connection with manager
     ws_key = id(websocket)
     manager._connections[room_id_str].append((websocket, user_id_str))
     manager._user_connections[user_id_str].append(websocket)
     manager._ws_to_room[ws_key] = room_id_str
     manager._ws_to_user[ws_key] = user_id_str
 
-    await redis.setex(_KEY_ONLINE.format(user_id=user_id_str), 65, "1")
-    import time
-    await redis.zadd(f"chat:presence:{room_id_str}", {user_id_str: time.time()})
-    logger.info("WebSocket connected via auth frame: user=%s room=%s", user_id_str, room_id_str)
+    if redis is not None:
+        try:
+            await redis.setex(_KEY_ONLINE.format(user_id=user_id_str), 65, "1")
+            import time
+            await redis.zadd(f"chat:presence:{room_id_str}", {user_id_str: time.time()})
+        except Exception as exc:
+            logger.warning("Redis presence update failed: %s", exc)
 
-    presence_svc = PresenceService(redis)
-    typing_svc = TypingService(redis)
-    read_svc = ReadReceiptService(redis)
+    logger.info("WebSocket connected: user=%s room=%s", user_id_str, room_id_str)
 
-    await presence_svc.mark_online(user_id_str, room_id_str)
-    online_count = await manager.get_online_count(redis, room_id_str)
+    presence_svc = PresenceService(redis) if redis is not None else None
+    typing_svc = TypingService(redis) if redis is not None else None
+    read_svc = ReadReceiptService(redis) if redis is not None else None
+
+    if presence_svc:
+        try:
+            await presence_svc.mark_online(user_id_str, room_id_str)
+        except Exception:
+            pass
+
+    online_count = 1
+    if redis is not None:
+        try:
+            online_count = await manager.get_online_count(redis, room_id_str)
+        except Exception:
+            pass
 
     # Send connected confirmation
     connected_frame = make_envelope(
@@ -205,17 +203,21 @@ async def websocket_chat_endpoint(
     )
     await websocket.send_text(connected_frame.to_json())
 
-    # Broadcast online presence
-    presence_json = await presence_svc.build_presence_update_envelope(
-        user_id_str, room_id_str, "online"
-    )
-    await redis.publish(f"chat:presence:{room_id_str}", presence_json)
+    if presence_svc and redis:
+        try:
+            presence_json = await presence_svc.build_presence_update_envelope(
+                user_id_str, room_id_str, "online"
+            )
+            await redis.publish(f"chat:presence:{room_id_str}", presence_json)
+        except Exception:
+            pass
 
-    # ------------------------------------------------------------------
-    # 4. Ensure Redis Pub/Sub listeners per room and per user
-    # ------------------------------------------------------------------
-    await manager.ensure_room_subscription(redis, room_id_str)
-    await manager.ensure_user_subscription(redis, user_id_str)
+    if redis is not None:
+        try:
+            await manager.ensure_room_subscription(redis, room_id_str)
+            await manager.ensure_user_subscription(redis, user_id_str)
+        except Exception as exc:
+            logger.warning("Redis subscription failed: %s", exc)
 
     # ------------------------------------------------------------------
     # 5. Event loop
@@ -305,7 +307,11 @@ async def _dispatch(
     t = frame.type
 
     if t == WSEventType.PING:
-        await presence_svc.refresh(str(actor.id), room_id_str)
+        if presence_svc:
+            try:
+                await presence_svc.refresh(str(actor.id), room_id_str)
+            except Exception:
+                pass
         pong = make_envelope(WSEventType.PONG, {}, room_id=room_id_str)
         await websocket.send_text(pong.to_json())
 
@@ -330,22 +336,33 @@ async def _dispatch(
         )
 
     elif t == WSEventType.TYPING_START:
-        typing_users = await typing_svc.start_typing(str(actor.id), room_id_str)
-        tj = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
-        await redis.publish(f"chat:presence:{room_id_str}", tj)
-        asyncio.ensure_future(
-            cleanup_expired_typing_indicators(redis, room_id_str)
-        )
+        if typing_svc and redis:
+            try:
+                typing_users = await typing_svc.start_typing(str(actor.id), room_id_str)
+                tj = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
+                await redis.publish(f"chat:presence:{room_id_str}", tj)
+                asyncio.ensure_future(
+                    cleanup_expired_typing_indicators(redis, room_id_str)
+                )
+            except Exception:
+                pass
 
     elif t == WSEventType.TYPING_STOP:
-        typing_users = await typing_svc.stop_typing(str(actor.id), room_id_str)
-        tj = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
-        await redis.publish(f"chat:presence:{room_id_str}", tj)
+        if typing_svc and redis:
+            try:
+                typing_users = await typing_svc.stop_typing(str(actor.id), room_id_str)
+                tj = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
+                await redis.publish(f"chat:presence:{room_id_str}", tj)
+            except Exception:
+                pass
 
     elif t == WSEventType.READ_MARK:
         last_id = frame.payload.get("last_read_message_id", "")
-        if last_id:
-            await read_svc.mark_read(str(actor.id), room_id_str, last_id)
+        if last_id and read_svc:
+            try:
+                await read_svc.mark_read(str(actor.id), room_id_str, last_id)
+            except Exception:
+                pass
 
     else:
         await manager.send_error(
@@ -373,13 +390,16 @@ async def _on_message_send(
     uid_str = str(actor.id)
 
     # Lock and mute checks for students
-    if actor.role == UserRole.STUDENT:
-        if await redis.exists(_KEY_LOCK.format(room_id=room_id_str)):
-            await manager.send_error(websocket, "RoomLocked", "Chat is locked.")
-            return
-        if await redis.exists(_KEY_MUTE.format(room_id=room_id_str, user_id=uid_str)):
-            await manager.send_error(websocket, "UserMuted", "You are muted.")
-            return
+    if actor.role == UserRole.STUDENT and redis is not None:
+        try:
+            if await redis.exists(_KEY_LOCK.format(room_id=room_id_str)):
+                await manager.send_error(websocket, "RoomLocked", "Chat is locked.")
+                return
+            if await redis.exists(_KEY_MUTE.format(room_id=room_id_str, user_id=uid_str)):
+                await manager.send_error(websocket, "UserMuted", "You are muted.")
+                return
+        except Exception:
+            pass
 
     p = frame.payload
     try:

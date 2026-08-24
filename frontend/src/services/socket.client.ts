@@ -187,7 +187,9 @@ export function getChatSocket(roomId: string): ReconnectingWebSocket {
     if (chatSocket) {
       chatSocket.disconnect();
     }
-    chatSocket = new ReconnectingWebSocket(`${getWsUrlBase()}/api/v1/ws/chat/${roomId}`);
+    const token = getAccessToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    chatSocket = new ReconnectingWebSocket(`${getWsUrlBase()}/api/v1/ws/chat/${roomId}${tokenParam}`);
     currentChatRoomId = roomId;
   }
   return chatSocket;
