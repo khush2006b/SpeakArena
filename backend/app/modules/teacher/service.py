@@ -796,17 +796,10 @@ class MeetingService:
         )
 
     async def delete_meeting(self, meeting_id: uuid.UUID) -> None:
-        """Soft-delete a meeting.
-
-        Args:
-            meeting_id: The meeting UUID.
-
-        Raises:
-            MeetingNotFoundError: If not found.
-        """
+        """Soft-delete a meeting."""
         meeting = await self._repo.get_by_id(meeting_id, teacher_id=self._teacher.id)
         if meeting is None:
-            raise MeetingNotFoundError()
+            return
 
         await self._repo.soft_delete(meeting)
         _audit(self._db, self._teacher, "meeting.deleted", "meeting", meeting_id)
