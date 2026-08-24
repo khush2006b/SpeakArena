@@ -71,23 +71,25 @@ export function useStudentResources() {
           Promise.allSettled(
             courses.map(course =>
               Promise.all([
-                apiClient.get(`/api/v1/resources/${course.courseId}/videos`).then(r => {
+                apiClient.get(`/api/v1/videos/${course.courseId}`).then(r => {
                   const d = r.data;
-                  // Handle { success, data: [...] } or { success, data: { data: [...] } } or plain array
+                  // Handle { success, data: [...] } or { success, data: { items: [...] } } or plain array
                   let vids: any[] = [];
-                  if (Array.isArray(d?.data?.data)) vids = d.data.data;
+                  if (Array.isArray(d?.data?.items)) vids = d.data.items;
                   else if (Array.isArray(d?.data)) vids = d.data;
+                  else if (Array.isArray(d?.items)) vids = d.items;
                   else if (Array.isArray(d)) vids = d;
                   return vids;
                 }).catch((err) => {
                   console.warn(`[resources] Failed to load videos for course ${course.courseId}:`, err?.response?.data || err?.message);
                   return [];
                 }),
-                apiClient.get(`/api/v1/resources/${course.courseId}/pdfs`).then(r => {
+                apiClient.get(`/api/v1/pdfs/${course.courseId}`).then(r => {
                   const d = r.data;
                   let pdfs: any[] = [];
-                  if (Array.isArray(d?.data?.data)) pdfs = d.data.data;
+                  if (Array.isArray(d?.data?.items)) pdfs = d.data.items;
                   else if (Array.isArray(d?.data)) pdfs = d.data;
+                  else if (Array.isArray(d?.items)) pdfs = d.items;
                   else if (Array.isArray(d)) pdfs = d;
                   return pdfs;
                 }).catch((err) => {

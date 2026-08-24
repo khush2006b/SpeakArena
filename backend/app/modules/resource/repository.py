@@ -149,7 +149,11 @@ class VideoRepository:
             conditions.append(Video.processing_status == processing_status)
         if published_only:
             conditions.append(
-                Video.processing_status == VideoProcessingStatus.PUBLISHED
+                or_(
+                    Video.processing_status == VideoProcessingStatus.PUBLISHED,
+                    Video.processing_status == VideoProcessingStatus.READY,
+                    Video.upload_status == UploadStatus.COMPLETED,
+                )
             )
         if search:
             conditions.append(Video.title.ilike(f"%{search}%"))
