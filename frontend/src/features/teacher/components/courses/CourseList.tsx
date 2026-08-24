@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export function CourseList({ search, status }: { search?: string; status?: string }) {
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set());
@@ -182,7 +183,11 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontWeight: 800, color: "hsl(var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{course.title}</span>
+                          <Link href={`/teacher/builder?courseId=${course.id}`} style={{ textDecoration: 'none' }}>
+                            <span style={{ fontWeight: 800, color: "hsl(var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }} className="hover:text-primary transition-colors">
+                              {course.title}
+                            </span>
+                          </Link>
                           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: "hsl(var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {course.totalLectures} lectures • {course.currency === "USD" ? "$" : course.currency}{course.price}
                           </span>
@@ -238,9 +243,11 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" style={{ background: "hsl(var(--background))", border: '1px solid hsl(var(--border))', color: "hsl(var(--foreground))", borderRadius: '10px' }}>
-                          <DropdownMenuItem style={{ fontWeight: 500, cursor: 'pointer' }}>
-                            <FileEdit style={{ marginRight: '8px', height: '16px', width: '16px', color: "hsl(var(--muted-foreground))" }} />
-                            Edit
+                          <DropdownMenuItem style={{ fontWeight: 500, cursor: 'pointer' }} asChild>
+                            <Link href={`/teacher/builder?courseId=${course.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+                              <FileEdit style={{ marginRight: '8px', height: '16px', width: '16px', color: "hsl(var(--muted-foreground))" }} />
+                              Edit Course
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem style={{ fontWeight: 500, cursor: 'pointer' }}>
                             <BarChart style={{ marginRight: '8px', height: '16px', width: '16px', color: "hsl(var(--muted-foreground))" }} />

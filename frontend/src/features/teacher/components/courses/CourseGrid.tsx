@@ -139,9 +139,11 @@ function CourseCard({ course }: { course: Course }) {
 
       <div className="p-5 flex-1 flex flex-col relative z-10 -mt-6">
         <div className="flex items-start justify-between gap-4 mb-2">
-          <h3 className="font-bold text-lg line-clamp-2 leading-tight text-foreground tracking-tight drop-shadow-sm">
-            {course.title}
-          </h3>
+          <Link href={`/teacher/builder?courseId=${course.id}`} className="hover:text-primary transition-colors">
+            <h3 className="font-bold text-lg line-clamp-2 leading-tight text-foreground tracking-tight drop-shadow-sm">
+              {course.title}
+            </h3>
+          </Link>
         </div>
 
         <div className="mb-4">
