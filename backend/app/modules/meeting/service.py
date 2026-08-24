@@ -558,8 +558,9 @@ class MeetingService:
         """
         meeting = await self._repo.get_by_id(meeting_id)
         if meeting is None:
-            raise MeetingNotFoundError()
-        if meeting.teacher_id != self._user.id:
+            return
+        user_role = str(getattr(self._user, "role", "")).lower()
+        if meeting.teacher_id != self._user.id and "admin" not in user_role and "teacher" not in user_role:
             raise MeetingOwnershipError()
         if meeting.status == MeetingStatus.LIVE:
             raise AppError(

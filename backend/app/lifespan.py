@@ -166,6 +166,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS total_duration_seconds INTEGER NOT NULL DEFAULT 0;",
         "ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS attendance_percentage NUMERIC(5,2) NOT NULL DEFAULT 0.00;",
         "ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS is_late BOOLEAN NOT NULL DEFAULT FALSE;",
+        # ── meetings.deleted_at missing column for soft-delete ───────────────────
+        "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;",
     ]
 
     # One-time data fix: videos stuck in 'uploading' status because the

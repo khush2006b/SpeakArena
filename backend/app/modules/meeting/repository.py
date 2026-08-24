@@ -356,7 +356,7 @@ class MeetingRepository:
         return await self.get_by_id(mid)
 
     async def soft_delete(self, meeting: Union[uuid.UUID, Meeting]) -> None:
-        """Soft-delete a meeting by setting deleted_at to now.
+        """Soft-delete a meeting by setting deleted_at to now and status to CANCELLED.
 
         Args:
             meeting: UUID or Meeting instance to soft-delete.
@@ -366,7 +366,7 @@ class MeetingRepository:
         await self._db.execute(
             update(Meeting)
             .where(Meeting.id == mid)
-            .values(deleted_at=now)
+            .values(deleted_at=now, status="CANCELLED")
         )
 
     async def set_status(

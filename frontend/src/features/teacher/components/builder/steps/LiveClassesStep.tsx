@@ -2,11 +2,16 @@
 
 import * as React from "react";
 import { Calendar as CalendarIcon, Clock, Users, Plus, Loader2 } from "lucide-react";
+"use client";
+
+import * as React from "react";
+import { Calendar as CalendarIcon, Clock, Users, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBuilderStore } from "@/stores/builder.store";
 import { apiClient } from "@/services/api/client";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { toast } from "sonner";
 
 export function LiveClassesStep() {
   const { nextStep, prevStep } = useBuilderStore();
@@ -14,23 +19,23 @@ export function LiveClassesStep() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
 
+  const handleDeleteMeeting = async (meetingId: string, title?: string) => {
+    if (!confirm(`Are you sure you want to delete session "${title || "Live Session"}"?`)) return;
+    try {
+      await apiClient.delete(`/api/v1/teacher/meetings/${meetingId}`);
+      toast.success("Session deleted successfully.");
+      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to delete session.");
+    }
+  };
+
   React.useEffect(() => {
     const fetchMeetings = async () => {
       try {
         const response = await apiClient.get("/api/v1/teacher/meetings?page=1&page_size=5");
         setMeetings(response.data?.items || []);
       } catch (error) {
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMeetings();
-  }, []);
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Live Classes</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Schedule live cohort sessions and office hours.
@@ -81,7 +86,7 @@ export function LiveClassesStep() {
             </div>
             <div className="flex items-center gap-2">
               <Button onClick={() => router.push(`/teacher/meetings/${meeting.id}`)} variant="outline" size="sm">Edit</Button>
-              <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent press-scale">Cancel</Button>
+              <Button onClick={() => handleDeleteMeeting(meeting.id, meeting.title)} variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent press-scale">Delete</Button>
             </div>
           </div>
         ))}
