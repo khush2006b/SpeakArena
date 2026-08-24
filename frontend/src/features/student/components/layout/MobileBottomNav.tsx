@@ -17,6 +17,17 @@ const NAV_TABS = [
 export function MobileBottomNav() {
   const pathname = usePathname();
 
+  // Hide mobile bottom navbar on full-bleed chat/messaging routes so input section is never obscured
+  const isChatPage =
+    pathname?.startsWith("/student/messages") ||
+    pathname?.startsWith("/student/chat") ||
+    pathname?.startsWith("/teacher/communication") ||
+    pathname?.startsWith("/teacher/chat");
+
+  if (isChatPage) {
+    return null;
+  }
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"

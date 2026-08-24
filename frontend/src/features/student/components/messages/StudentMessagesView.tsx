@@ -1605,6 +1605,7 @@ export function StudentMessagesView() {
           <div
             style={{
               padding: "12px 20px",
+              paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
               borderTop: "1px solid rgba(255,255,255,0.06)",
               background: "rgba(245,158,11,0.06)",
               color: "#f59e0b",
@@ -1628,6 +1629,7 @@ export function StudentMessagesView() {
             onSubmit={handleSend}
             style={{
               padding: "14px 18px",
+              paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
               borderTop: "1px solid rgba(255,255,255,0.06)",
               display: "flex",
               alignItems: "center",

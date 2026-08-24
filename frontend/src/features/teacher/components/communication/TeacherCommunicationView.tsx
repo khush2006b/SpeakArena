@@ -1497,6 +1497,7 @@ export function TeacherCommunicationView() {
           onSubmit={handleSendMessage}
           style={{
             padding: "14px 20px",
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
             borderTop: "1px solid hsl(var(--border))",
             background: "rgba(11,15,26,0.8)",
             backdropFilter: "blur(10px)",
