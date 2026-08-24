@@ -677,8 +677,9 @@ class StudentVideoRepository:
             .where(
                 Video.course_id == course_id,
                 Video.deleted_at.is_(None),
-                Video.processing_status.in_(
-                    [VideoProcessingStatus.READY, VideoProcessingStatus.PUBLISHED]
+                or_(
+                    Video.processing_status.in_(["ready", "published", "completed"]),
+                    Video.processing_status.is_(None),
                 ),
             )
             .order_by(Video.sort_order.asc())
@@ -722,8 +723,9 @@ class StudentVideoRepository:
                     Video.id == video_id,
                     Video.course_id == course_id,
                     Video.deleted_at.is_(None),
-                    Video.processing_status.in_(
-                        [VideoProcessingStatus.READY, VideoProcessingStatus.PUBLISHED]
+                    or_(
+                        Video.processing_status.in_(["ready", "published", "completed"]),
+                        Video.processing_status.is_(None),
                     ),
                 )
             )
@@ -846,7 +848,10 @@ class StudentPDFRepository:
             .where(
                 PDF.course_id == course_id,
                 PDF.deleted_at.is_(None),
-                PDF.upload_status == UploadStatus.COMPLETED,
+                or_(
+                    PDF.upload_status.in_(["completed", "ready"]),
+                    PDF.upload_status.is_(None),
+                ),
             )
             .order_by(PDF.sort_order.asc())
         )
@@ -889,7 +894,10 @@ class StudentPDFRepository:
                     PDF.id == pdf_id,
                     PDF.course_id == course_id,
                     PDF.deleted_at.is_(None),
-                    PDF.upload_status == UploadStatus.COMPLETED,
+                    or_(
+                        PDF.upload_status.in_(["completed", "ready"]),
+                        PDF.upload_status.is_(None),
+                    ),
                 )
             )
         ).scalar_one_or_none()
