@@ -16,9 +16,28 @@ export function LiveClassesDashboard() {
   const { data, isLoading } = useMeetingList({ page: 1, pageSize: 50 });
   const meetings = data?.items || [];
 
-  const upcomingClasses = meetings.filter(
-    (c) => c.status !== "ENDED" && c.status !== "CANCELLED"
-  );
+  const now = Date.now();
+  const upcomingClasses = meetings.filter((c) => {
+    const s = String(c.status || "").toUpperCase();
+    if (
+      s === "ENDED" ||
+      s === "COMPLETED" ||
+      s === "CANCELLED" ||
+      s === "EXPIRED" ||
+      s === "ARCHIVED"
+    ) {
+      return false;
+    }
+    try {
+      const startMs = new Date(c.scheduledAt || c.scheduled_at).getTime();
+      const durMinutes = c.durationMinutes || c.duration_minutes || 60;
+      const endMs = startMs + durMinutes * 60 * 1000;
+      if (!isNaN(endMs) && now > endMs) {
+        return false;
+      }
+    } catch {}
+    return true;
+  });
 
   const container = {
     hidden: { opacity: 0 },
@@ -81,7 +100,19 @@ export function LiveClassesDashboard() {
         )}
       </div>
 
-      <RecordingsList meetings={meetings.filter((m) => m.status === "ENDED")} />
+      <RecordingsList
+        meetings={meetings.filter((m) => {
+          const s = String(m.status || "").toUpperCase();
+          if (s === "ENDED" || s === "COMPLETED") return true;
+          try {
+            const startMs = new Date(m.scheduledAt || m.scheduled_at).getTime();
+            const durMinutes = m.durationMinutes || m.duration_minutes || 60;
+            const endMs = startMs + durMinutes * 60 * 1000;
+            if (!isNaN(endMs) && now > endMs) return true;
+          } catch {}
+          return false;
+        })}
+      />
 
       {/* Join Pre-flight Experience Drawer */}
       <PreClassChecklist
