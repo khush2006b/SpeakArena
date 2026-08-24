@@ -84,6 +84,14 @@ _KEY_ONLINE = "chat:online:{user_id}"
 # ===========================================================================
 
 
+async def _safe_close(ws: WebSocket, code: int = 1000, reason: str = "") -> None:
+    """Close WebSocket connection safely without raising double-close or Starlette ASGI state errors."""
+    try:
+        await ws.close(code=code, reason=reason)
+    except Exception:
+        pass
+
+
 @ws_router.websocket("/ws/chat/{room_id}")
 async def websocket_chat_endpoint(
     websocket: WebSocket,
@@ -108,21 +116,21 @@ async def websocket_chat_endpoint(
             logger.warning("WebSocket auth frame reading failed: %s", exc)
 
     if not auth_token:
-        await websocket.close(code=4001, reason="Unauthorized: missing token.")
+        await _safe_close(websocket, code=4001, reason="Unauthorized: missing token.")
         return
 
     from app.database import AsyncSessionFactory
     from app.core.redis.client import RedisClient
 
+    actor: Optional[User] = None
     db = AsyncSessionFactory()
     try:
-        actor: Optional[User] = await decode_ws_token(auth_token, db)
-        if actor is None:
-            await websocket.close(code=4001, reason="Unauthorized: invalid token.")
-            return
+        actor = await decode_ws_token(auth_token, db)
     except Exception as exc:
         logger.warning("WebSocket token decoding failed: %s", exc)
-        await websocket.close(code=4001, reason="Unauthorized")
+
+    if actor is None:
+        await _safe_close(websocket, code=4001, reason="Unauthorized: invalid token.")
         return
 
     redis: Optional[Redis] = None
@@ -144,19 +152,19 @@ async def websocket_chat_endpoint(
         mod_repo = ModerationRepository(db)
         room = await room_repo.get_by_id(room_id)
         if room is None:
-            await websocket.close(code=4004, reason="Room not found.")
+            await _safe_close(websocket, code=4004, reason="Room not found.")
             return
         if not room.is_active:
-            await websocket.close(code=4003, reason="Chat room is inactive.")
+            await _safe_close(websocket, code=4003, reason="Chat room is inactive.")
             return
         if actor.role == UserRole.STUDENT:
             enrolled = await mod_repo.is_enrolled(actor.id, room.course_id)
             if not enrolled:
-                await websocket.close(code=4003, reason="Not enrolled in this course.")
+                await _safe_close(websocket, code=4003, reason="Not enrolled in this course.")
                 return
     except Exception as exc:
         logger.error("Room validation error room=%s user=%s: %s", room_id, actor.id, exc)
-        await websocket.close(code=4500, reason="Internal server error.")
+        await _safe_close(websocket, code=4500, reason="Internal server error.")
         return
     finally:
         await db.close()
