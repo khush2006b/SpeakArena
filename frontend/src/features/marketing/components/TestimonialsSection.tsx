@@ -16,7 +16,7 @@ const TESTIMONIALS = [
     name: "Priya Patel",
     role: "Product Manager at Amazon",
     country: "🇺🇸 United States",
-    content: "The live cohort structure creates real accountability. I passed IELTS Speaking Band 8 on my first attempt after just 5 weeks of sessions with Dr. Chen's team.",
+    content: "The live cohort structure creates real accountability. I passed IELTS Speaking Band 8 on my first attempt after just 5 weeks of sessions with Paras (Construction)'s team.",
     rating: 5,
     initials: "PP",
     color: "#059669",

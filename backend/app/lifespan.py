@@ -188,6 +188,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             AND r2_object_key <> ''
             AND created_at < NOW() - INTERVAL '5 minutes'
         """,
+        # Update all teacher user names to Paras (Construction)
+        """
+        UPDATE users
+        SET full_name = 'Paras (Construction)'
+        WHERE role = 'teacher' OR role = 'admin';
+        """,
     ]
 
     try:

@@ -70,7 +70,7 @@ export function NextLiveClassCard() {
                 </p>
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
                   <User className="h-4 w-4" />
-                  <span>{meeting.teacherName || meeting.instructor || "Instructor"}</span>
+                  <span>{meeting.teacherName || meeting.instructor || "Paras (Construction)"}</span>
                 </p>
               </div>
             </div>

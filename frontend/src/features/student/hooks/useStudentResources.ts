@@ -60,7 +60,7 @@ export function useStudentResources() {
         const courses: StudentCourse[] = items.map((c: any) => ({
           courseId: c.course_id || c.id,
           title: c.title,
-          teacherName: c.teacher_name || 'Instructor',
+          teacherName: c.teacher_name || 'Paras (Construction)',
           progressPercentage: c.progress_percentage ?? 0,
         }));
         setCourseList(courses);

@@ -15,11 +15,11 @@ export function TeacherProfileMenu() {
   const user = useAuthStore((s) => s.user);
   const clearUser = useAuthStore((s) => s.clearUser);
 
-  const teacherName = user?.fullName || (user as any)?.full_name || "Teacher";
+  const teacherName = user?.fullName || (user as any)?.full_name || "Paras (Construction)";
   const teacherEmail = user?.email || "teacher@speakarena.com";
   const initials = teacherName
     ? teacherName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "T";
+    : "PC";
 
   const handleLogout = () => {
     clearUser();
@@ -33,7 +33,7 @@ export function TeacherProfileMenu() {
         className="flex items-center gap-2 rounded-full bg-transparent border-none outline-none cursor-pointer transition-transform hover:scale-105 press-scale"
       >
         <Avatar className="h-9 w-9 border border-border">
-          <AvatarImage src={user?.avatarUrl ?? undefined} alt={teacherName} />
+          <AvatarImage src={user?.avatarUrl || (user as any)?.avatar_url || "/images/paras_teacher.png"} alt={teacherName} />
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
             {initials}
           </AvatarFallback>

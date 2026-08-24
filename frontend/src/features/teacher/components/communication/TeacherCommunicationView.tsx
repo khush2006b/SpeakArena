@@ -124,11 +124,28 @@ function Avatar({
   name,
   size = 34,
   gradient = "linear-gradient(135deg,#7c3aed,#4f46e5)",
+  image,
 }: {
   name?: string | null;
   size?: number;
   gradient?: string;
+  image?: string;
 }) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={name || "Avatar"}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
   return (
     <div
       style={{
@@ -1128,13 +1145,14 @@ export function TeacherCommunicationView() {
           }}
         >
           <Avatar
-            name={(user as any)?.full_name || user?.fullName || "Teacher"}
+            name={(user as any)?.full_name || user?.fullName || "Paras (Construction)"}
             size={34}
             gradient="linear-gradient(135deg,#7c3aed,#6366f1)"
+            image={(user as any)?.avatar_url || (user as any)?.avatarUrl || "/images/paras_teacher.png"}
           />
           <div style={{ overflow: "hidden", flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {(user as any)?.full_name || user?.fullName || "Instructor"}
+              {(user as any)?.full_name || user?.fullName || "Paras (Construction)"}
             </div>
             <div
               style={{

@@ -22,7 +22,7 @@ function mapCourse(item: any, idx: number) {
   return {
     id: item.course_id || item.id || `my-course-${idx}`,
     title: item.title,
-    teacher: item.teacher_name || "Instructor",
+    teacher: item.teacher_name || "Paras (Construction)",
     category: item.level || item.category || "Course",
     progress: item.progress_percent ?? item.completion_percentage ?? 0,
     totalModules: item.total_lectures ?? item.totalLectures ?? 0,

@@ -371,7 +371,7 @@ class StudentCourseRepository:
         items = []
         for r in rows:
             c: Course = r[0]
-            teacher_name: str = r[1] or "Instructor"
+            teacher_name: str = r[1] or "Paras (Construction)"
             active_enrolled_count = len([e for e in (c.enrollments or []) if e.status == EnrollmentStatus.ACTIVE]) if c.enrollments is not None else (c.total_enrollments or 0)
             items.append({
                 "id": str(c.id),

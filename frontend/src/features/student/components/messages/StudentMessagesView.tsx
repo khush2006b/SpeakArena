@@ -124,11 +124,28 @@ function Avatar({
   name,
   size = 34,
   gradient = "linear-gradient(135deg,#4f46e5,#7c3aed)",
+  image,
 }: {
   name?: string | null;
   size?: number;
   gradient?: string;
+  image?: string;
 }) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={name || "Avatar"}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
   return (
     <div
       style={{
@@ -237,7 +254,7 @@ export function StudentMessagesView() {
           return {
             ...item,
             id: cid,                                             // normalise to .id
-            teacherName: item.teacher_name || item.teacherName || "Instructor",
+            teacherName: item.teacher_name || item.teacherName || "Paras (Construction)",
             teacher_id:  item.teacher_id  || item.teacherId,
           } as Course & { teacher_id: string; teacherName: string };
         });
@@ -1033,6 +1050,7 @@ export function StudentMessagesView() {
                             ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
                             : "linear-gradient(135deg,#1e293b,#334155)"
                         }
+                        image="/images/paras_teacher.png"
                       />
                       <div
                         style={{
@@ -1819,10 +1837,11 @@ export function StudentMessagesView() {
             >
               <Avatar
                 name={
-                  (activeChannel.course as any).teacherName || "Instructor"
+                  (activeChannel.course as any).teacherName || "Paras (Construction)"
                 }
                 size={44}
                 gradient="linear-gradient(135deg,#6366f1,#8b5cf6)"
+                image="/images/paras_teacher.png"
               />
               <div
                 style={{
@@ -1832,7 +1851,7 @@ export function StudentMessagesView() {
                   marginTop: 10,
                 }}
               >
-                {(activeChannel.course as any).teacherName || "Instructor"}
+                {(activeChannel.course as any).teacherName || "Paras (Construction)"}
               </div>
               <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
                 Instructor
