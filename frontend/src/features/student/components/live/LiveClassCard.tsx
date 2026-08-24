@@ -92,30 +92,28 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
         {/* Action Button */}
         <div className="mt-auto">
           {isInProgress ? (
-            <a
-              href={meetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onJoinClick?.(liveClass);
+              }}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all press-scale"
             >
               <Video className="h-4 w-4" />
-              Join Google Meet Now
+              Join Live Class
               <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />
-            </a>
+            </button>
           ) : isUpcoming ? (
-            <a
-              href={rawMeetLink ? meetUrl : "#"}
-              target={rawMeetLink ? "_blank" : "_self"}
-              rel="noopener noreferrer"
+            <button
               onClick={(e) => {
-                if (!rawMeetLink) e.preventDefault();
+                e.stopPropagation();
+                onJoinClick?.(liveClass);
               }}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 border border-violet-500/30 transition-all press-scale"
             >
               <Video className="h-4 w-4 text-violet-400" />
-              {rawMeetLink ? "Join Meeting Link" : `Opens at ${format(date, "h:mm a")}`}
-              {rawMeetLink && <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />}
-            </a>
+              Scheduled ({format(date, "h:mm a")})
+            </button>
           ) : (
             <div className="w-full py-2 px-3 rounded-xl bg-secondary/30 text-center text-xs font-semibold text-muted-foreground border border-border/40">
               Session Ended

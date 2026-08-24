@@ -70,21 +70,17 @@ export function PreClassChecklist({
   if (!liveClass) return null;
 
   const handleJoin = () => {
-    const rawMeetLink = liveClass.meetLink || liveClass.meet_link || liveClass.meeting_url || "";
-    if (rawMeetLink) {
-      const meetUrl = rawMeetLink.startsWith("http") ? rawMeetLink : `https://${rawMeetLink}`;
-      window.open(meetUrl, "_blank");
-      toast.success("Opening Google Meet...");
-      onClose();
-      return;
-    }
     joinMutation.mutate(liveClass.id, {
       onSuccess: () => {
-        toast.success("Joining session...");
+        toast.success("Joining live session...");
         onClose();
       },
       onError: (err: any) => {
-        toast.error(err?.response?.data?.message || err?.message || "Failed to join live class.");
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "This meeting is outside the scheduled window or has ended.";
+        toast.error(msg);
       },
     });
   };
