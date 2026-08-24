@@ -24,11 +24,11 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
      * `grid` + `grid-cols-2` guarantees a hard 50/50 split that
      * cannot be squished by content — no flex, no w-1/2 issues.
      */
-    <div className="flex min-h-screen w-full bg-[#080c14]">
+    <div className="flex min-h-screen w-full bg-background text-foreground transition-colors duration-200">
       {/* ══════════════════════════════════════════════════
           LEFT COLUMN — Brand + Form
          ══════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 py-10 min-h-screen" style={{ background: "#080c14" }}>
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 py-10 min-h-screen bg-background text-foreground">
         {/* ── Logo row (top-left) ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
@@ -46,7 +46,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
             >
               <Mic2 style={{ width: 18, height: 18, color: "#fff" }} />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em" }}>
+            <span className="text-lg font-bold text-foreground tracking-tight">
               SpeakArena
             </span>
           </Link>
@@ -61,7 +61,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", textAlign: "center", flexShrink: 0 }}>
+        <div className="text-xs text-muted-foreground text-center flex-shrink-0">
           © {new Date().getFullYear()} SpeakArena Inc.
         </div>
       </div>
@@ -72,10 +72,8 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
           and partner logos are pinned to bottom
          ══════════════════════════════════════════════════ */}
       <div
-        className="hidden lg:flex flex-col flex-1"
+        className="hidden lg:flex flex-col flex-1 bg-card/60 border-l border-border/60 transition-colors duration-200"
         style={{
-          background: "#0b1120",
-          borderLeft: "1px solid rgba(255,255,255,0.07)",
           padding: "56px",
           minHeight: "100vh",
           position: "relative",
@@ -90,25 +88,18 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
 
           {/* Main display headline — bigger font */}
           <h2
-            style={{
-              fontSize: 48,
-              fontWeight: 700,
-              color: "#ffffff",
-              lineHeight: 1.12,
-              letterSpacing: "-0.03em",
-              margin: "0 0 44px 0",
-            }}
+            className="text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight mb-11"
           >
             Master Spoken English<br />with Certified Coaches
           </h2>
 
           {/* Large opening quote mark */}
-          <div style={{ fontSize: 64, lineHeight: 0.8, color: "rgba(255,255,255,0.2)", marginBottom: 16, fontFamily: "Georgia, serif", userSelect: "none" }}>
+          <div className="text-6xl leading-none text-muted-foreground/30 mb-4 font-serif select-none">
             &ldquo;
           </div>
 
           {/* Quote text */}
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.72)", lineHeight: 1.75, margin: "0 0 28px 0" }}>
+          <p className="text-lg text-muted-foreground leading-relaxed mb-7">
             {quote || "SpeakArena has completely transformed my speaking confidence. It's reliable, structured, and ensures my fluency improves every single day."}
           </p>
 
@@ -127,14 +118,14 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
                 fontWeight: 700,
                 color: "#fff",
                 flexShrink: 0,
-                border: "2px solid rgba(255,255,255,0.15)",
+                border: "2px solid hsl(var(--border))",
               }}
             >
               {author ? author.charAt(0) : "MC"}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#ffffff", lineHeight: 1.3 }}>{author || "Michael Carter"}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>IELTS Band 8.5 Student &amp; Software Engineer</div>
+              <div className="text-base font-semibold text-foreground leading-snug">{author || "Michael Carter"}</div>
+              <div className="text-xs text-muted-foreground mt-1">IELTS Band 8.5 Student &amp; Software Engineer</div>
             </div>
           </div>
         </div>

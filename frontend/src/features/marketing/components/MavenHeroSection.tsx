@@ -80,7 +80,7 @@ export function MavenHeroSection() {
   // Shared horizontal padding matching the navbar: px-6 sm:px-12 lg:px-20
 
   return (
-    <div className="w-full bg-[#0d1117] text-white overflow-x-hidden">
+    <div className="w-full bg-background text-foreground transition-colors duration-200 overflow-x-hidden">
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section style={{ position: "relative", width: "100%", overflow: "hidden", maxWidth: "100vw" }}>
         {/* Grid bg */}

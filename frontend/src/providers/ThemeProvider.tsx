@@ -24,6 +24,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       attribute="class"
       defaultTheme="system"
       enableSystem
+      value={{
+        light: "light",
+        dark: "dark",
+      }}
       disableTransitionOnChange={false}
     >
       {children}
