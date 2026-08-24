@@ -746,9 +746,16 @@ class RefreshTokenService:
 
         # ── 3. Reuse detection ─────────────────────────────────────────────
         if rt_record.revoked_at is not None:
-            # A revoked token was presented. This is a theft signal.
-            # Revoke ALL sessions for this user immediately.
             now = utcnow()
+            # If revoked within the last 15 seconds, treat as concurrent client race condition
+            if (now - rt_record.revoked_at).total_seconds() < 15:
+                logger.info(
+                    "Refresh token reuse within 15s grace period (concurrent request race).",
+                    extra={"user_id": str(rt_record.user_id), "token_id": str(rt_record.id)},
+                )
+                raise InvalidRefreshTokenError()
+
+            # A revoked token was presented long after rotation. Theft signal -> revoke all sessions.
             await self._rt_repo.revoke_all_for_user(rt_record.user_id, now)
             await self._session_repo.deactivate_all_for_user(rt_record.user_id)
             await RedisOps.set_str(
