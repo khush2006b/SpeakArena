@@ -626,7 +626,7 @@ export function StudentMessagesView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-[290px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-white/5`}
+        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-80 md:min-w-[320px] md:max-w-[320px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-white/5`}
       >
         {/* Branding */}
         <div
