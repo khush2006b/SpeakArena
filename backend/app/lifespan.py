@@ -153,6 +153,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_mime VARCHAR(64) DEFAULT NULL;",
     ]
 
+    # One-time data fix: videos stuck in 'uploading' status because the
+    # confirm endpoint was returning 422 (duration_seconds ge=1 validation bug).
+    # Any video with a valid r2_object_key and upload_status='pending' that
+    # has been sitting >5 minutes is promoted to ready so students can see it.
+    _data_fix_patches = [
+        """
+        UPDATE videos
+        SET
+            upload_status    = 'completed',
+            processing_status = 'ready',
+            updated_at       = NOW()
+        WHERE
+            upload_status     = 'pending'
+            AND processing_status = 'uploading'
+            AND r2_object_key IS NOT NULL
+            AND r2_object_key <> ''
+            AND created_at < NOW() - INTERVAL '5 minutes'
+        """,
+    ]
+
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
@@ -168,6 +188,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     await conn.execute(text(patch_sql))
             except Exception as patch_exc:
                 logger.warning("Schema patch skipped (%s): %s", patch_sql[:60], patch_exc)
+
+        for fix_sql in _data_fix_patches:
+            try:
+                async with engine.begin() as conn:
+                    result = await conn.execute(text(fix_sql))
+                    if result.rowcount:
+                        logger.info("Data fix applied: %d row(s) updated.", result.rowcount)
+            except Exception as fix_exc:
+                logger.warning("Data fix skipped: %s", fix_exc)
 
         logger.info("Database connection and schema initialization complete.")
     except Exception as exc:
