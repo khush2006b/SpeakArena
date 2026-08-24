@@ -298,47 +298,6 @@ function LoginFormInner() {
         </form>
       </Form>
 
-      {/* ── OR divider ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
-      </div>
-
-      {/* ── Google OAuth button ── */}
-      <button
-        id="login-google"
-        type="button"
-        onClick={handleGoogleLogin}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          width: "100%",
-          height: 44,
-          borderRadius: 10,
-          background: "transparent",
-          border: "1px solid rgba(255,255,255,0.15)",
-          color: "#ffffff",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "pointer",
-          transition: "background 0.15s, border-color 0.15s",
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.3)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)";
-        }}
-      >
-        <GoogleLogo />
-        Continue with Google
-      </button>
-
       {/* ── Footer link ── */}
       <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 24 }}>
         Don&apos;t have an Account?{" "}

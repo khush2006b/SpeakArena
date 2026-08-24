@@ -131,22 +131,6 @@ export function RegisterForm() {
         </div>
       )}
 
-      {/* ── Google SSO (at top, above form — matches SoftQA button order) ── */}
-      <button
-        type="button"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#ffffff", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 6 }}
-      >
-        <GoogleLogo />
-        Sign up with Google
-      </button>
-
-      {/* ── OR divider ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, marginBottom: 18 }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>OR CONTINUE WITH EMAIL</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
-      </div>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
 
@@ -237,15 +221,6 @@ export function RegisterForm() {
           </button>
         </form>
       </Form>
-
-      {/* ── Apple login ── */}
-      <button
-        type="button"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#ffffff", fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 10 }}
-      >
-        <AppleLogo />
-        Continue with Apple
-      </button>
 
       {/* ── Footer ── */}
       <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 20 }}>
