@@ -13,10 +13,23 @@ interface TodayScheduleProps {
 }
 
 export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
-  // Find next or current class
-  const nextClass = meetings.find(
-    (c) => c.status === "SCHEDULED" || c.status === "LIVE"
-  );
+  const now = Date.now();
+  // Find next or current class that is actually active/scheduled and not past its end time
+  const nextClass = meetings.find((c) => {
+    const s = String(c.status || "").toUpperCase();
+    if (s === "ENDED" || s === "COMPLETED" || s === "EXPIRED" || s === "CANCELLED" || s === "ARCHIVED") {
+      return false;
+    }
+    try {
+      const startMs = new Date(c.scheduledAt || c.scheduled_at).getTime();
+      const durMinutes = c.durationMinutes || c.duration_minutes || 60;
+      const endMs = startMs + durMinutes * 60 * 1000;
+      if (!isNaN(endMs) && now > endMs) {
+        return false;
+      }
+    } catch {}
+    return s === "SCHEDULED" || s === "LIVE";
+  });
 
   const [countdown, setCountdown] = React.useState<string>("");
   const [attendance, setAttendance] = React.useState({ percentage: 0, present: 0, late: 0, absent: 0 });

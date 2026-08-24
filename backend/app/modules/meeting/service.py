@@ -879,6 +879,10 @@ class MeetingService:
             and window_open <= now <= window_close
         )
 
+        effective_status = meeting.status
+        if effective_status == MeetingStatus.SCHEDULED and now > window_close:
+            effective_status = MeetingStatus.EXPIRED
+
         return {
             "id": str(meeting.id),
             "course_id": str(meeting.course_id),
@@ -898,11 +902,11 @@ class MeetingService:
                 if meeting.actual_ended_at
                 else None
             ),
-            "status": meeting.status,
+            "status": effective_status,
             "provider": meeting.provider,
             "max_participants": meeting.max_participants,
             "visibility": getattr(meeting, "visibility", "public"),
-            "is_live": meeting.status == MeetingStatus.LIVE,
+            "is_live": effective_status == MeetingStatus.LIVE,
             "can_join": can_join,
             "created_at": meeting.created_at.isoformat(),
         }

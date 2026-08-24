@@ -10,7 +10,11 @@ interface RecordingsListProps {
 }
 
 export function RecordingsList({ meetings = [] }: RecordingsListProps) {
-  if (meetings.length === 0) return null;
+  const validRecordings = meetings.filter(
+    (m) => Boolean(m.recordingUrl || m.recording_url || m.recording_r2_key || m.hasRecording)
+  );
+
+  if (validRecordings.length === 0) return null;
 
   return (
     <div className="mt-16">
@@ -19,7 +23,7 @@ export function RecordingsList({ meetings = [] }: RecordingsListProps) {
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {meetings.slice(0, 4).map((recording) => (
+        {validRecordings.slice(0, 4).map((recording) => (
           <div
             key={recording.id}
             className="card-glass hover-lift overflow-hidden cursor-pointer flex flex-col"
