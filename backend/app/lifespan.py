@@ -151,6 +151,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_r2_key VARCHAR(512) DEFAULT NULL;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_data BYTEA DEFAULT NULL;",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS thumbnail_mime VARCHAR(64) DEFAULT NULL;",
+        # ── content_progress missing columns (watch progress tracking) ───────────
+        "ALTER TABLE content_progress ADD COLUMN IF NOT EXISTS watch_position_seconds INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE content_progress ADD COLUMN IF NOT EXISTS watch_duration_seconds INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE content_progress ADD COLUMN IF NOT EXISTS last_accessed_at TIMESTAMPTZ DEFAULT NULL;",
+        "ALTER TABLE content_progress ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ DEFAULT NULL;",
     ]
 
     # One-time data fix: videos stuck in 'uploading' status because the
