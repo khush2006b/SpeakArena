@@ -259,15 +259,21 @@ class MessageRepository:
         actor_id: Optional[uuid.UUID] = None,
     ) -> list[dict[str, Any]]:
         """Return messages for a chat room with cursor-based pagination."""
+        target_dm_user_id = dm_student_id or recipient_id
+
         conditions = [
-            Message.chat_room_id == chat_room_id,
             Message.deleted_at.is_(None),
         ]
+        # For DM threads, search across all rooms for the user pair.
+        # For course discussions or announcements, scope to the specific chat room.
+        if not (target_dm_user_id and actor_id):
+            conditions.append(Message.chat_room_id == chat_room_id)
+
         if before:
             conditions.append(Message.created_at < before)
         if not include_muted:
             conditions.append(Message.is_muted_user_message.is_(False))
-        target_dm_user_id = dm_student_id or recipient_id
+
         if announcements_only:
             conditions.append(Message.is_announcement.is_(True))
         elif public_only:

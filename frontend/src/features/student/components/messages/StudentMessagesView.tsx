@@ -308,31 +308,19 @@ export function StudentMessagesView() {
         return unique;
       });
     } else if (activeChannel.type === "teacher_dm") {
-      const currentCourses = coursesRef.current.length > 0 ? coursesRef.current : [activeCourse];
       const teacherId = getCourseTeacherId(activeCourse);
-      messagesPromise = Promise.all(
-        currentCourses.map((c) => {
-          const tId = getCourseTeacherId(c) || teacherId;
-          const url = tId
-            ? `/api/v1/chat/${c.id}/messages?limit=50&dm_student_id=${tId}`
-            : `/api/v1/chat/${c.id}/messages?limit=50`;
-          return apiClient
-            .get(url)
-            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
-            .catch(() => [] as BackendMessage[]);
+      messagesPromise = apiClient
+        .get(
+          teacherId
+            ? `/api/v1/chat/${activeCourse.id}/messages?limit=100&dm_student_id=${teacherId}`
+            : `/api/v1/chat/${activeCourse.id}/messages?limit=100`
+        )
+        .then((res) => {
+          let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
+          msgs = msgs.filter((m) => !m.is_announcement && Boolean(m.recipient_id));
+          return [...msgs].reverse();
         })
-      ).then((results) => {
-        const allMsgs = results.flat().filter((m) => !m.is_announcement && Boolean(m.recipient_id));
-
-        const seen = new Set<string>();
-        const unique = allMsgs.filter((m) => {
-          if (seen.has(m.id)) return false;
-          seen.add(m.id);
-          return true;
-        });
-        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        return unique;
-      });
+        .catch(() => []);
     } else {
       messagesPromise = apiClient
         .get(`/api/v1/chat/${courseId}/messages?limit=50&public_only=true`)
