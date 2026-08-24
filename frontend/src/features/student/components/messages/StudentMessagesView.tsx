@@ -244,40 +244,43 @@ export function StudentMessagesView() {
       .finally(() => setCoursesLoading(false));
   }, []);
 
-  // ── Fetch chat room when the active channel's course changes ─────────────────
+  // ── Fetch Chat Room & Message History in Parallel ────────────────────────────
   const activeCourse = activeChannel?.course ?? null;
 
   useEffect(() => {
-    if (!activeCourse) return;
+    if (!activeCourse || !activeChannel) return;
+    const courseId = activeCourse.id;
+    if (!courseId) return;
+
+    let isMounted = true;
     setRoomLoading(true);
     setRoomError(null);
-    setMessages([]);
-    setRoom(null);
+    setMessagesLoading(true);
 
+    // 1. Parallel Request A: Fetch Chat Room metadata
     apiClient
-      .get(`/api/v1/chat/${activeCourse.id}`)
+      .get(`/api/v1/chat/${courseId}`)
       .then((res) => {
+        if (!isMounted) return;
         const r: ChatRoom = res.data?.data;
-        setRoom(r);
-        setActiveRoom(r.id);
+        if (r) {
+          setRoom(r);
+          setActiveRoom(r.id);
+        }
       })
-      .catch(() =>
-        setRoomError("Chat room unavailable or you are not enrolled.")
-      )
-      .finally(() => setRoomLoading(false));
-  }, [activeCourse?.id, setActiveRoom]);
+      .catch(() => {
+        if (isMounted) setRoomError("Chat room unavailable or you are not enrolled.");
+      })
+      .finally(() => {
+        if (isMounted) setRoomLoading(false);
+      });
 
-  // ── Fetch message history ──────────────────────────────────────────────────
-  const fetchMessages = useCallback(async () => {
-    if (!activeCourse || !activeChannel) return;
-
-    // For course and teacher_dm channels, wait for room to be loaded
-    if (activeChannel.type !== "announcements" && !room) return;
+    // 2. Parallel Request B: Fetch Messages history
+    let messagesPromise: Promise<BackendMessage[]>;
 
     if (activeChannel.type === "announcements") {
-      // Aggregate announcements from ALL enrolled courses (read via ref to avoid dep)
-      const currentCourses = coursesRef.current;
-      Promise.all(
+      const currentCourses = coursesRef.current.length > 0 ? coursesRef.current : [activeCourse];
+      messagesPromise = Promise.all(
         currentCourses.map((c) =>
           apiClient
             .get(`/api/v1/chat/${c.id}/messages?limit=50&announcements_only=true`)
@@ -293,58 +296,58 @@ export function StudentMessagesView() {
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setMessages(unique);
-      }).finally(() => setMessagesLoading(false));
-      return;
-    }
-
-    if (activeChannel.type === "teacher_dm") {
-      const currentCourses = coursesRef.current;
+        return unique;
+      });
+    } else if (activeChannel.type === "teacher_dm") {
+      const currentCourses = coursesRef.current.length > 0 ? coursesRef.current : [activeCourse];
       const teacherId = getCourseTeacherId(activeCourse);
       if (!teacherId) {
-        setMessagesLoading(false);
-        return;
-      }
-      Promise.all(
-        currentCourses.map((c) =>
-          apiClient
-            .get(`/api/v1/chat/${c.id}/messages?limit=50&dm_student_id=${teacherId}`)
-            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
-            .catch(() => [] as BackendMessage[])
-        )
-      ).then((results) => {
-        const allMsgs = results.flat().filter((m) => !m.is_announcement && Boolean(m.recipient_id));
-        const seen = new Set<string>();
-        const unique = allMsgs.filter((m) => {
-          if (seen.has(m.id)) return false;
-          seen.add(m.id);
-          return true;
+        messagesPromise = Promise.resolve([]);
+      } else {
+        messagesPromise = Promise.all(
+          currentCourses.map((c) =>
+            apiClient
+              .get(`/api/v1/chat/${c.id}/messages?limit=50&dm_student_id=${teacherId}`)
+              .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+              .catch(() => [] as BackendMessage[])
+          )
+        ).then((results) => {
+          const allMsgs = results.flat().filter((m) => !m.is_announcement && Boolean(m.recipient_id));
+          const seen = new Set<string>();
+          const unique = allMsgs.filter((m) => {
+            if (seen.has(m.id)) return false;
+            seen.add(m.id);
+            return true;
+          });
+          unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          return unique;
         });
-        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setMessages(unique);
-      }).finally(() => setMessagesLoading(false));
-      return;
+      }
+    } else {
+      messagesPromise = apiClient
+        .get(`/api/v1/chat/${courseId}/messages?limit=50&public_only=true`)
+        .then((res) => {
+          let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
+          msgs = msgs.filter((m) => !m.is_announcement && !m.recipient_id);
+          return [...msgs].reverse();
+        })
+        .catch(() => []);
     }
 
-    let url = `/api/v1/chat/${activeCourse.id}/messages?limit=50&public_only=true`;
-
-    apiClient
-      .get(url)
-      .then((res) => {
-        let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-        msgs = msgs.filter((m) => !m.is_announcement && !m.recipient_id);
-        setMessages([...msgs].reverse()); // API returns newest-first
+    messagesPromise
+      .then((fetchedMsgs) => {
+        if (isMounted) {
+          setMessages(fetchedMsgs);
+        }
       })
-      .catch(() => {})
-      .finally(() => setMessagesLoading(false));
-  }, [activeCourse, activeChannel, room]);
+      .finally(() => {
+        if (isMounted) setMessagesLoading(false);
+      });
 
-  // ── Fetch message history whenever channel type or room changes + 3s poll ────
-  useEffect(() => {
-    if (!activeCourse || !activeChannel) return;
-
-    fetchMessages();
-  }, [activeCourse, activeChannel, room, fetchMessages]);
+    return () => {
+      isMounted = false;
+    };
+  }, [activeCourse?.id, activeChannel?.type, setActiveRoom]);
 
   // ── WebSocket ─────────────────────────────────────────────────────────────────
   useEffect(() => {
