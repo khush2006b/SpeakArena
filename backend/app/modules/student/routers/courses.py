@@ -68,8 +68,18 @@ async def explore_courses(
     _credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
 ) -> JSONResponse:
     """Explore published courses catalog — open to all roles and anonymous users."""
+    student_id: Optional[uuid.UUID] = None
+    if _credentials and _credentials.credentials:
+        try:
+            from app.core.security.jwt import decode_access_token
+            payload = decode_access_token(_credentials.credentials)
+            if payload and payload.sub:
+                student_id = uuid.UUID(payload.sub)
+        except Exception:
+            student_id = None
+
     repo = StudentCourseRepository(db)
-    courses, total = await repo.list_explore(page=page, page_size=page_size, search=search, student_id=None)
+    courses, total = await repo.list_explore(student_id=student_id, page=page, page_size=page_size, search=search)
     return paginated_response(courses, page=page, page_size=page_size, total=total)
 
 
