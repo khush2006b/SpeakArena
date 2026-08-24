@@ -1,10 +1,37 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Video, FileText, Megaphone, Presentation } from "lucide-react";
+import { useMeetingStore } from "@/stores/meeting.store";
 
 export function QuickActionsDropdown() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const router = useRouter();
+  const setCreateModalOpen = useMeetingStore((s) => s.setCreateModalOpen);
+
+  const close = () => setIsOpen(false);
+
+  const handleCreateCourse = () => {
+    close();
+    router.push("/teacher/builder");
+  };
+
+  const handleScheduleMeeting = () => {
+    close();
+    setCreateModalOpen(true);
+    router.push("/teacher/meetings");
+  };
+
+  const handleUploadResource = () => {
+    close();
+    router.push("/teacher/resources");
+  };
+
+  const handlePostAnnouncement = () => {
+    close();
+    router.push("/teacher/communication");
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -34,7 +61,7 @@ export function QuickActionsDropdown() {
         <>
           <div 
             style={{ position: "fixed", inset: 0, zIndex: 40 }} 
-            onClick={() => setIsOpen(false)} 
+            onClick={close} 
           />
           <div style={{
             position: "absolute",
@@ -51,16 +78,16 @@ export function QuickActionsDropdown() {
             flexDirection: "column",
             gap: 4
           }}>
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid bg-white/5", marginBottom: 4 }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 4 }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "hsl(var(--foreground))" }}>Quick Actions</p>
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <button style={menuItemStyle}>
+              <button style={menuItemStyle} onClick={handleCreateCourse}>
                 <Presentation style={{ width: 16, height: 16, color: "#60a5fa" }} />
                 <span>Create Course</span>
               </button>
-              <button style={menuItemStyle}>
+              <button style={menuItemStyle} onClick={handleScheduleMeeting}>
                 <Video style={{ width: 16, height: 16, color: "#10b981" }} />
                 <span>Schedule Meeting</span>
               </button>
@@ -69,11 +96,11 @@ export function QuickActionsDropdown() {
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "4px 0" }} />
             
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <button style={menuItemStyle}>
+              <button style={menuItemStyle} onClick={handleUploadResource}>
                 <FileText style={{ width: 16, height: 16, color: "#f59e0b" }} />
                 <span>Upload PDF/Resource</span>
               </button>
-              <button style={menuItemStyle}>
+              <button style={menuItemStyle} onClick={handlePostAnnouncement}>
                 <Megaphone style={{ width: 16, height: 16, color: "#a78bfa" }} />
                 <span>Post Announcement</span>
               </button>

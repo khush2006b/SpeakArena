@@ -16,6 +16,8 @@ import {
   ChevronRight,
   GraduationCap,
   ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -170,6 +172,7 @@ export function TeacherCommunicationView() {
   // Section collapse state
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
   const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
+  const [showChannelSidebar, setShowChannelSidebar] = useState(true);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -280,6 +283,7 @@ export function TeacherCommunicationView() {
   useEffect(() => {
     if (activeChannel.type === "course") {
       const course = activeChannel.course;
+      if (!course || !course.id) return;
       setMessages([]);
       setRoom(null);
       apiClient
@@ -290,7 +294,7 @@ export function TeacherCommunicationView() {
           setSlowMode(r?.slow_mode_seconds ?? 0);
         })
         .catch(() => {});
-    } else if (courses.length > 0) {
+    } else if (courses.length > 0 && courses[0]?.id) {
       // For announcements & DMs: use first course room for WS context
       setMessages([]);
       setRoom(null);
@@ -386,7 +390,14 @@ export function TeacherCommunicationView() {
     setMessagesLoading(true);
 
     try {
+      const validCourses = courses.filter((c) => Boolean(c?.id));
+
       if (activeChannel.type === "course") {
+        if (!activeChannel.course?.id) {
+          setMessages([]);
+          setMessagesLoading(false);
+          return;
+        }
         // Single course discussion
         const url = `/api/v1/chat/${activeChannel.course.id}/messages?limit=50&public_only=true`;
         const res = await apiClient.get(url);
@@ -397,7 +408,7 @@ export function TeacherCommunicationView() {
       } else if (activeChannel.type === "announcements") {
         // Collect announcements across ALL teacher courses
         const results = await Promise.all(
-          courses.map((c) =>
+          validCourses.map((c) =>
             apiClient
               .get(`/api/v1/chat/${c.id}/messages?limit=50&announcements_only=true`)
               .then((res: any) => (res.data?.data?.messages ?? []) as BackendMessage[])
@@ -424,7 +435,7 @@ export function TeacherCommunicationView() {
           return;
         }
         const results = await Promise.all(
-          courses.map((c) =>
+          validCourses.map((c) =>
             apiClient
               .get(`/api/v1/chat/${c.id}/messages?limit=50&dm_student_id=${studentId}`)
               .then((res: any) => (res.data?.data?.messages ?? []) as BackendMessage[])
@@ -637,12 +648,12 @@ export function TeacherCommunicationView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        className="flex flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-border"
+        className="flex flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-border transition-all duration-200"
         style={{
-          display: isMobile && mobileShowChat ? "none" : "flex",
-          width: isMobile ? "100%" : 320,
-          minWidth: isMobile ? "100%" : 320,
-          maxWidth: isMobile ? "100%" : 320,
+          display: (isMobile && mobileShowChat) || (!isMobile && !showChannelSidebar) ? "none" : "flex",
+          width: isMobile ? "100%" : 280,
+          minWidth: isMobile ? "100%" : 280,
+          maxWidth: isMobile ? "100%" : 280,
         }}
       >
         {/* App Name / Branding */}
@@ -1180,6 +1191,19 @@ export function TeacherCommunicationView() {
             >
               <ArrowLeft style={{ width: 18, height: 18 }} />
             </button>
+            <button
+              onClick={() => setShowChannelSidebar((v) => !v)}
+              className="hidden md:flex p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white transition-colors"
+              style={{ border: "1px solid hsl(var(--border))" }}
+              title={showChannelSidebar ? "Collapse channels sidebar" : "Expand channels sidebar"}
+              aria-label="Toggle channels sidebar"
+            >
+              {showChannelSidebar ? (
+                <PanelLeftClose style={{ width: 18, height: 18 }} />
+              ) : (
+                <PanelLeftOpen style={{ width: 18, height: 18 }} />
+              )}
+            </button>
             {/* Channel icon */}
             <div
               style={{
@@ -1372,7 +1396,7 @@ export function TeacherCommunicationView() {
                   />
                   <div
                     style={{
-                      maxWidth: "68%",
+                      maxWidth: "82%",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: isMine ? "flex-end" : "flex-start",
