@@ -245,7 +245,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       }
 
       // 3. Publish the course via the teacher publish endpoint
-      await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(targetCourseId));
+      try {
+        await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(targetCourseId));
+      } catch (pubErr: any) {
+        if (pubErr?.response?.status !== 409) {
+          console.warn("[Builder] Teacher publish endpoint call warning:", pubErr);
+        }
+      }
 
       // 4. Sync any staged video lessons to the course
       if (stagedLessons.length > 0) {

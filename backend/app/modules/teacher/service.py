@@ -446,8 +446,8 @@ class CourseService:
         if course is None:
             raise CourseNotFoundError()
 
-        if course.status == CourseStatus.PUBLISHED:
-            raise CourseAlreadyPublishedError()
+        if course.status in (CourseStatus.PUBLISHED, "published"):
+            return course
 
         if not course.title or course.price is None:
             raise CourseNotReadyError(
