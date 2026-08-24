@@ -322,19 +322,7 @@ export function StudentMessagesView() {
             .catch(() => [] as BackendMessage[]);
         })
       ).then((results) => {
-        const myUserId = String(userIdRef.current || "").toLowerCase();
-        const tId = teacherId.toLowerCase();
-
-        const allMsgs = results.flat().filter((m) => {
-          if (m.is_announcement || !m.recipient_id) return false;
-          const sId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
-          const rId = String(m.recipient_id || "").toLowerCase();
-
-          if (tId) {
-            return (sId === myUserId && rId === tId) || (sId === tId && rId === myUserId);
-          }
-          return (rId === myUserId && Boolean(sId)) || (sId === myUserId && Boolean(rId));
-        });
+        const allMsgs = results.flat().filter((m) => !m.is_announcement && Boolean(m.recipient_id));
 
         const seen = new Set<string>();
         const unique = allMsgs.filter((m) => {
