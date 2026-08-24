@@ -171,6 +171,16 @@ export function TeacherCommunicationView() {
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
   const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Messages
   const [messages, setMessages] = useState<BackendMessage[]>([]);
@@ -604,7 +614,7 @@ export function TeacherCommunicationView() {
     <div
       style={{
         display: "flex",
-        height: "calc(100dvh - 4rem)",
+        height: "100%",
         width: "100%",
         background: "hsl(var(--background))",
         color: "#f1f5f9",
@@ -627,7 +637,13 @@ export function TeacherCommunicationView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-80 md:min-w-[320px] md:max-w-[320px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-border`}
+        className="flex flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-border"
+        style={{
+          display: isMobile && mobileShowChat ? "none" : "flex",
+          width: isMobile ? "100%" : 320,
+          minWidth: isMobile ? "100%" : 320,
+          maxWidth: isMobile ? "100%" : 320,
+        }}
       >
         {/* App Name / Branding */}
         <div
@@ -1137,7 +1153,10 @@ export function TeacherCommunicationView() {
 
       {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
       <div
-        className={`${mobileShowChat ? "flex" : "hidden md:flex"} flex-1 flex-col h-full bg-background relative min-w-0`}
+        className="flex-1 flex-col h-full bg-background relative min-w-0"
+        style={{
+          display: isMobile && !mobileShowChat ? "none" : "flex",
+        }}
       >
         {/* Chat Header */}
         <div

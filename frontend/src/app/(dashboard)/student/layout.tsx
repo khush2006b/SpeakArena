@@ -1,11 +1,7 @@
-/**
- * Student portal layout — with StudentRoute guard.
- *
- * Implements the immersive, learning-first Netflix/Coursera style layout.
- * Wraps children in StudentRoute to enforce STUDENT role before rendering.
- */
+"use client";
 
 import type { Metadata } from "next";
+import { usePathname } from "next/navigation";
 import { StudentSidebar } from "@/features/student/components/layout/StudentSidebar";
 import { StudentHeader } from "@/features/student/components/layout/StudentHeader";
 import { LearningProgressBar } from "@/features/student/components/layout/LearningProgressBar";
@@ -13,18 +9,16 @@ import { QuickActionBar } from "@/features/student/components/layout/QuickAction
 import { MobileBottomNav } from "@/features/student/components/layout/MobileBottomNav";
 import { StudentRoute } from "@/components/guards/StudentRoute";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Student Dashboard",
-    template: "%s | SpeakArena",
-  },
-};
-
 export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isFullBleedPage =
+    pathname?.startsWith("/student/messages") ||
+    pathname?.startsWith("/student/chat");
+
   return (
     <StudentRoute>
       <div className="flex min-h-screen w-full bg-background text-foreground transition-colors duration-200">
@@ -42,10 +36,18 @@ export default function StudentLayout({
           <StudentHeader />
 
           {/* Scrollable Content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-7 pt-6 pb-20">
-              {children}
-            </div>
+          <main
+            className={`flex-1 ${
+              isFullBleedPage ? "overflow-hidden" : "overflow-y-auto"
+            }`}
+          >
+            {isFullBleedPage ? (
+              <div className="w-full h-full">{children}</div>
+            ) : (
+              <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-7 pt-6 pb-20">
+                {children}
+              </div>
+            )}
           </main>
         </div>
 
@@ -58,3 +60,4 @@ export default function StudentLayout({
     </StudentRoute>
   );
 }
+

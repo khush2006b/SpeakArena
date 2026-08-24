@@ -182,6 +182,16 @@ export function StudentMessagesView() {
   // Misc
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Refs
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -602,7 +612,7 @@ export function StudentMessagesView() {
     <div
       style={{
         display: "flex",
-        height: "calc(100dvh - 4rem)",
+        height: "100%",
         width: "100%",
         background: "#080c14",
         color: "#f1f5f9",
@@ -626,7 +636,13 @@ export function StudentMessagesView() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────────── */}
       <div
-        className={`${mobileShowChat ? "hidden md:flex" : "flex"} w-full md:w-80 md:min-w-[320px] md:max-w-[320px] flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-white/5`}
+        className="flex flex-col shrink-0 overflow-y-auto bg-[#0b0f1a] border-r border-white/5"
+        style={{
+          display: isMobile && mobileShowChat ? "none" : "flex",
+          width: isMobile ? "100%" : 320,
+          minWidth: isMobile ? "100%" : 320,
+          maxWidth: isMobile ? "100%" : 320,
+        }}
       >
         {/* Branding */}
         <div
@@ -1141,7 +1157,10 @@ export function StudentMessagesView() {
 
       {/* ── MAIN CHAT AREA ───────────────────────────────────────────────────── */}
       <div
-        className={`${mobileShowChat ? "flex" : "hidden md:flex"} flex-1 flex-col h-full bg-[#080c14] min-w-0`}
+        className="flex-1 flex-col h-full bg-[#080c14] min-w-0"
+        style={{
+          display: isMobile && !mobileShowChat ? "none" : "flex",
+        }}
       >
         {/* Chat Header */}
         <div
