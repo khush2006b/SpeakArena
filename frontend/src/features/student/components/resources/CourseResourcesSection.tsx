@@ -11,8 +11,11 @@ import {
   Clock,
   HardDrive,
   BookOpen,
+  Loader2,
 } from "lucide-react";
 import { StudentCourse, CourseVideo, CoursePDF } from "../../hooks/useStudentResources";
+import { apiClient } from "@/services/api/client";
+import { toast } from "sonner";
 
 interface CourseResourcesSectionProps {
   course: StudentCourse;
@@ -40,6 +43,65 @@ export function CourseResourcesSection({
 }: CourseResourcesSectionProps) {
   const [isExpanded, setIsExpanded] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState<"videos" | "pdfs">("videos");
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+
+  const handleDownloadVideo = async (video: CourseVideo) => {
+    try {
+      setDownloadingId(video.id);
+      toast.info(`Preparing download for "${video.title}"...`);
+      const res = await apiClient.get(`/api/v1/videos/${course.courseId}/${video.id}/stream`);
+      const streamUrl =
+        res.data?.data?.stream_url ||
+        res.data?.stream_url ||
+        res.data?.data?.url ||
+        res.data?.url;
+      if (!streamUrl) {
+        toast.error("Download link is unavailable.");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = streamUrl;
+      a.download = `${video.title || "video"}.mp4`;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`Download started for "${video.title}".`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to download video.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (pdf: CoursePDF) => {
+    try {
+      setDownloadingId(pdf.id);
+      toast.info(`Preparing download for "${pdf.title}"...`);
+      const res = await apiClient.get(`/api/v1/pdfs/${pdf.id}/access`);
+      const accessUrl =
+        res.data?.data?.url ||
+        res.data?.url ||
+        res.data?.data?.access_url ||
+        res.data?.access_url;
+      if (!accessUrl) {
+        toast.error("Download link is unavailable.");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = accessUrl;
+      a.download = `${pdf.title || "document"}.pdf`;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`Download started for "${pdf.title}".`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to download PDF.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const filteredVideos = videos.filter((v) =>
     v.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -48,7 +110,6 @@ export function CourseResourcesSection({
     p.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // If search query is active and this course has no matches, don't render it
   if (searchQuery && filteredVideos.length === 0 && filteredPdfs.length === 0) {
     return null;
   }
@@ -144,8 +205,17 @@ export function CourseResourcesSection({
                       {video.isCompleted && (
                         <CheckCircle2 size={16} className="text-emerald-500" />
                       )}
-                      <button className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors press-scale">
-                        Watch
+                      <button
+                        onClick={() => handleDownloadVideo(video)}
+                        disabled={downloadingId === video.id}
+                        className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors press-scale flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {downloadingId === video.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Download size={13} />
+                        )}
+                        Download Video
                       </button>
                     </div>
                   </div>
@@ -185,16 +255,18 @@ export function CourseResourcesSection({
                       {pdf.isCompleted && (
                         <CheckCircle2 size={16} className="text-emerald-500" />
                       )}
-                      <div className="flex gap-2">
-                        <button className="px-3 py-1.5 bg-secondary/50 text-foreground border border-border/50 rounded-lg text-xs font-medium hover:bg-secondary transition-colors press-scale">
-                          View
-                        </button>
-                        {pdf.isDownloadable !== false && (
-                          <button className="p-1.5 bg-secondary/50 text-foreground border border-border/50 rounded-lg hover:bg-secondary transition-colors press-scale flex items-center justify-center">
-                            <Download size={13} />
-                          </button>
+                      <button
+                        onClick={() => handleDownloadPdf(pdf)}
+                        disabled={downloadingId === pdf.id}
+                        className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors press-scale flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {downloadingId === pdf.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Download size={13} />
                         )}
-                      </div>
+                        Download PDF
+                      </button>
                     </div>
                   </div>
                 ))
