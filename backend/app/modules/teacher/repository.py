@@ -444,7 +444,10 @@ class MeetingRepository:
         Returns:
             tuple: (list of Meeting, total count).
         """
-        conditions = [Meeting.teacher_id == teacher_id]
+        conditions = [
+            Meeting.teacher_id == teacher_id,
+            Meeting.deleted_at.is_(None),
+        ]
 
         if course_id:
             conditions.append(Meeting.course_id == course_id)
@@ -490,6 +493,7 @@ class MeetingRepository:
             select(Meeting)
             .where(
                 Meeting.teacher_id == teacher_id,
+                Meeting.deleted_at.is_(None),
                 Meeting.scheduled_at > now,
                 Meeting.status.in_([MeetingStatus.SCHEDULED, MeetingStatus.LIVE]),
             )
@@ -517,6 +521,7 @@ class MeetingRepository:
             select(Meeting)
             .where(
                 Meeting.teacher_id == teacher_id,
+                Meeting.deleted_at.is_(None),
                 Meeting.scheduled_at.between(start, end),
             )
             .order_by(Meeting.scheduled_at.asc())
