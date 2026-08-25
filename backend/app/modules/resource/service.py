@@ -968,7 +968,7 @@ class PDFService:
             expiry = settings.R2_PRESIGNED_URL_EXPIRY_DOWNLOAD
             return {
                 "pdf_id": pdf_id,
-                "access_url": cached.decode(),
+                "access_url": cached.decode() if isinstance(cached, bytes) else cached,
                 "expires_in_seconds": expiry,
                 "is_downloadable": pdf.is_downloadable,
             }
@@ -1172,7 +1172,7 @@ class StreamingService:
         cached_url = await self._redis.get(cache_key)
 
         if cached_url:
-            stream_url = cached_url.decode()
+            stream_url = cached_url.decode() if isinstance(cached_url, bytes) else cached_url
         else:
             stream_url = await r2.generate_presigned_stream_url(
                 video.r2_object_key, expiry_seconds=expiry
