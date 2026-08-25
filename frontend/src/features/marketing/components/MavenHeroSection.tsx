@@ -6,17 +6,17 @@ import { GraduationCap, Wrench, Zap } from "lucide-react";
 // ─── GLOBE ILLUSTRATION ────────────────────────────────────────────────────────
 function GlobeIllustration() {
   return (
-    <div className="relative w-full h-[360px] sm:h-[420px] flex items-center justify-center">
+    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 380, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {/* Orbit rings */}
-      <div style={{ position: "absolute", width: 440, height: 440, borderRadius: "50%", border: "1px stroke rgba(255,255,255,0.06)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
-      <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", border: "1px dashed rgba(99,102,241,0.25)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+      <div style={{ position: "absolute", width: 440, height: 440, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", border: "1px dashed rgba(99,102,241,0.25)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
       
       {/* Glow background */}
-      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(79,70,229,0.1) 50%, transparent 70%)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", filter: "blur(28px)" }} />
+      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(79,70,229,0.1) 50%, transparent 70%)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", filter: "blur(28px)", pointerEvents: "none" }} />
 
       {/* Main Globe SVG */}
-      <div className="relative z-10 flex items-center justify-center">
-        <svg width="280" height="280" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_35px_rgba(99,102,241,0.35)]">
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="260" height="260" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: "drop-shadow(0 0 35px rgba(99,102,241,0.35))" }}>
           <circle cx="140" cy="140" r="130" fill="url(#globeGrad)" />
           
           {/* Latitude & Longitude Lines */}
@@ -50,37 +50,70 @@ function GlobeIllustration() {
         </svg>
       </div>
 
-      {/* Floating Badges */}
-      {/* Top Right */}
-      <div className="absolute top-[8%] right-[5%] sm:right-[10%] bg-[#0f172a]/95 border border-indigo-500/30 rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
-        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white shrink-0">
+      {/* ── Floating Badges (All 4 Cards) ─────────────────────────────────── */}
+
+      {/* 1. Top Right Card */}
+      <div style={{
+        position: "absolute", top: "2%", right: "0%",
+        background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(99, 102, 241, 0.3)",
+        borderRadius: 14, padding: "8px 14px", display: "flex", alignItems: "center", gap: 10,
+        boxShadow: "0 10px 25px rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 10,
+      }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
           A
         </div>
         <div>
-          <div className="text-xs font-bold text-white leading-tight">Speaking</div>
-          <div className="text-[11px] text-indigo-300">Band 8.0</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Speaking</div>
+          <div style={{ fontSize: 11, color: "#a5b4fc" }}>Band 8.0</div>
         </div>
       </div>
 
-      {/* Mid Left */}
-      <div className="absolute top-[40%] left-[2%] sm:left-[5%] bg-[#0f172a]/95 border border-emerald-500/30 rounded-xl p-2.5 sm:p-3 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-rose-600 flex items-center justify-center text-[10px] font-bold text-white">
+      {/* 2. Mid Left Card */}
+      <div style={{
+        position: "absolute", top: "34%", left: "0%",
+        background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(16, 185, 129, 0.3)",
+        borderRadius: 14, padding: "8px 14px",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#e11d48", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
             S
           </div>
-          <span className="text-xs font-semibold text-white">Live Session</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>Live Session</span>
         </div>
-        <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1.5 font-medium">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
-          48 students online
+        <div style={{ fontSize: 10, color: "#34d399", marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block" }} />
+          48 online
         </div>
       </div>
 
-      {/* Bottom Right */}
-      <div className="absolute bottom-[10%] right-[4%] sm:right-[8%] bg-[#0f172a]/95 border border-amber-500/30 rounded-xl p-2.5 sm:p-3 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
-        <div className="text-xs font-bold text-white">Pronunciation</div>
-        <div className="text-[11px] text-amber-400 font-medium">⭐ 4.9 · 1,240 students</div>
+      {/* 3. Bottom Left Card */}
+      <div style={{
+        position: "absolute", bottom: "4%", left: "0%",
+        background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(99, 102, 241, 0.3)",
+        borderRadius: 14, padding: "8px 14px", display: "flex", alignItems: "center", gap: 10,
+        boxShadow: "0 10px 25px rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 10,
+      }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+          M
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Accent</div>
+          <div style={{ fontSize: 11, color: "#6ee7b7" }}>Certified ✓</div>
+        </div>
       </div>
+
+      {/* 4. Bottom Right Card */}
+      <div style={{
+        position: "absolute", bottom: "4%", right: "0%",
+        background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(245, 158, 11, 0.3)",
+        borderRadius: 14, padding: "8px 14px",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 10,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Pronunciation</div>
+        <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 500, marginTop: 2 }}>⭐ 4.9 · 1,240 students</div>
+      </div>
+
     </div>
   );
 }
@@ -112,7 +145,7 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe — guaranteed height & visibility on laptop and mobile */}
+            {/* RIGHT: Globe — guaranteed height & visibility for all 4 cards */}
             <div className="w-full md:w-1/2 min-h-[380px] sm:min-h-[440px] flex items-center justify-center relative py-4">
               <GlobeIllustration />
             </div>
