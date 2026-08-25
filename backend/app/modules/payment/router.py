@@ -140,6 +140,59 @@ async def get_student_payment_history(
 
 
 @router.get(
+    "/analytics",
+    summary="Revenue analytics (teacher)",
+    description=(
+        "Returns comprehensive revenue analytics for the teacher's courses: "
+        "today, week, month, year, and lifetime revenue; monthly breakdown chart; "
+        "top-performing courses; refund and failure stats."
+    ),
+)
+async def get_analytics(
+    months: int = Query(default=12, ge=1, le=36),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return revenue analytics for the teacher."""
+    svc = AnalyticsService(db, teacher)
+    data = await svc.get_analytics(months=months)
+    return success_response(data)
+
+
+@router.get(
+    "/all",
+    summary="All payments (teacher)",
+    description=(
+        "Returns paginated payments across all teacher's courses. "
+        "Supports filtering by status, course, student, date range, and search."
+    ),
+)
+async def list_all_payments(
+    params: TeacherPaymentParams = Depends(),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return all payments across teacher's courses."""
+    from app.modules.payment.repository import PaymentRepository
+
+    repo = PaymentRepository(db)
+    payments, total = await repo.list_for_teacher(
+        teacher.id,
+        page=params.page,
+        page_size=params.page_size,
+        status=params.status,
+        course_id=params.course_id,
+        student_id=params.student_id,
+        from_date=params.from_date,
+        to_date=params.to_date,
+        search=params.search,
+    )
+    return paginated_response(
+        payments, page=params.page, page_size=params.page_size, total=total
+    )
+
+
+@router.get(
     "/{payment_id}",
     summary="Payment detail",
     description="Returns full payment detail for the authenticated student.",
@@ -238,56 +291,3 @@ async def initiate_refund(
     )
     await db.commit()
     return success_response(data, message="Refund initiated successfully.")
-
-
-@router.get(
-    "/analytics",
-    summary="Revenue analytics (teacher)",
-    description=(
-        "Returns comprehensive revenue analytics for the teacher's courses: "
-        "today, week, month, year, and lifetime revenue; monthly breakdown chart; "
-        "top-performing courses; refund and failure stats."
-    ),
-)
-async def get_analytics(
-    months: int = Query(default=12, ge=1, le=36),
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """Return revenue analytics for the teacher."""
-    svc = AnalyticsService(db, teacher)
-    data = await svc.get_analytics(months=months)
-    return success_response(data)
-
-
-@router.get(
-    "/all",
-    summary="All payments (teacher)",
-    description=(
-        "Returns paginated payments across all teacher's courses. "
-        "Supports filtering by status, course, student, date range, and search."
-    ),
-)
-async def list_all_payments(
-    params: TeacherPaymentParams = Depends(),
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """Return all payments across teacher's courses."""
-    from app.modules.payment.repository import PaymentRepository
-
-    repo = PaymentRepository(db)
-    payments, total = await repo.list_for_teacher(
-        teacher.id,
-        page=params.page,
-        page_size=params.page_size,
-        status=params.status,
-        course_id=params.course_id,
-        student_id=params.student_id,
-        from_date=params.from_date,
-        to_date=params.to_date,
-        search=params.search,
-    )
-    return paginated_response(
-        payments, page=params.page, page_size=params.page_size, total=total
-    )

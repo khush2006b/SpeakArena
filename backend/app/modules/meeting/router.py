@@ -112,6 +112,61 @@ async def list_meetings(
     return paginated_response(meetings, page=page, page_size=page_size, total=total)
 
 
+@meeting_router.post(
+    "/recurring",
+    summary="Schedule recurring series",
+    description=(
+        "Create a series of recurring meetings (daily, weekly, biweekly, monthly). "
+        "All sessions share the same meet link and are suffixed with #N."
+    ),
+    status_code=201,
+)
+async def create_recurring(
+    body: RecurringMeetingRequest,
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Create a recurring meeting series (teacher only)."""
+    svc = MeetingService(db, teacher)
+    meetings = await svc.create_recurring(body)
+    await db.commit()
+    return created_response(
+        meetings,
+        message=f"Created {len(meetings)} recurring sessions.",
+    )
+
+
+@meeting_router.get(
+    "/analytics/course/{course_id}",
+    summary="Course meeting analytics",
+    description="Comprehensive attendance and engagement analytics for a course.",
+)
+async def course_analytics(
+    course_id: uuid.UUID,
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Get course meeting analytics (teacher only)."""
+    svc = MeetingAnalyticsService(db, teacher)
+    data = await svc.course_analytics(course_id)
+    return success_response(data)
+
+
+@meeting_router.get(
+    "/analytics/me",
+    summary="Teacher statistics",
+    description="Aggregate statistics for the authenticated teacher across all courses.",
+)
+async def teacher_stats(
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Get teacher aggregate statistics."""
+    svc = MeetingAnalyticsService(db, teacher)
+    data = await svc.teacher_stats()
+    return success_response(data)
+
+
 @meeting_router.get(
     "/{meeting_id}",
     summary="Get meeting detail",
@@ -202,30 +257,6 @@ async def duplicate_meeting(
 
 
 @meeting_router.post(
-    "/recurring",
-    summary="Schedule recurring series",
-    description=(
-        "Create a series of recurring meetings (daily, weekly, biweekly, monthly). "
-        "All sessions share the same meet link and are suffixed with #N."
-    ),
-    status_code=201,
-)
-async def create_recurring(
-    body: RecurringMeetingRequest,
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """Create a recurring meeting series (teacher only)."""
-    svc = MeetingService(db, teacher)
-    meetings = await svc.create_recurring(body)
-    await db.commit()
-    return created_response(
-        meetings,
-        message=f"Created {len(meetings)} recurring sessions.",
-    )
-
-
-@meeting_router.post(
     "/{meeting_id}/go-live",
     summary="Start meeting (go live)",
     description="Transition meeting from 'scheduled' to 'live'. Notifies all enrolled students.",
@@ -259,37 +290,6 @@ async def end_meeting(
     meeting = await svc.end_meeting(meeting_id, body)
     await db.commit()
     return success_response(meeting, message="Meeting ended.")
-
-
-@meeting_router.get(
-    "/analytics/course/{course_id}",
-    summary="Course meeting analytics",
-    description="Comprehensive attendance and engagement analytics for a course.",
-)
-async def course_analytics(
-    course_id: uuid.UUID,
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """Get course meeting analytics (teacher only)."""
-    svc = MeetingAnalyticsService(db, teacher)
-    data = await svc.course_analytics(course_id)
-    return success_response(data)
-
-
-@meeting_router.get(
-    "/analytics/me",
-    summary="Teacher statistics",
-    description="Aggregate statistics for the authenticated teacher across all courses.",
-)
-async def teacher_stats(
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """Get teacher aggregate statistics."""
-    svc = MeetingAnalyticsService(db, teacher)
-    data = await svc.teacher_stats()
-    return success_response(data)
 
 
 # ===========================================================================
@@ -347,26 +347,6 @@ async def leave_meeting(
 
 
 @attendance_router.get(
-    "/{meeting_id}",
-    summary="List meeting attendance",
-    description="List all attendance records for a meeting (teacher only).",
-)
-async def list_attendance(
-    meeting_id: uuid.UUID,
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=100, ge=1, le=200),
-    teacher: User = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db_session),
-) -> JSONResponse:
-    """List attendance records for a meeting (teacher only)."""
-    svc = AttendanceService(db, teacher)
-    records, total = await svc.list_meeting_attendance(
-        meeting_id, page=page, page_size=page_size
-    )
-    return paginated_response(records, page=page, page_size=page_size, total=total)
-
-
-@attendance_router.get(
     "/summary/{meeting_id}",
     summary="Attendance summary",
     description="Aggregate attendance analytics for a single meeting (teacher only).",
@@ -417,6 +397,26 @@ async def manual_attendance(
     record = await svc.manual_mark(body)
     await db.commit()
     return success_response(record, message="Attendance updated.")
+
+
+@attendance_router.get(
+    "/{meeting_id}",
+    summary="List meeting attendance",
+    description="List all attendance records for a meeting (teacher only).",
+)
+async def list_attendance(
+    meeting_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=200),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """List attendance records for a meeting (teacher only)."""
+    svc = AttendanceService(db, teacher)
+    records, total = await svc.list_meeting_attendance(
+        meeting_id, page=page, page_size=page_size
+    )
+    return paginated_response(records, page=page, page_size=page_size, total=total)
 
 
 # ===========================================================================

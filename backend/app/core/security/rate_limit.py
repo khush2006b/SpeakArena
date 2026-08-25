@@ -32,7 +32,13 @@ class RateLimiter:
         """Evaluate the rate limit for the incoming request."""
         # Use client IP as the identifier. In a real prod setup behind a proxy, 
         # ensure X-Forwarded-For is parsed correctly (FastAPI Request.client.host handles basic cases).
-        client_ip = request.client.host if request.client else "unknown"
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        elif request.client:
+            client_ip = request.client.host
+        else:
+            client_ip = "unknown"
         path = request.url.path
         
         # Key format: rate_limit:{path}:{ip}
