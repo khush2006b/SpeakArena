@@ -1,11 +1,5 @@
-import { Metadata } from "next";
-import { StudentAttendanceView } from "@/features/student/components/attendance/StudentAttendanceView";
-
-export const metadata: Metadata = {
-  title: "Attendance History",
-  description: "Review your live class attendance records.",
-};
+import { redirect } from "next/navigation";
 
 export default function StudentAttendancePage() {
-  return <StudentAttendanceView />;
+  redirect("/student");
 }

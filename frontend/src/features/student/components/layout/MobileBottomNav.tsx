@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Library, Video, BarChart2, User } from "lucide-react";
+import { LayoutDashboard, Library, Video, ClipboardCheck, User } from "lucide-react";
 
 const NAV_TABS = [
   { name: "Home",     href: "/student",           icon: LayoutDashboard },
   { name: "Courses",  href: "/student/courses",   icon: Library },
   { name: "Live",     href: "/student/live",      icon: Video },
-  { name: "Progress", href: "/student/progress", icon: BarChart2 },
+  { name: "Tests",    href: "/student/tests",     icon: ClipboardCheck },
   { name: "Profile",  href: "/student/profile",   icon: User },
 ];
 

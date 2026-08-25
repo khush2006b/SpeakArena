@@ -26,7 +26,6 @@ const NAVIGATION = [
       { name: "Resources", href: "/teacher/resources", icon: FileText },
       { name: "Students", href: "/teacher/students", icon: Users },
       { name: "Tests & Grades", href: "/teacher/tests", icon: ClipboardCheck },
-      { name: "Attendance", href: "/teacher/attendance", icon: GraduationCap },
       { name: "Meetings", href: "/teacher/meetings", icon: CalendarDays },
     ],
   },

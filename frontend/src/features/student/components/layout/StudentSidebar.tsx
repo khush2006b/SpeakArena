@@ -25,9 +25,7 @@ const NAV_ITEMS = [
   {
     group: "Performance",
     items: [
-      { name: "Progress", href: "/student/progress", icon: Trophy },
       { name: "Tests", href: "/student/tests", icon: ClipboardCheck },
-      { name: "Attendance", href: "/student/attendance", icon: CalendarCheck },
     ],
   },
   {
