@@ -1307,7 +1307,10 @@ class AnalyticsRepository:
             .join(Course, Course.id == CourseEnrollment.course_id)
             .join(User, User.id == CourseEnrollment.student_id)
             .outerjoin(Payment, Payment.id == CourseEnrollment.payment_id)
-            .where(Course.teacher_id == teacher_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                Course.deleted_at.is_(None),
+            )
             .order_by(CourseEnrollment.enrolled_at.desc())
             .limit(limit)
         )
@@ -1328,15 +1331,7 @@ class AnalyticsRepository:
         teacher_id: uuid.UUID,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
-        """Return the most recent payments for the teacher's courses.
-
-        Args:
-            teacher_id: The teacher's user UUID.
-            limit: Maximum records.
-
-        Returns:
-            list[dict]: Recent payment data.
-        """
+        """Return the most recent payments for the teacher's active courses."""
         stmt = (
             select(
                 User.full_name.label("student_name"),
@@ -1347,7 +1342,10 @@ class AnalyticsRepository:
             )
             .join(Course, Course.id == Payment.course_id)
             .join(User, User.id == Payment.student_id)
-            .where(Course.teacher_id == teacher_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                Course.deleted_at.is_(None),
+            )
             .order_by(Payment.created_at.desc())
             .limit(limit)
         )
@@ -1364,18 +1362,14 @@ class AnalyticsRepository:
         ]
 
     async def get_total_students(self, teacher_id: uuid.UUID) -> int:
-        """Count unique enrolled students across all teacher courses.
-
-        Args:
-            teacher_id: The teacher's user UUID.
-
-        Returns:
-            int: Unique student count.
-        """
+        """Count unique enrolled students across all active teacher courses."""
         stmt = (
             select(func.count(func.distinct(CourseEnrollment.student_id)))
             .join(Course, Course.id == CourseEnrollment.course_id)
-            .where(Course.teacher_id == teacher_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                Course.deleted_at.is_(None),
+            )
         )
         return (await self._db.execute(stmt)).scalar_one()
 
@@ -1389,11 +1383,7 @@ class StudentManagementRepository:
     """Repository for teacher's enrolled student management."""
 
     def __init__(self, db: AsyncSession) -> None:
-        """Initialize with an async database session.
-
-        Args:
-            db: The async SQLAlchemy session.
-        """
+        """Initialize with an async database session."""
         self._db = db
 
     async def list_enrolled_students(
@@ -1406,20 +1396,11 @@ class StudentManagementRepository:
         course_id: Optional[uuid.UUID] = None,
         is_active: Optional[bool] = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Paginated list of enrolled students for a teacher.
-
-        Args:
-            teacher_id: The teacher's user UUID.
-            page: 1-indexed page number.
-            page_size: Items per page.
-            search: Optional name/email search string.
-            course_id: Optional filter to a single course.
-            is_active: Optional active status filter.
-
-        Returns:
-            tuple: (list of enrollment dicts, total count).
-        """
-        conditions = [Course.teacher_id == teacher_id]
+        """Paginated list of enrolled students for a teacher."""
+        conditions = [
+            Course.teacher_id == teacher_id,
+            Course.deleted_at.is_(None),
+        ]
 
         if course_id:
             conditions.append(CourseEnrollment.course_id == course_id)
