@@ -17,7 +17,7 @@ export function DiscussionRightPanel() {
     : null;
 
   const onlineParticipants = [
-    { id: "t-1", name: "Paras (Construction)", role: "teacher", avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah" },
+    { id: "t-1", name: "Paras (Construction)", role: "teacher", avatar: "/images/paras_teacher.png" },
     { id: "u-1", name: "Alex Johnson", role: "student", avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Alex" },
     { id: "u-3", name: "Emily Davis", role: "student", avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Emily" },
   ];

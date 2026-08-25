@@ -57,7 +57,7 @@ export function TeacherSection() {
               <img
                 src="/images/paras_teacher.png"
                 alt="Paras (Construction)"
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
               />
               {/* Gradient overlay */}
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(11,14,24,0.92) 0%, rgba(11,14,24,0.2) 50%, transparent 100%)", zIndex: 1 }} />
@@ -65,10 +65,10 @@ export function TeacherSection() {
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 28px 28px", zIndex: 2 }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(79,70,229,0.25)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: 100, padding: "4px 12px", marginBottom: 12, backdropFilter: "blur(8px)" }}>
                   <GraduationCap style={{ width: 12, height: 12, color: "#818cf8" }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Founder & Mentor</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Founder & Teacher</span>
                 </div>
                 <h3 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 6px 0", lineHeight: 1.2 }}>Paras (Construction)</h3>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Peer Mentor · SpeakArena</p>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Mentor · SpeakArena</p>
               </div>
             </div>
 
@@ -89,7 +89,7 @@ export function TeacherSection() {
             {/* Label */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 24, width: "fit-content" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", display: "inline-block" }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.08em" }}>Meet Your Mentor</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.08em" }}>Meet the Founder & Teacher</span>
             </div>
 
             <h2 style={{ fontSize: "clamp(28px, 3vw, 44px)", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, margin: "0 0 24px 0" }}>
