@@ -105,21 +105,9 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Redirect apex speakarena.com to www.speakarena.com
+  // Domain redirects are handled automatically by Vercel Edge Network
   async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [
-          {
-            type: "host",
-            value: "speakarena.com",
-          },
-        ],
-        destination: "https://www.speakarena.com/:path*",
-        permanent: true,
-      },
-    ];
+    return [];
   },
 
   // Proxy API requests to backend in development to avoid CORS and SameSite cookie issues
