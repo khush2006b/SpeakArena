@@ -6,68 +6,80 @@ import { GraduationCap, Wrench, Zap } from "lucide-react";
 // ─── GLOBE ILLUSTRATION ────────────────────────────────────────────────────────
 function GlobeIllustration() {
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="relative w-full h-[360px] sm:h-[420px] flex items-center justify-center">
       {/* Orbit rings */}
-      <div style={{ position: "absolute", width: 460, height: 460, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
-      <div style={{ position: "absolute", width: 370, height: 370, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
-      {/* Glow */}
-      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", filter: "blur(24px)" }} />
+      <div style={{ position: "absolute", width: 440, height: 440, borderRadius: "50%", border: "1px stroke rgba(255,255,255,0.06)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+      <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", border: "1px dashed rgba(99,102,241,0.25)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+      
+      {/* Glow background */}
+      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(79,70,229,0.1) 50%, transparent 70%)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", filter: "blur(28px)" }} />
 
-      {/* Globe SVG */}
-      <svg width="260" height="260" viewBox="0 0 260 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ position: "relative", zIndex: 2, flexShrink: 0 }}>
-        <circle cx="130" cy="130" r="118" fill="url(#globeGrad)" />
-        <ellipse cx="130" cy="130" rx="118" ry="47" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
-        <ellipse cx="130" cy="130" rx="118" ry="86" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none" />
-        <line x1="130" y1="12" x2="130" y2="248" stroke="rgba(255,255,255,0.09)" strokeWidth="1" />
-        <line x1="12" y1="130" x2="248" y2="130" stroke="rgba(255,255,255,0.09)" strokeWidth="1" />
-        <line x1="44" y1="28" x2="216" y2="232" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-        <line x1="216" y1="28" x2="44" y2="232" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-        <circle cx="130" cy="130" r="118" stroke="rgba(99,102,241,0.35)" strokeWidth="1.5" fill="none" />
-        {/* Continents */}
-        <path d="M88 98 Q104 82 126 89 Q142 95 137 108 Q132 122 116 120 Q96 118 88 98Z" fill="rgba(99,102,241,0.28)" />
-        <path d="M142 114 Q158 103 176 108 Q188 117 183 130 Q178 144 162 142 Q146 140 142 114Z" fill="rgba(99,102,241,0.22)" />
-        <path d="M92 142 Q106 133 118 140 Q130 148 123 162 Q115 174 102 168 Q89 162 92 142Z" fill="rgba(79,70,229,0.24)" />
-        <defs>
-          <radialGradient id="globeGrad" cx="38%" cy="34%" r="65%">
-            <stop offset="0%" stopColor="#1e3a5f" />
-            <stop offset="50%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#060810" />
-          </radialGradient>
-        </defs>
-      </svg>
+      {/* Main Globe SVG */}
+      <div className="relative z-10 flex items-center justify-center">
+        <svg width="280" height="280" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_35px_rgba(99,102,241,0.35)]">
+          <circle cx="140" cy="140" r="130" fill="url(#globeGrad)" />
+          
+          {/* Latitude & Longitude Lines */}
+          <ellipse cx="140" cy="140" rx="130" ry="52" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" fill="none" />
+          <ellipse cx="140" cy="140" rx="130" ry="95" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
+          <ellipse cx="140" cy="140" rx="52" ry="130" stroke="rgba(255,255,255,0.14)" strokeWidth="1" fill="none" />
+          <line x1="140" y1="10" x2="140" y2="270" stroke="rgba(255,255,255,0.14)" strokeWidth="1.2" />
+          <line x1="10" y1="140" x2="270" y2="140" stroke="rgba(255,255,255,0.14)" strokeWidth="1.2" />
+          
+          {/* Outer Ring */}
+          <circle cx="140" cy="140" r="130" stroke="rgba(129,140,248,0.45)" strokeWidth="2" fill="none" />
 
-      {/* Floating info cards */}
-      {/* Top-right */}
-      <div style={{ position: "absolute", top: "6%", right: "8%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>A</div>
+          {/* Continents / Landmass Shapes */}
+          <path d="M95 105 Q112 88 136 95 Q153 102 148 116 Q142 131 125 129 Q103 127 95 105Z" fill="rgba(129,140,248,0.4)" />
+          <path d="M153 122 Q170 110 190 116 Q203 126 197 140 Q192 155 174 153 Q157 151 153 122Z" fill="rgba(99,102,241,0.35)" />
+          <path d="M99 153 Q114 143 127 150 Q140 159 132 174 Q124 187 110 181 Q96 174 99 153Z" fill="rgba(79,70,229,0.38)" />
+
+          {/* Glowing Connection Nodes */}
+          <circle cx="110" cy="115" r="4" fill="#818cf8" />
+          <circle cx="170" cy="130" r="4" fill="#34d399" />
+          <circle cx="170" cy="130" r="7" stroke="#34d399" strokeWidth="1" fill="none" />
+          <circle cx="120" cy="165" r="4" fill="#fbbf24" />
+
+          <defs>
+            <radialGradient id="globeGrad" cx="35%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="45%" stopColor="#1e1b4b" />
+              <stop offset="95%" stopColor="#0b0e18" />
+            </radialGradient>
+          </defs>
+        </svg>
+      </div>
+
+      {/* Floating Badges */}
+      {/* Top Right */}
+      <div className="absolute top-[8%] right-[5%] sm:right-[10%] bg-[#0f172a]/95 border border-indigo-500/30 rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
+        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white shrink-0">
+          A
+        </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Speaking</div>
-          <div style={{ fontSize: 11, color: "#94a3b8" }}>Band 8.0</div>
+          <div className="text-xs font-bold text-white leading-tight">Speaking</div>
+          <div className="text-[11px] text-indigo-300">Band 8.0</div>
         </div>
       </div>
-      {/* Left-mid */}
-      <div style={{ position: "absolute", top: "36%", left: "1%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e11d48", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>S</div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>Live Session</span>
+
+      {/* Mid Left */}
+      <div className="absolute top-[40%] left-[2%] sm:left-[5%] bg-[#0f172a]/95 border border-emerald-500/30 rounded-xl p-2.5 sm:p-3 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-rose-600 flex items-center justify-center text-[10px] font-bold text-white">
+            S
+          </div>
+          <span className="text-xs font-semibold text-white">Live Session</span>
         </div>
-        <div style={{ fontSize: 10, color: "#34d399", marginTop: 5, display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block" }} />
-          48 online
-        </div>
-      </div>
-      {/* Bottom-left */}
-      <div style={{ position: "absolute", bottom: "12%", left: "2%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>M</div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Accent</div>
-          <div style={{ fontSize: 11, color: "#94a3b8" }}>Certified ✓</div>
+        <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1.5 font-medium">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+          48 students online
         </div>
       </div>
-      {/* Bottom-right */}
-      <div style={{ position: "absolute", bottom: "8%", right: "8%", background: "rgba(13,19,33,0.95)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, padding: "10px 14px", backdropFilter: "blur(12px)", boxShadow: "0 6px 28px rgba(0,0,0,0.45)", zIndex: 10 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Pronunciation</div>
-        <div style={{ fontSize: 11, color: "#fbbf24" }}>⭐ 4.9 · 1,240 students</div>
+
+      {/* Bottom Right */}
+      <div className="absolute bottom-[10%] right-[4%] sm:right-[8%] bg-[#0f172a]/95 border border-amber-500/30 rounded-xl p-2.5 sm:p-3 shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md z-20">
+        <div className="text-xs font-bold text-white">Pronunciation</div>
+        <div className="text-[11px] text-amber-400 font-medium">⭐ 4.9 · 1,240 students</div>
       </div>
     </div>
   );
@@ -77,8 +89,6 @@ function GlobeIllustration() {
 export function MavenHeroSection() {
   const [activeTab, setActiveTab] = useState<"cohorts" | "workshops" | "free">("cohorts");
 
-  // Shared horizontal padding matching the navbar: px-6 sm:px-12 lg:px-20
-
   return (
     <div className="w-full bg-background text-foreground transition-colors duration-200 overflow-x-hidden">
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
@@ -86,13 +96,13 @@ export function MavenHeroSection() {
         {/* Grid bg */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "44px 44px", pointerEvents: "none" }} />
         {/* Right-side glow */}
-        <div style={{ position: "absolute", top: 0, right: 0, width: "55%", height: "100%", background: "radial-gradient(ellipse at 80% 40%, rgba(79,70,229,0.12) 0%, transparent 65%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, right: 0, width: "55%", height: "100%", background: "radial-gradient(ellipse at 80% 40%, rgba(79,70,229,0.15) 0%, transparent 65%)", pointerEvents: "none" }} />
 
         <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-20" style={{ position: "relative", zIndex: 10 }}>
-          <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 lg:gap-12 py-10 sm:py-14 lg:py-16">
 
             {/* LEFT: Hero text */}
-            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center" }} className="w-full md:w-[50%] lg:w-[48%] lg:pr-10 py-10 sm:py-14 lg:py-20">
+            <div className="w-full md:w-1/2 lg:pr-8 flex flex-col justify-center">
               <h1 style={{ fontSize: "clamp(28px, 5vw, 64px)", fontWeight: 900, color: "#ffffff", lineHeight: 1.08, letterSpacing: "-0.035em", margin: "0 0 22px 0" }}>
                 Your English. Your Voice. Your Progress.<br />
                 <span style={{ fontStyle: "normal", color: "#818cf8" }}>It all starts here.</span>
@@ -102,8 +112,8 @@ export function MavenHeroSection() {
               </p>
             </div>
 
-            {/* RIGHT: Globe — always visible, stacks below on mobile */}
-            <div className="flex w-full md:w-auto" style={{ flex: 1, position: "relative", minHeight: 320, minWidth: 260 }}>
+            {/* RIGHT: Globe — guaranteed height & visibility on laptop and mobile */}
+            <div className="w-full md:w-1/2 min-h-[380px] sm:min-h-[440px] flex items-center justify-center relative py-4">
               <GlobeIllustration />
             </div>
 
