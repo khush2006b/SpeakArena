@@ -1816,7 +1816,8 @@ export function TeacherCommunicationView() {
               </div>
             </div>
           </div>
-        </>
+        </div>
+      </>
       )}
     </div>
   );

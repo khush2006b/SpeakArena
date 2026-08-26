@@ -1985,7 +1985,8 @@ export function StudentMessagesView() {
               </div>
             </div>
           </div>
-        </>
+        </div>
+      </>
       )}
     </div>
   );
