@@ -3,29 +3,23 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowLeft,
   Play,
   FileText,
   Clock,
-  CheckCircle2,
-  Lock,
   User,
   MessageSquare,
   BookOpen,
-  Award,
   Sparkles,
   Download,
   Video,
   ChevronRight,
-  Megaphone,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/services/api/client";
-import { formatDistanceToNow } from "date-fns";
 
 interface CourseDetail {
   id: string;
