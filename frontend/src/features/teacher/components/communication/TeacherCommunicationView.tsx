@@ -1676,12 +1676,14 @@ export function TeacherCommunicationView() {
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Avatar
-              name={(user as any)?.full_name || user?.fullName || "T"}
-              size={34}
-              gradient="linear-gradient(135deg,#7c3aed,#4f46e5)"
-            />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="hidden sm:block">
+              <Avatar
+                name={(user as any)?.full_name || user?.fullName || "T"}
+                size={34}
+                gradient="linear-gradient(135deg,#7c3aed,#4f46e5)"
+              />
+            </div>
 
             {/* Hidden file input */}
             <input
@@ -1734,10 +1736,11 @@ export function TeacherCommunicationView() {
               }
               style={{
                 flex: 1,
+                minWidth: 0,
                 background: "hsl(var(--border))",
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 12,
-                padding: "11px 16px",
+                padding: "11px 14px",
                 color: "hsl(var(--foreground))",
                 fontSize: 16,
                 outline: "none",
@@ -1750,10 +1753,11 @@ export function TeacherCommunicationView() {
               className="send-btn"
               disabled={(!inputText.trim() && selectedPhotos.length === 0) || sending}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: 7,
-                padding: "11px 20px",
+                justifyContent: "center",
+                gap: 6,
+                padding: "11px 16px",
                 borderRadius: 12,
                 background:
                   activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements")
@@ -1770,10 +1774,12 @@ export function TeacherCommunicationView() {
                 transition: "filter 0.15s, transform 0.15s",
               }}
             >
-              <Send style={{ width: 15, height: 15 }} />
-              {activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements")
-                ? "Broadcast"
-                : "Send"}
+              <Send style={{ width: 16, height: 16 }} />
+              <span className="hidden sm:inline">
+                {activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements")
+                  ? "Broadcast"
+                  : "Send"}
+              </span>
             </button>
           </div>
         </form>

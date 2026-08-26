@@ -78,16 +78,7 @@ export default function ExploreCoursesPage() {
     }
   };
 
-  const filteredCourses = React.useMemo(() => {
-    if (!searchQuery.trim()) return courses;
-    const q = searchQuery.toLowerCase();
-    return courses.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        (c.description && c.description.toLowerCase().includes(q)) ||
-        (c.teacherName && c.teacherName.toLowerCase().includes(q))
-    );
-  }, [courses, searchQuery]);
+  const filteredCourses = courses;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
@@ -181,9 +172,7 @@ export default function ExploreCoursesPage() {
             <Compass className="h-12 w-12 text-slate-500 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-foreground">No Courses Found</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {searchQuery
-                ? `No courses matching "${searchQuery}". Try a different keyword.`
-                : "No published courses available right now."}
+              No published courses available right now.
             </p>
           </div>
         ) : (

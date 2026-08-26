@@ -143,7 +143,7 @@ export function MeetingModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={() => setCreateModalOpen(false)}
           >
             <motion.div
@@ -151,29 +151,29 @@ export function MeetingModal() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-card/95 backdrop-blur-xl w-full max-w-2xl rounded-2xl border border-border/60 overflow-hidden flex flex-col max-h-full shadow-2xl"
+              className="bg-card/95 backdrop-blur-xl w-full max-w-2xl rounded-2xl border border-border/60 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-                <div className="flex items-center gap-2">
-                  <Video className="h-5 w-5 text-primary" />
-                  <h2 className="text-foreground text-lg font-extrabold tracking-tight">Schedule Live Class</h2>
+              <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-border/50 shrink-0 bg-card">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-5 w-5 text-primary" />
+                    <h2 className="text-foreground text-base sm:text-lg font-extrabold tracking-tight">Schedule Live Class</h2>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    onClick={() => setCreateModalOpen(false)}
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCreateModalOpen(false)}
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
 
-              {/* Scrollable Body */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                <form onSubmit={onSubmit} className="flex flex-col gap-6">
-
+                {/* Scrollable Body */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-4 sm:space-y-6">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="title" className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                       Meeting Title
@@ -188,7 +188,7 @@ export function MeetingModal() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="courseId" className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                         Associated Course
@@ -251,7 +251,7 @@ export function MeetingModal() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="date" className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Date</Label>
                       <div className="relative">
@@ -292,29 +292,30 @@ export function MeetingModal() {
                       placeholder="Add meeting notes, agenda, or prerequisites for students..."
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="resize-none h-24 bg-background border-border/60 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                      className="resize-none h-20 sm:h-24 bg-background border-border/60 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                     />
                   </div>
+                </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/50">
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={() => setCreateModalOpen(false)}
-                      className="bg-secondary/50 border-border text-muted-foreground hover:text-foreground rounded-xl"
-                    >
-                      Cancel
-                    </Button>
-                    <button
-                      type="submit"
-                      disabled={createMeetingMutation.isPending}
-                      className="btn-primary press-scale disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {createMeetingMutation.isPending ? "Scheduling..." : "Schedule Meeting"}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                {/* Fixed Sticky Footer for Action Buttons */}
+                <div className="flex items-center justify-end gap-3 px-5 sm:px-6 py-3.5 border-t border-border/50 bg-card/95 backdrop-blur-xl shrink-0">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setCreateModalOpen(false)}
+                    className="bg-secondary/50 border-border text-muted-foreground hover:text-foreground rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <button
+                    type="submit"
+                    disabled={createMeetingMutation.isPending}
+                    className="btn-primary press-scale disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {createMeetingMutation.isPending ? "Scheduling..." : "Schedule Meeting"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         </>

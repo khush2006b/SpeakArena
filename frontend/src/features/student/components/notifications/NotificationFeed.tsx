@@ -26,22 +26,12 @@ export function NotificationFeed() {
       );
     }
 
-    // Filter by Search
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (n) =>
-          n.title?.toLowerCase().includes(q) ||
-          n.body?.toLowerCase().includes(q)
-      );
-    }
-
     // Sort by timestamp desc
     return result.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [notifications, activeCategory, searchQuery]);
+  }, [notifications, activeCategory]);
 
   const hasUnread = filteredNotifications.some((n) => !n.isRead);
 

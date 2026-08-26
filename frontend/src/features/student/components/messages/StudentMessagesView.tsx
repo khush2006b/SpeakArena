@@ -1723,10 +1723,11 @@ export function StudentMessagesView() {
               }}
               style={{
                 flex: 1,
+                minWidth: 0,
                 borderRadius: 12,
                 border: "1px solid rgba(255,255,255,0.1)",
                 background: "rgba(255,255,255,0.05)",
-                padding: "10px 16px",
+                padding: "10px 14px",
                 fontSize: 14,
                 color: "#f1f5f9",
                 transition: "border-color 0.2s, box-shadow 0.2s",
@@ -1741,12 +1742,12 @@ export function StudentMessagesView() {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 7,
+                gap: 6,
                 borderRadius: 12,
                 background: isTeacherDm
                   ? "linear-gradient(135deg,#0284c7,#0369a1)"
                   : "linear-gradient(135deg,#4f46e5,#7c3aed)",
-                padding: "10px 20px",
+                padding: "10px 16px",
                 fontSize: 14,
                 fontWeight: 700,
                 color: "#fff",
@@ -1763,7 +1764,7 @@ export function StudentMessagesView() {
               ) : (
                 <Send style={{ width: 16, height: 16 }} />
               )}
-              Send
+              <span className="hidden sm:inline">Send</span>
             </button>
           </form>
         )}

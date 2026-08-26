@@ -68,13 +68,7 @@ export function FAQSection() {
 
         {/* Accordion */}
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "64px 0", color: "#4b5563" }}>
-              <Search style={{ width: 36, height: 36, margin: "0 auto 16px auto", opacity: 0.3 }} />
-              <p style={{ fontSize: 15 }}>No questions found for "{search}"</p>
-            </div>
-          ) : (
-            filtered.map((faq, i) => (
+          {filtered.map((faq, i) => (
               <div
                 key={faq.question}
                 style={{
@@ -109,7 +103,7 @@ export function FAQSection() {
                 )}
               </div>
             ))
-          )}
+          }
         </div>
 
       </div>

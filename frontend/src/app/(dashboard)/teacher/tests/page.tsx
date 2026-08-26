@@ -238,7 +238,7 @@ export default function TeacherTestsPage() {
         <div className="space-y-10">
           {filteredCourses.map((course) => {
             const courseTests = tests.filter(
-              (t) => t.courseId === course.id && t.title.toLowerCase().includes(searchQuery.toLowerCase())
+              (t) => t.courseId === course.id
             );
 
             return (

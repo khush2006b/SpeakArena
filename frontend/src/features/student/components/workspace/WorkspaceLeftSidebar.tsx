@@ -32,7 +32,7 @@ export function WorkspaceLeftSidebar() {
         duration: `${Math.floor(l.durationSeconds / 60)}m ${l.durationSeconds % 60}s`,
         isCompleted: p?.isCompleted || false
       };
-    }).filter(l => l.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    });
 
     const completedCount = allLessons.filter(l => l.isCompleted).length;
     const moduleProgress = allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
@@ -43,7 +43,7 @@ export function WorkspaceLeftSidebar() {
       progress: moduleProgress,
       lessons: allLessons
     }];
-  }, [lectures, progress, searchQuery]);
+  }, [lectures, progress]);
 
   // Track expanded modules
   const [expandedModules, setExpandedModules] = React.useState<Record<string, boolean>>({
