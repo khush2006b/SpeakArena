@@ -287,6 +287,7 @@ class MessageRepository:
         public_only: bool = False,
         dm_student_id: Optional[uuid.UUID] = None,
         actor_id: Optional[uuid.UUID] = None,
+        is_announcement_room: bool = False,
     ) -> list[dict[str, Any]]:
         """Return messages for a chat room with cursor-based pagination."""
         target_dm_user_id = dm_student_id or recipient_id
@@ -304,8 +305,8 @@ class MessageRepository:
         if not include_muted:
             conditions.append(Message.is_muted_user_message.is_(False))
 
-        if announcements_only:
-            conditions.append(Message.is_announcement.is_(True))
+        if announcements_only or is_announcement_room:
+            conditions.append(Message.recipient_id.is_(None))
         elif public_only:
             conditions.append(Message.recipient_id.is_(None))
             conditions.append(Message.is_announcement.is_(False))

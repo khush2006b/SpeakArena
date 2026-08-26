@@ -397,7 +397,12 @@ export function TeacherCommunicationView() {
       if (ch?.type === "announcements") {
         if (!msg.is_announcement) return;
       } else if (ch?.type === "course") {
-        if (msg.is_announcement || msg.recipient_id) return;
+        const isAnnSub = ch.subType === "announcements";
+        if (isAnnSub) {
+          if (msg.recipient_id) return;
+        } else {
+          if (msg.is_announcement || msg.recipient_id) return;
+        }
       }
 
       setMessages((prev) => {

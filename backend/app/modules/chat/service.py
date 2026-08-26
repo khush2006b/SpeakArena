@@ -442,6 +442,7 @@ class MessageService:
                 raise NotEnrolledError()
 
         include_muted = self._actor.role == UserRole.TEACHER
+        is_announcement_room = (room.room_type == "announcement" or room.is_announcement_only or announcements_only)
 
         return await self._msg_repo.list_messages(
             room.id,
@@ -453,6 +454,7 @@ class MessageService:
             public_only=public_only,
             dm_student_id=dm_student_id,
             actor_id=self._actor.id,
+            is_announcement_room=is_announcement_room,
         )
 
     async def send(
@@ -718,9 +720,11 @@ class MessageService:
         if self._actor.role != UserRole.TEACHER:
             raise PermissionDeniedError()
 
-        room = await self._room_repo.get_by_course_id(course_id)
+        room = await self._room_repo.get_by_course_id(course_id, room_type="announcement")
         if room is None:
-            raise RoomNotFoundError()
+            room_svc = ChatRoomService(self._db, self._redis, self._actor)
+            rooms = await room_svc.ensure_course_rooms(course_id)
+            room = next((r for r in rooms if r.room_type == "announcement"), rooms[0])
 
         message = await self._msg_repo.create(
             chat_room_id=room.id,
