@@ -747,12 +747,34 @@ class RefreshTokenService:
         # ── 3. Reuse detection ─────────────────────────────────────────────
         if rt_record.revoked_at is not None:
             now = utcnow()
-            # If revoked within the last 15 seconds, treat as concurrent client race condition
-            if (now - rt_record.revoked_at).total_seconds() < 15:
+            rev_at = rt_record.revoked_at
+            if rev_at.tzinfo is None:
+                from datetime import timezone
+                rev_at = rev_at.replace(tzinfo=timezone.utc)
+
+            diff_seconds = abs((now - rev_at).total_seconds())
+
+            # If revoked within the last 30 seconds, treat as concurrent client request race condition
+            if diff_seconds < 30:
                 logger.info(
-                    "Refresh token reuse within 15s grace period (concurrent request race).",
+                    "Refresh token reuse within 30s grace period (concurrent request race).",
                     extra={"user_id": str(rt_record.user_id), "token_id": str(rt_record.id)},
                 )
+                user = await self._user_repo.get_by_id(rt_record.user_id)
+                if user and user.is_active:
+                    sessions = await self._session_repo.get_active_for_user(user.id)
+                    session_id = str(sessions[0].id) if sessions else str(rt_record.id)
+                    at_string, at_payload = create_access_token(
+                        user_id=str(user.id),
+                        role=user.role,
+                        session_id=session_id,
+                    )
+                    return RefreshResult(
+                        access_token=at_string,
+                        access_token_payload=at_payload,
+                        raw_refresh_token=raw_refresh_token,
+                        refresh_token_expires_at=rt_record.expires_at,
+                    )
                 raise InvalidRefreshTokenError()
 
             # A revoked token was presented long after rotation. Theft signal -> revoke all sessions.
