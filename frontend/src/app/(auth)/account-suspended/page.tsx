@@ -21,7 +21,7 @@ export default function AccountSuspendedPage() {
 
         <div className="mt-10 space-y-4">
           <Button asChild className="btn-primary w-full h-11 press-scale">
-            <a href="mailto:support@speakarena.com" className="flex items-center justify-center">Contact Support</a>
+            <a href="mailto:speakarena8@gmail.com" className="flex items-center justify-center">Contact Support</a>
           </Button>
           <Button variant="outline" asChild className="btn-ghost w-full h-11 press-scale">
             <Link href={ROUTES.HOME} className="flex items-center justify-center">

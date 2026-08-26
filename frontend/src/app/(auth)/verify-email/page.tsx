@@ -94,7 +94,7 @@ export default function VerifyEmailPage({
         <p className="mt-8 text-sm text-muted-foreground">
           Didn&apos;t receive the email? Check your spam folder or{" "}
           <a
-            href="mailto:support@speakarena.com"
+            href="mailto:speakarena8@gmail.com"
             className="text-primary font-semibold hover:underline"
           >
             contact support
