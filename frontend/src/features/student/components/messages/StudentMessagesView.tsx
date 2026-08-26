@@ -309,13 +309,26 @@ export function StudentMessagesView() {
     let messagesPromise: Promise<BackendMessage[]>;
 
     if (activeChannel.type === "announcements") {
-      messagesPromise = apiClient
-        .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=announcement&announcements_only=true`)
-        .then((res) => {
-          let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-          return msgs.reverse();
-        })
-        .catch(() => []);
+      messagesPromise = Promise.all([
+        apiClient
+          .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=announcement&announcements_only=true`)
+          .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+          .catch(() => []),
+        apiClient
+          .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=global_announcement&announcements_only=true`)
+          .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+          .catch(() => []),
+      ]).then(([annMsgs, globMsgs]) => {
+        const all = [...annMsgs, ...globMsgs];
+        const seen = new Set<string>();
+        const unique = all.filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        return unique;
+      });
     } else if (activeChannel.type === "teacher_dm") {
       const teacherId = getCourseTeacherId(activeCourse);
       messagesPromise = apiClient

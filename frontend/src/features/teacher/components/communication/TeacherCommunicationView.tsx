@@ -341,10 +341,9 @@ export function TeacherCommunicationView() {
         .catch(() => {});
 
     } else if (activeChannel.type === "announcements" && courses.length > 0) {
-      // For the global Announcements tab: fetch the announcement room for EVERY
-      // course and connect a WebSocket to each. This way real-time events from
-      // any course's announcement room arrive instantly, regardless of which
-      // course the teacher is posting into.
+      // For the global Announcements tab: fetch the global_announcement room for EVERY
+      // course and connect a WebSocket to each. This isolates global broadcasts
+      // from course-specific announcement rooms.
       setMessages([]);
       setRoom(null);
       setAnnouncementRooms([]);
@@ -352,14 +351,13 @@ export function TeacherCommunicationView() {
       Promise.all(
         validCourses.map((c) =>
           apiClient
-            .get(`/api/v1/chat/${c.id}?room_type=announcement`)
+            .get(`/api/v1/chat/${c.id}?room_type=global_announcement`)
             .then((res: any) => res.data?.data as ChatRoomData | null)
             .catch(() => null)
         )
       ).then((rooms) => {
         const loaded = rooms.filter(Boolean) as ChatRoomData[];
         setAnnouncementRooms(loaded);
-        // Also set the primary room to the first one for sending
         if (loaded.length > 0) setRoom(loaded[0]);
       });
 
@@ -504,7 +502,7 @@ export function TeacherCommunicationView() {
         const results = await Promise.all(
           validCourses.map((c) =>
             apiClient
-              .get(`/api/v1/chat/${c.id}/messages?limit=50&announcements_only=true`)
+              .get(`/api/v1/chat/${c.id}/messages?limit=50&room_type=global_announcement&announcements_only=true`)
               .then((res: any) => (res.data?.data?.messages ?? []) as BackendMessage[])
               .catch(() => [] as BackendMessage[])
           )
@@ -617,7 +615,10 @@ export function TeacherCommunicationView() {
     if (e) e.preventDefault();
     if ((!inputText.trim() && selectedPhotos.length === 0) || sending) return;
 
-    // Determine target course
+    // For global Announcements tab: broadcast to ALL courses.
+    // For course/DM channels: target the specific course.
+    const isGlobalAnnouncement = activeChannel.type === "announcements";
+
     let targetCourseId: string | null = null;
     if (activeChannel.type === "course") {
       targetCourseId = activeChannel.course.id;
@@ -626,12 +627,11 @@ export function TeacherCommunicationView() {
         (activeChannel.student as any).course_id ||
         (activeChannel.student as any).courseId ||
         (courses.length > 0 ? courses[0].id : null);
-    } else if (courses.length > 0) {
-      targetCourseId = courses[0].id;
+    } else {
+      // Global announcements — use courses[0] as the primary for photo upload only
+      targetCourseId = courses.length > 0 ? courses[0].id : null;
     }
-    if (!targetCourseId && courses.length > 0) {
-      targetCourseId = courses[0].id;
-    }
+    if (!targetCourseId && courses.length > 0) targetCourseId = courses[0].id;
     if (!targetCourseId) return;
 
     const studentUserId = activeChannel.type === "dm" ? getStudentUserId(activeChannel.student) : undefined;
@@ -724,46 +724,96 @@ export function TeacherCommunicationView() {
     scrollToBottom();
 
     try {
-      let res: any = null;
-      const payload: any = {
+      const msgPayload: any = {
         content: content || (uploadedAttachments.length > 0 ? "📷 [Photo Announcement]" : ""),
         content_type: contentType,
         attachments: uploadedAttachments,
       };
 
-      if (activeChannel.type === "announcements") {
-        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
-          ...payload,
-          room_type: "announcement",
-          is_announcement: true,
+      if (isGlobalAnnouncement) {
+        // ── Global Announcements: broadcast to ALL courses simultaneously ──────
+        // Previously only sent to courses[0], making the global tab and SA3's
+        // course announcement sub-channel show IDENTICAL messages (they were
+        // the same room). Now each course gets its own announcement message.
+        const validCourses = courses.filter((c) => Boolean(c?.id));
+        const results = await Promise.allSettled(
+          validCourses.map((c) =>
+            apiClient.post(`/api/v1/chat/${c.id}/messages`, {
+              ...msgPayload,
+              room_type: "global_announcement",
+              is_announcement: true,
+            })
+          )
+        );
+        // Use the first successful response to replace the temp message
+        const firstSuccess = results.find(
+          (r): r is PromiseFulfilledResult<any> => r.status === "fulfilled"
+        );
+        const realMsg: BackendMessage | undefined = firstSuccess?.value?.data?.data;
+        setMessages((prev) => {
+          const idx = prev.findIndex((m) => m.id === tempId);
+          if (realMsg) {
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = { ...realMsg, chat_room_id: room?.id || realMsg.chat_room_id };
+              return updated;
+            }
+            if (prev.some((m) => String(m.id).toLowerCase() === String(realMsg.id).toLowerCase()))
+              return prev;
+            return [...prev, realMsg];
+          }
+          // Remove temp if all failed
+          if (results.every((r) => r.status === "rejected")) {
+            return prev.filter((m) => m.id !== tempId);
+          }
+          return prev;
         });
+        if (results.every((r) => r.status === "rejected")) {
+          setInputText(content);
+          toast.error("Failed to send announcement.");
+        }
+
       } else if (activeChannel.type === "dm") {
-        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
-          ...payload,
+        const res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
+          ...msgPayload,
           recipient_id: studentUserId,
         });
+        const realMsg: BackendMessage = res?.data?.data;
+        if (realMsg) {
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === tempId);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = realMsg;
+              return updated;
+            }
+            if (prev.some((m) => String(m.id).toLowerCase() === String(realMsg.id).toLowerCase()))
+              return prev;
+            return [...prev, realMsg];
+          });
+        }
       } else {
+        // Course-specific channel (general or course announcements sub-channel)
         const isAnn = activeChannel.subType === "announcements";
-        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
-          ...payload,
+        const res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
+          ...msgPayload,
           room_type: isAnn ? "announcement" : "general",
           is_announcement: isAnn,
         });
-      }
-
-      const realMsg: BackendMessage = res?.data?.data;
-      if (realMsg) {
-        setMessages((prev) => {
-          const idx = prev.findIndex((m) => m.id === tempId);
-          if (idx !== -1) {
-            const updated = [...prev];
-            updated[idx] = realMsg;
-            return updated;
-          }
-          if (prev.some((m) => String(m.id).toLowerCase() === String(realMsg.id).toLowerCase()))
-            return prev;
-          return [...prev, realMsg];
-        });
+        const realMsg: BackendMessage = res?.data?.data;
+        if (realMsg) {
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === tempId);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = realMsg;
+              return updated;
+            }
+            if (prev.some((m) => String(m.id).toLowerCase() === String(realMsg.id).toLowerCase()))
+              return prev;
+            return [...prev, realMsg];
+          });
+        }
       }
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));

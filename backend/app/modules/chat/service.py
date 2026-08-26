@@ -148,7 +148,7 @@ class ChatRoomService:
         self._mod_repo = ModerationRepository(db)
 
     async def ensure_course_rooms(self, course_id: uuid.UUID) -> list[ChatRoom]:
-        """Ensure both Announcement and General rooms exist for a course."""
+        """Ensure Announcement, General, and Global Announcement rooms exist for a course."""
         from app.models.course import Course
         rooms = await self._room_repo.list_by_course_id(course_id)
         types = {r.room_type for r in rooms}
@@ -176,6 +176,16 @@ class ChatRoomService:
                 is_announcement_only=False,
             )
             self._db.add(gen)
+            created_any = True
+
+        if "global_announcement" not in types:
+            gann = ChatRoom(
+                course_id=course_id,
+                name=f"{course.title} — Global Announcements",
+                room_type="global_announcement",
+                is_announcement_only=True,
+            )
+            self._db.add(gann)
             created_any = True
 
         if created_any:
@@ -368,13 +378,13 @@ class MessageService:
         if room_id:
             room = await self._room_repo.get_by_id(room_id)
         else:
-            target_type = "announcement" if is_announcement else (room_type or "general")
+            target_type = room_type if room_type else ("announcement" if is_announcement else "general")
             room = await self._room_repo.get_by_course_id(course_id, room_type=target_type)
 
         if room is None:
             room_svc = ChatRoomService(self._db, self._redis, self._actor)
             rooms = await room_svc.ensure_course_rooms(course_id)
-            target_type = "announcement" if is_announcement else (room_type or "general")
+            target_type = room_type if room_type else ("announcement" if is_announcement else "general")
             room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         if not room.is_active:
@@ -386,7 +396,7 @@ class MessageService:
                 raise NotEnrolledError()
 
         # Permission check: Announcement channels allow ONLY the course teacher to post
-        if room.is_announcement_only or room.room_type == "announcement":
+        if room.is_announcement_only or room.room_type in ("announcement", "global_announcement"):
             course = await self._db.get(Course, room.course_id)
             if course is None or self._actor.id != course.teacher_id:
                 raise PermissionDeniedError(message="Only teachers can post announcements in this channel.")
@@ -427,13 +437,13 @@ class MessageService:
         if room_id:
             room = await self._room_repo.get_by_id(room_id)
         else:
-            target_type = "announcement" if announcements_only else (room_type or "general")
+            target_type = room_type if room_type else ("announcement" if announcements_only else "general")
             room = await self._room_repo.get_by_course_id(course_id, room_type=target_type)
 
         if room is None:
             room_svc = ChatRoomService(self._db, self._redis, self._actor)
             rooms = await room_svc.ensure_course_rooms(course_id)
-            target_type = "announcement" if announcements_only else (room_type or "general")
+            target_type = room_type if room_type else ("announcement" if announcements_only else "general")
             room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         if self._actor.role == UserRole.STUDENT:
@@ -442,7 +452,11 @@ class MessageService:
                 raise NotEnrolledError()
 
         include_muted = self._actor.role == UserRole.TEACHER
-        is_announcement_room = (room.room_type == "announcement" or room.is_announcement_only or announcements_only)
+        is_announcement_room = (
+            room.room_type in ("announcement", "global_announcement")
+            or room.is_announcement_only
+            or announcements_only
+        )
 
         return await self._msg_repo.list_messages(
             room.id,
@@ -475,7 +489,7 @@ class MessageService:
 
         # If the room itself is an announcement room, every message in it is an announcement
         is_announcement = is_announcement or bool(
-            room.room_type == "announcement" or room.is_announcement_only
+            room.room_type in ("announcement", "global_announcement") or room.is_announcement_only
         )
 
         # Enforce slow mode for students only
