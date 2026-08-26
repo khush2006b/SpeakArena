@@ -33,7 +33,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy import select
