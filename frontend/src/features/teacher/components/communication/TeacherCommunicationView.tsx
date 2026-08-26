@@ -386,7 +386,13 @@ export function TeacherCommunicationView() {
       }
 
       // Room guard for course discussion / announcement channels
-      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "dm") {
+      if (
+        currentRoom?.id &&
+        msg.chat_room_id &&
+        ch?.type !== "dm" &&
+        ch?.type !== "announcements" &&
+        !(ch?.subType === "announcements" && msg.is_announcement)
+      ) {
         if (
           String(msg.chat_room_id).toLowerCase() !==
           String(currentRoom.id).toLowerCase()

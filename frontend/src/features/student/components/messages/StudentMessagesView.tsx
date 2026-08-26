@@ -400,7 +400,12 @@ export function StudentMessagesView() {
       }
 
       // Room guard for course channels
-      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "teacher_dm") {
+      if (
+        currentRoom?.id &&
+        msg.chat_room_id &&
+        ch?.type !== "teacher_dm" &&
+        !(ch?.type === "announcements" && msg.is_announcement)
+      ) {
         if (
           String(msg.chat_room_id).toLowerCase() !==
           String(currentRoom.id).toLowerCase()

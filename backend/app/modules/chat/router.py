@@ -87,6 +87,7 @@ async def _broadcast_new_message(db: AsyncSession, redis: Redis, course_id: uuid
         json_data = _json_ready(data)
         recipient_id = json_data.get("recipient_id")
         sender_id = json_data.get("sender_id")
+        target_room_id = json_data.get("chat_room_id") or json_data.get("room_id")
         manager = ConnectionManager()
 
         if recipient_id:
@@ -100,15 +101,22 @@ async def _broadcast_new_message(db: AsyncSession, redis: Redis, course_id: uuid
             if sender_id and str(sender_id) != str(recipient_id):
                 await manager.send_to_user_channel(redis, str(sender_id), envelope)
         else:
-            # Room message: Publish to course room channel
-            room = await ChatRoomRepository(db).get_by_course_id(course_id)
-            if room:
+            # Room message: Publish to target chat room channel and all course chat rooms
+            broadcast_room_ids = set()
+            if target_room_id:
+                broadcast_room_ids.add(str(target_room_id))
+
+            rooms = await ChatRoomRepository(db).list_by_course_id(course_id)
+            for r in rooms:
+                broadcast_room_ids.add(str(r.id))
+
+            for rid in broadcast_room_ids:
                 envelope = make_envelope(
                     WSEventType.MESSAGE_NEW,
                     message_new_payload(json_data),
-                    room_id=str(room.id),
+                    room_id=rid,
                 )
-                await manager.broadcast_to_room(redis, str(room.id), envelope)
+                await manager.broadcast_to_room(redis, rid, envelope)
     except Exception as exc:
         logger.error("Error broadcasting message: %s", exc)
 
