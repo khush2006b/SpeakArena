@@ -82,6 +82,7 @@ interface BackendMessage {
   is_announcement: boolean;
   is_edited: boolean;
   is_deleted: boolean;
+  attachments?: any[];
   created_at: string;
   reactions: Record<string, string[]>;
 }
@@ -1511,6 +1512,46 @@ export function StudentMessagesView() {
                         </div>
                       )}
                       {msg.content}
+
+                      {/* Photo attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            marginTop: msg.content ? 8 : 0,
+                          }}
+                        >
+                          {msg.attachments.map((att: any, idx: number) => {
+                            const photoSrc = att.url || att.r2_key;
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  border: "1px solid rgba(255,255,255,0.15)",
+                                }}
+                              >
+                                <img
+                                  src={photoSrc}
+                                  alt={att.file_name || "Announcement photo"}
+                                  style={{
+                                    maxWidth: 280,
+                                    maxHeight: 220,
+                                    objectFit: "cover",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    display: "block",
+                                  }}
+                                  onClick={() => window.open(photoSrc, "_blank")}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                     <span
                       style={{

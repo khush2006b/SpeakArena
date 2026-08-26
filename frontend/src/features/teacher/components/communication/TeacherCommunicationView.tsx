@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -66,6 +67,7 @@ interface BackendMessage {
   content_type: string;
   is_pinned: boolean;
   is_announcement: boolean;
+  attachments?: any[];
   created_at: string;
   sender?: BackendUser;
 }
@@ -189,6 +191,7 @@ export function TeacherCommunicationView() {
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
   const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
   const [showChannelSidebar, setShowChannelSidebar] = useState(true);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -201,9 +204,28 @@ export function TeacherCommunicationView() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Messages
+  // Messages & Attachments
   const [messages, setMessages] = useState<BackendMessage[]>([]);
   const [inputText, setInputText] = useState("");
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const newPhotos = [...selectedPhotos, ...files].slice(0, 5);
+    setSelectedPhotos(newPhotos);
+    const newPreviews = newPhotos.map((f) => URL.createObjectURL(f));
+    setPhotoPreviews(newPreviews);
+  };
+
+  const removePhoto = (index: number) => {
+    const updatedPhotos = selectedPhotos.filter((_, i) => i !== index);
+    setSelectedPhotos(updatedPhotos);
+    const updatedPreviews = photoPreviews.filter((_, i) => i !== index);
+    setPhotoPreviews(updatedPreviews);
+  };
 
   // Loading
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -508,7 +530,7 @@ export function TeacherCommunicationView() {
   // ── Send Message ─────────────────────────────────────────────────────────────
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || sending) return;
+    if ((!inputText.trim() && selectedPhotos.length === 0) || sending) return;
 
     // Determine target course
     let targetCourseId: string | null = null;
@@ -534,8 +556,65 @@ export function TeacherCommunicationView() {
     }
 
     const content = inputText.trim();
+    const photosToUpload = [...selectedPhotos];
     setInputText("");
+    setSelectedPhotos([]);
+    setPhotoPreviews([]);
     setSending(true);
+
+    let uploadedAttachments: any[] = [];
+    if (photosToUpload.length > 0) {
+      for (const photo of photosToUpload) {
+        try {
+          const presignRes = await apiClient.post(
+            `/api/v1/chat/${targetCourseId}/attachments/presign`,
+            {
+              file_name: photo.name,
+              content_type: photo.type || "image/jpeg",
+              size_bytes: photo.size,
+            }
+          );
+          const { upload_url, r2_key } = presignRes.data?.data || {};
+
+          if (upload_url) {
+            await fetch(upload_url, {
+              method: "PUT",
+              headers: { "Content-Type": photo.type || "image/jpeg" },
+              body: photo,
+            });
+          }
+
+          const localUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(photo);
+          });
+
+          uploadedAttachments.push({
+            r2_key: r2_key || `chat/photos/${Date.now()}_${photo.name}`,
+            file_name: photo.name,
+            mime_type: photo.type || "image/jpeg",
+            size_bytes: photo.size,
+            url: localUrl,
+          });
+        } catch {
+          const localUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(photo);
+          });
+          uploadedAttachments.push({
+            r2_key: `chat/photos/${Date.now()}_${photo.name}`,
+            file_name: photo.name,
+            mime_type: photo.type || "image/jpeg",
+            size_bytes: photo.size,
+            url: localUrl,
+          });
+        }
+      }
+    }
+
+    const contentType = uploadedAttachments.length > 0 ? "image" : "text";
 
     const tempId = `temp-${Date.now()}`;
     const tempMsg: BackendMessage = {
@@ -543,10 +622,11 @@ export function TeacherCommunicationView() {
       chat_room_id: room?.id || "",
       sender_id: (user as any)?.id || "",
       ...(activeChannel.type === "dm" ? { recipient_id: studentUserId } : {}),
-      content,
-      content_type: "text",
+      content: content || (uploadedAttachments.length > 0 ? "📷 [Photo Announcement]" : ""),
+      content_type: contentType,
+      attachments: uploadedAttachments,
       is_pinned: false,
-      is_announcement: activeChannel.type === "announcements",
+      is_announcement: activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements"),
       created_at: new Date().toISOString(),
       sender: {
         id: (user as any)?.id || "",
@@ -560,20 +640,27 @@ export function TeacherCommunicationView() {
 
     try {
       let res: any = null;
+      const payload: any = {
+        content: content || (uploadedAttachments.length > 0 ? "📷 [Photo Announcement]" : ""),
+        content_type: contentType,
+        attachments: uploadedAttachments,
+      };
+
       if (activeChannel.type === "announcements") {
-        // Send announcement once to target course room (broadcasts to all enrolled students)
-        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/announcements`, { content, pin: false });
+        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
+          ...payload,
+          room_type: "announcement",
+          is_announcement: true,
+        });
       } else if (activeChannel.type === "dm") {
         res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
-          content,
-          content_type: "text",
+          ...payload,
           recipient_id: studentUserId,
         });
       } else {
         const isAnn = activeChannel.subType === "announcements";
         res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
-          content,
-          content_type: "text",
+          ...payload,
           room_type: isAnn ? "announcement" : "general",
           is_announcement: isAnn,
         });
@@ -1458,6 +1545,46 @@ export function TeacherCommunicationView() {
                       }}
                     >
                       {msg.content}
+
+                      {/* Photo attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            marginTop: msg.content ? 8 : 0,
+                          }}
+                        >
+                          {msg.attachments.map((att: any, idx: number) => {
+                            const photoSrc = att.url || att.r2_key;
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  border: "1px solid rgba(255,255,255,0.15)",
+                                }}
+                              >
+                                <img
+                                  src={photoSrc}
+                                  alt={att.file_name || "Announcement photo"}
+                                  style={{
+                                    maxWidth: 280,
+                                    maxHeight: 220,
+                                    objectFit: "cover",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    display: "block",
+                                  }}
+                                  onClick={() => window.open(photoSrc, "_blank")}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1479,12 +1606,105 @@ export function TeacherCommunicationView() {
             flexShrink: 0,
           }}
         >
+          {/* Photo Previews Bar */}
+          {photoPreviews.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 10,
+                padding: "8px 12px",
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                overflowX: "auto",
+              }}
+            >
+              {photoPreviews.map((preview, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "relative",
+                    width: 50,
+                    height: 50,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    style={{
+                      position: "absolute",
+                      top: 2,
+                      right: 2,
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.7)",
+                      color: "#fff",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: 10,
+                    }}
+                  >
+                    <X style={{ width: 10, height: 10 }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Avatar
               name={(user as any)?.full_name || user?.fullName || "T"}
               size={34}
               gradient="linear-gradient(135deg,#7c3aed,#4f46e5)"
             />
+
+            {/* Hidden file input */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={handlePhotoSelect}
+            />
+
+            {/* Photo Attachment Button */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              title="Attach photos"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: "hsl(var(--border))",
+                border: "1px solid hsl(var(--border))",
+                color: selectedPhotos.length > 0 ? "#f59e0b" : "#94a3b8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0,
+                transition: "all 0.15s",
+              }}
+            >
+              <ImageIcon style={{ width: 18, height: 18 }} />
+            </button>
+
             <input
               type="text"
               className="msg-input"
@@ -1496,7 +1716,11 @@ export function TeacherCommunicationView() {
                   handleSendMessage();
                 }
               }}
-              placeholder={inputPlaceholder}
+              placeholder={
+                selectedPhotos.length > 0
+                  ? `Add a caption for ${selectedPhotos.length} photo(s)...`
+                  : inputPlaceholder
+              }
               style={{
                 flex: 1,
                 background: "hsl(var(--border))",
@@ -1509,10 +1733,11 @@ export function TeacherCommunicationView() {
                 transition: "border-color 0.2s, box-shadow 0.2s",
               }}
             />
+
             <button
               type="submit"
               className="send-btn"
-              disabled={!inputText.trim() || sending}
+              disabled={(!inputText.trim() && selectedPhotos.length === 0) || sending}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1520,7 +1745,7 @@ export function TeacherCommunicationView() {
                 padding: "11px 20px",
                 borderRadius: 12,
                 background:
-                  activeChannel.type === "announcements"
+                  activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements")
                     ? "linear-gradient(135deg,#d97706,#f59e0b)"
                     : activeChannel.type === "dm"
                     ? "linear-gradient(135deg,#0284c7,#0ea5e9)"
@@ -1535,7 +1760,9 @@ export function TeacherCommunicationView() {
               }}
             >
               <Send style={{ width: 15, height: 15 }} />
-              {activeChannel.type === "announcements" ? "Broadcast" : "Send"}
+              {activeChannel.type === "announcements" || (activeChannel.type === "course" && activeChannel.subType === "announcements")
+                ? "Broadcast"
+                : "Send"}
             </button>
           </div>
         </form>
