@@ -330,7 +330,12 @@ export function StudentMessagesView() {
         const seen = new Set<string>();
         const unique = all.filter((m) => {
           if (seen.has(m.id)) return false;
+          const senderId = m.sender?.id || (m as any).sender_id || "";
+          const timeKey = Math.floor(new Date(m.created_at).getTime() / 60000);
+          const contentKey = `${m.content?.trim()}__${senderId}__${timeKey}`;
+          if (seen.has(contentKey)) return false;
           seen.add(m.id);
+          seen.add(contentKey);
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -453,6 +458,28 @@ export function StudentMessagesView() {
       }
 
       setMessages((prev) => {
+        if (
+          prev.some(
+            (m) =>
+              String(m.id).toLowerCase() === String(msg.id).toLowerCase()
+          )
+        )
+          return prev;
+
+        if (ch.type === "announcements") {
+          const senderId = String(msg.sender?.id || (msg as any).sender_id || "").toLowerCase();
+          const msgTime = new Date(msg.created_at).getTime();
+          const isDup = prev.some((m) => {
+            const mSenderId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
+            const mTime = new Date(m.created_at).getTime();
+            const sameContent = m.content?.trim() === msg.content?.trim();
+            const sameSender = mSenderId === senderId;
+            const withinWindow = Math.abs(msgTime - mTime) < 60000;
+            return sameContent && sameSender && withinWindow;
+          });
+          if (isDup) return prev;
+        }
+
         const tempIdx = prev.findIndex(
           (m) => m.id.startsWith("temp-") && m.content === msg.content
         );
@@ -461,13 +488,6 @@ export function StudentMessagesView() {
           updated[tempIdx] = msg;
           return updated;
         }
-        if (
-          prev.some(
-            (m) =>
-              String(m.id).toLowerCase() === String(msg.id).toLowerCase()
-          )
-        )
-          return prev;
         return [...prev, msg];
       });
     };
