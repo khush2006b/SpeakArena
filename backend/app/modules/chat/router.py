@@ -87,6 +87,8 @@ async def _broadcast_new_message(db: AsyncSession, redis: Redis, course_id: uuid
         json_data = _json_ready(data)
         recipient_id = json_data.get("recipient_id")
         sender_id = json_data.get("sender_id")
+        # Use only the specific room the message was sent to — never broadcast
+        # across all course rooms, which causes announcement/general bleed.
         target_room_id = json_data.get("chat_room_id") or json_data.get("room_id")
         manager = ConnectionManager()
 
@@ -100,23 +102,18 @@ async def _broadcast_new_message(db: AsyncSession, redis: Redis, course_id: uuid
             await manager.send_to_user_channel(redis, str(recipient_id), envelope)
             if sender_id and str(sender_id) != str(recipient_id):
                 await manager.send_to_user_channel(redis, str(sender_id), envelope)
+        elif target_room_id:
+            # Room message: Publish ONLY to the exact room the message belongs to.
+            # Formerly this broadcast to all course rooms, mixing announcement and
+            # general messages — that is the bug we are fixing here.
+            envelope = make_envelope(
+                WSEventType.MESSAGE_NEW,
+                message_new_payload(json_data),
+                room_id=str(target_room_id),
+            )
+            await manager.broadcast_to_room(redis, str(target_room_id), envelope)
         else:
-            # Room message: Publish to target chat room channel and all course chat rooms
-            broadcast_room_ids = set()
-            if target_room_id:
-                broadcast_room_ids.add(str(target_room_id))
-
-            rooms = await ChatRoomRepository(db).list_by_course_id(course_id)
-            for r in rooms:
-                broadcast_room_ids.add(str(r.id))
-
-            for rid in broadcast_room_ids:
-                envelope = make_envelope(
-                    WSEventType.MESSAGE_NEW,
-                    message_new_payload(json_data),
-                    room_id=rid,
-                )
-                await manager.broadcast_to_room(redis, rid, envelope)
+            logger.warning("_broadcast_new_message: no target_room_id and no recipient_id — cannot broadcast.")
     except Exception as exc:
         logger.error("Error broadcasting message: %s", exc)
 

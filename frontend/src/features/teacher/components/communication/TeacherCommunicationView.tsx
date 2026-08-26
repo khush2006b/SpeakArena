@@ -333,12 +333,32 @@ export function TeacherCommunicationView() {
           setSlowMode(r?.slow_mode_seconds ?? 0);
         })
         .catch(() => {});
-    } else if (courses.length > 0 && courses[0]?.id) {
-      // For announcements & DMs: use first course room for WS context
+    } else if (activeChannel.type === "announcements" && courses.length > 0 && courses[0]?.id) {
+      // For the global Announcements tab: connect WS to the announcement room of the
+      // first course. Previously used the general room, which caused WS events for
+      // announcements (published to announcement rooms) to never arrive.
       setMessages([]);
       setRoom(null);
       apiClient
-        .get(`/api/v1/chat/${courses[0].id}?room_type=general`)
+        .get(`/api/v1/chat/${courses[0].id}?room_type=announcement`)
+        .then((res: any) => {
+          const r: ChatRoomData = res.data?.data;
+          setRoom(r);
+          setSlowMode(0);
+        })
+        .catch(() => {});
+    } else if (activeChannel.type === "dm" && courses.length > 0) {
+      // For DMs: connect WS to the general room of the first course (DMs are routed
+      // through user channels, so the specific room is mainly for WS auth/presence).
+      const courseId =
+        (activeChannel.student as any)?.course_id ||
+        (activeChannel.student as any)?.courseId ||
+        (courses.length > 0 ? courses[0].id : null);
+      if (!courseId) return;
+      setMessages([]);
+      setRoom(null);
+      apiClient
+        .get(`/api/v1/chat/${courseId}?room_type=general`)
         .then((res: any) => {
           const r: ChatRoomData = res.data?.data;
           setRoom(r);
@@ -385,14 +405,11 @@ export function TeacherCommunicationView() {
         }
       }
 
-      // Room guard for course discussion / announcement channels
-      if (
-        currentRoom?.id &&
-        msg.chat_room_id &&
-        ch?.type !== "dm" &&
-        ch?.type !== "announcements" &&
-        !(ch?.subType === "announcements" && msg.is_announcement)
-      ) {
+      // Room guard for course discussion / announcement channels.
+      // Always enforce room-id isolation — the WS is now connected to the correct
+      // room (announcement or general) so valid messages will pass this check and
+      // messages from other rooms will be rejected, preventing cross-room bleed.
+      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "dm") {
         if (
           String(msg.chat_room_id).toLowerCase() !==
           String(currentRoom.id).toLowerCase()

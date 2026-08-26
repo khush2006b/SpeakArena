@@ -399,13 +399,11 @@ export function StudentMessagesView() {
         }
       }
 
-      // Room guard for course channels
-      if (
-        currentRoom?.id &&
-        msg.chat_room_id &&
-        ch?.type !== "teacher_dm" &&
-        !(ch?.type === "announcements" && msg.is_announcement)
-      ) {
+      // Room guard for course channels.
+      // Always enforce room-id isolation — the student WS connects to the correct
+      // room per channel type (announcement room for announcements tab, general room
+      // for discussion tab). This prevents messages from other rooms bleeding in.
+      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "teacher_dm") {
         if (
           String(msg.chat_room_id).toLowerCase() !==
           String(currentRoom.id).toLowerCase()
