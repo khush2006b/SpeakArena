@@ -455,6 +455,22 @@ export function TeacherCommunicationView() {
       setMessages((prev) => {
         if (prev.some((m) => String(m.id).toLowerCase() === String(msg.id).toLowerCase()))
           return prev;
+
+        // For General Announcements (global broadcast), deduplicate by content + sender within a 1-minute window
+        if (ch?.type === "announcements") {
+          const senderId = String(msg.sender?.id || (msg as any).sender_id || "").toLowerCase();
+          const msgTime = new Date(msg.created_at).getTime();
+          const isDup = prev.some((m) => {
+            const mSenderId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
+            const mTime = new Date(m.created_at).getTime();
+            const sameContent = m.content?.trim() === msg.content?.trim();
+            const sameSender = mSenderId === senderId;
+            const withinWindow = Math.abs(msgTime - mTime) < 60000;
+            return sameContent && sameSender && withinWindow;
+          });
+          if (isDup) return prev;
+        }
+
         const tempIdx = prev.findIndex(
           (m) => m.id.startsWith("temp-") && m.content === msg.content
         );
@@ -760,6 +776,19 @@ export function TeacherCommunicationView() {
             }
             if (prev.some((m) => String(m.id).toLowerCase() === String(realMsg.id).toLowerCase()))
               return prev;
+
+            const senderId = String(realMsg.sender?.id || (realMsg as any).sender_id || "").toLowerCase();
+            const msgTime = new Date(realMsg.created_at).getTime();
+            const isDup = prev.some((m) => {
+              const mSenderId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
+              const mTime = new Date(m.created_at).getTime();
+              const sameContent = m.content?.trim() === realMsg.content?.trim();
+              const sameSender = mSenderId === senderId;
+              const withinWindow = Math.abs(msgTime - mTime) < 60000;
+              return sameContent && sameSender && withinWindow;
+            });
+            if (isDup) return prev;
+
             return [...prev, realMsg];
           }
           // Remove temp if all failed
