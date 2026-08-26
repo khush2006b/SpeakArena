@@ -176,37 +176,46 @@ class ReconnectingWebSocket {
 }
 
 // ---------------------------------------------------------------------------
-// Namespace: /chat — meeting room real-time messaging
+// Namespace: /chat — per-room WebSocket registry
+//
+// Each room gets its own independent WebSocket connection so that:
+//   - Multiple rooms can be active simultaneously (e.g. Teacher Announcements
+//     tab listens to ALL course announcement rooms at once).
+//   - Switching channels does NOT disconnect the existing socket mid-flight.
+//   - Each socket reconnects independently without disturbing others.
 // ---------------------------------------------------------------------------
 
-let chatSocket: ReconnectingWebSocket | null = null;
-let currentChatRoomId: string | null = null;
+const chatSockets: Map<string, ReconnectingWebSocket> = new Map();
 
 export function getChatSocket(roomId: string): ReconnectingWebSocket {
-  if (!chatSocket || currentChatRoomId !== roomId) {
-    if (chatSocket) {
-      chatSocket.disconnect();
-    }
+  if (!chatSockets.has(roomId)) {
     const token = getAccessToken();
     const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    chatSocket = new ReconnectingWebSocket(`${getWsUrlBase()}/api/v1/ws/chat/${roomId}${tokenParam}`);
-    currentChatRoomId = roomId;
+    const ws = new ReconnectingWebSocket(
+      `${getWsUrlBase()}/api/v1/ws/chat/${roomId}${tokenParam}`
+    );
+    chatSockets.set(roomId, ws);
   }
-  return chatSocket;
+  return chatSockets.get(roomId)!;
 }
 
 export function connectChatSocket(roomId: string): void {
-  const socket = getChatSocket(roomId);
-  socket.connect();
+  getChatSocket(roomId).connect();
 }
 
 export function disconnectChatSocket(roomId: string): void {
-  if (chatSocket && currentChatRoomId === roomId) {
-    chatSocket.disconnect();
-    chatSocket = null;
-    currentChatRoomId = null;
+  const socket = chatSockets.get(roomId);
+  if (socket) {
+    socket.disconnect();
+    chatSockets.delete(roomId);
   }
 }
+
+export function disconnectAllChatSockets(): void {
+  chatSockets.forEach((socket) => socket.disconnect());
+  chatSockets.clear();
+}
+
 
 // ---------------------------------------------------------------------------
 // Namespace: /notifications — user-scoped live notification delivery

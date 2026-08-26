@@ -473,6 +473,11 @@ class MessageService:
             is_announcement=is_announcement,
         )
 
+        # If the room itself is an announcement room, every message in it is an announcement
+        is_announcement = is_announcement or bool(
+            room.room_type == "announcement" or room.is_announcement_only
+        )
+
         # Enforce slow mode for students only
         if self._actor.role == UserRole.STUDENT:
             await self._enforce_slow_mode(room.id, room.slow_mode_seconds)
@@ -491,6 +496,7 @@ class MessageService:
             content_type=body.content_type,
             reply_to_id=body.reply_to_id,
             attachments=body.attachments,
+            is_announcement=is_announcement,  # ← was always False before
         )
 
         # Increment parent reply count
@@ -523,7 +529,7 @@ class MessageService:
             "reply_count": 0,
             "is_pinned": False,
             "pinned_at": None,
-            "is_announcement": False,
+            "is_announcement": is_announcement,  # ← fixed: reflects actual value
             "is_edited": False,
             "edited_at": None,
             "attachments": message.attachments or [],
@@ -532,6 +538,7 @@ class MessageService:
             "created_at": message.created_at.isoformat() if message.created_at else datetime.utcnow().isoformat(),
             "updated_at": None,
         }
+
 
     async def edit(
         self,

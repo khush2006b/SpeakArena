@@ -186,6 +186,10 @@ export function TeacherCommunicationView() {
 
   // Room (loaded per selected course)
   const [room, setRoom] = useState<ChatRoomData | null>(null);
+  // All announcement rooms — used by the global Announcements tab to subscribe
+  // to real-time events across ALL courses simultaneously.
+  const [announcementRooms, setAnnouncementRooms] = useState<ChatRoomData[]>([]);
+  const announcementRoomsRef = useRef<ChatRoomData[]>([]);
 
   // Section collapse state
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
@@ -253,6 +257,7 @@ export function TeacherCommunicationView() {
   useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { userIdRef.current = String((user as any)?.id || ""); }, [user]);
+  useEffect(() => { announcementRoomsRef.current = announcementRooms; }, [announcementRooms]);
 
   // ── Derived active-course for course channels ────────────────────────────────
 
@@ -325,6 +330,7 @@ export function TeacherCommunicationView() {
       const roomType = activeChannel.subType === "announcements" ? "announcement" : "general";
       setMessages([]);
       setRoom(null);
+      setAnnouncementRooms([]);
       apiClient
         .get(`/api/v1/chat/${course.id}?room_type=${roomType}`)
         .then((res: any) => {
@@ -333,30 +339,41 @@ export function TeacherCommunicationView() {
           setSlowMode(r?.slow_mode_seconds ?? 0);
         })
         .catch(() => {});
-    } else if (activeChannel.type === "announcements" && courses.length > 0 && courses[0]?.id) {
-      // For the global Announcements tab: connect WS to the announcement room of the
-      // first course. Previously used the general room, which caused WS events for
-      // announcements (published to announcement rooms) to never arrive.
+
+    } else if (activeChannel.type === "announcements" && courses.length > 0) {
+      // For the global Announcements tab: fetch the announcement room for EVERY
+      // course and connect a WebSocket to each. This way real-time events from
+      // any course's announcement room arrive instantly, regardless of which
+      // course the teacher is posting into.
       setMessages([]);
       setRoom(null);
-      apiClient
-        .get(`/api/v1/chat/${courses[0].id}?room_type=announcement`)
-        .then((res: any) => {
-          const r: ChatRoomData = res.data?.data;
-          setRoom(r);
-          setSlowMode(0);
-        })
-        .catch(() => {});
+      setAnnouncementRooms([]);
+      const validCourses = courses.filter((c) => Boolean(c?.id));
+      Promise.all(
+        validCourses.map((c) =>
+          apiClient
+            .get(`/api/v1/chat/${c.id}?room_type=announcement`)
+            .then((res: any) => res.data?.data as ChatRoomData | null)
+            .catch(() => null)
+        )
+      ).then((rooms) => {
+        const loaded = rooms.filter(Boolean) as ChatRoomData[];
+        setAnnouncementRooms(loaded);
+        // Also set the primary room to the first one for sending
+        if (loaded.length > 0) setRoom(loaded[0]);
+      });
+
     } else if (activeChannel.type === "dm" && courses.length > 0) {
-      // For DMs: connect WS to the general room of the first course (DMs are routed
-      // through user channels, so the specific room is mainly for WS auth/presence).
+      // For DMs: connect WS to the general room of the relevant course (DMs are
+      // routed through user channels, so the room is mainly for WS auth/presence).
       const courseId =
         (activeChannel.student as any)?.course_id ||
         (activeChannel.student as any)?.courseId ||
-        (courses.length > 0 ? courses[0].id : null);
+        courses[0]?.id;
       if (!courseId) return;
       setMessages([]);
       setRoom(null);
+      setAnnouncementRooms([]);
       apiClient
         .get(`/api/v1/chat/${courseId}?room_type=general`)
         .then((res: any) => {
@@ -367,6 +384,7 @@ export function TeacherCommunicationView() {
         .catch(() => {});
     }
   }, [activeChannel, courses]);
+
 
   // ── Safe WS message append (no stale closure) ────────────────────────────────
   const safeAppendMessage = useCallback(
@@ -406,15 +424,22 @@ export function TeacherCommunicationView() {
       }
 
       // Room guard for course discussion / announcement channels.
-      // Always enforce room-id isolation — the WS is now connected to the correct
-      // room (announcement or general) so valid messages will pass this check and
-      // messages from other rooms will be rejected, preventing cross-room bleed.
-      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "dm") {
-        if (
-          String(msg.chat_room_id).toLowerCase() !==
-          String(currentRoom.id).toLowerCase()
-        )
-          return;
+      // For the global Announcements tab: accept messages from ANY announcement room
+      // (we are subscribed to all of them). For other channels: strict single-room check.
+      if (msg.chat_room_id && ch?.type !== "dm") {
+        if (ch?.type === "announcements") {
+          const knownRoomIds = announcementRoomsRef.current.map((r) =>
+            String(r.id).toLowerCase()
+          );
+          const msgRoomId = String(msg.chat_room_id).toLowerCase();
+          if (knownRoomIds.length > 0 && !knownRoomIds.includes(msgRoomId)) return;
+        } else if (currentRoom?.id) {
+          if (
+            String(msg.chat_room_id).toLowerCase() !==
+            String(currentRoom.id).toLowerCase()
+          )
+            return;
+        }
       }
 
       if (ch?.type === "announcements") {
@@ -427,6 +452,7 @@ export function TeacherCommunicationView() {
           if (msg.is_announcement || msg.recipient_id) return;
         }
       }
+
 
       setMessages((prev) => {
         if (prev.some((m) => String(m.id).toLowerCase() === String(msg.id).toLowerCase()))
@@ -540,20 +566,51 @@ export function TeacherCommunicationView() {
   }, [fetchMessages]);
 
   // ── WebSocket connection ──────────────────────────────────────────────────────
+  // For course/DM channels: connect to a single room.
+  // For the global Announcements tab: connect to ALL course announcement rooms
+  // simultaneously so real-time events from any course are received instantly.
   useEffect(() => {
-    if (!room?.id) return;
-    connectChatSocket(room.id);
-    const socket = getChatSocket(room.id);
-    const onMessageNew = (payload: any) => {
-      const incoming: BackendMessage = payload?.message || payload;
-      if (incoming && incoming.content) safeAppendMessage(incoming);
-    };
-    socket.on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
-    return () => {
-      socket.off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
-      disconnectChatSocket(room.id);
-    };
-  }, [room?.id, safeAppendMessage]);
+    const ch = activeChannelRef.current;
+
+    if (ch.type === "announcements") {
+      // Multi-room mode: subscribe to every announcement room loaded
+      if (announcementRooms.length === 0) return;
+
+      const onMessageNew = (payload: any) => {
+        const incoming: BackendMessage = payload?.message || payload;
+        if (incoming && incoming.content) safeAppendMessage(incoming);
+      };
+
+      announcementRooms.forEach((r) => {
+        connectChatSocket(r.id);
+        getChatSocket(r.id).on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+      });
+
+      return () => {
+        announcementRooms.forEach((r) => {
+          getChatSocket(r.id).off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+          disconnectChatSocket(r.id);
+        });
+      };
+    } else {
+      // Single-room mode: course discussion or DM presence room
+      if (!room?.id) return;
+
+      const onMessageNew = (payload: any) => {
+        const incoming: BackendMessage = payload?.message || payload;
+        if (incoming && incoming.content) safeAppendMessage(incoming);
+      };
+
+      connectChatSocket(room.id);
+      getChatSocket(room.id).on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+
+      return () => {
+        getChatSocket(room.id).off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+        disconnectChatSocket(room.id);
+      };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.id, announcementRooms, safeAppendMessage]);
 
   // ── Send Message ─────────────────────────────────────────────────────────────
   const handleSendMessage = async (e?: React.FormEvent) => {
