@@ -44,6 +44,13 @@ export function middleware(request: NextRequest) {
   const isStudentPath = pathname.startsWith("/student");
 
 
+  // Authenticated user on landing page / login / register → redirect directly to dashboard
+  const isPublicAuthPage = pathname === "/" || pathname === "/login" || pathname === "/register";
+  if (isAuthCookie && isPublicAuthPage) {
+    const dest = userRole === "TEACHER" ? "/teacher" : "/student";
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
   // Unauthenticated user → redirect to login (preserve intended destination)
   if (!isAuthCookie && (isTeacherPath || isStudentPath)) {
     const loginUrl = new URL("/login", request.url);
