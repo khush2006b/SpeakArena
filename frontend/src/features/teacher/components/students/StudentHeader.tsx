@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { 
-  Search, 
   Download,
   Users,
   LayoutGrid,
@@ -17,7 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export function StudentHeader() {
-  const { viewMode, setViewMode, searchQuery, setSearchQuery, setAddModalOpen } = useStudentStore();
+  const { viewMode, setViewMode, setAddModalOpen } = useStudentStore();
   const { data: studentsData } = useTeacherStudents({ page: 1, pageSize: 100 });
 
   const handleExportCSV = () => {
@@ -70,19 +69,6 @@ export function StudentHeader() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full sm:w-64 group">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-[hsl(270,80%,60%)] transition-colors" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or email..."
-              className="h-10 w-full rounded-lg bg-background border border-border pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[hsl(270,80%,60%)]/50 focus:border-[hsl(270,80%,60%)]/50 transition-all shadow-sm"
-            />
-          </div>
-
-          <div className="h-6 w-px bg-border hidden sm:block mx-1" />
-
           {/* View Toggles */}
           <div className="hidden md:flex items-center rounded-lg border border-border p-1 bg-card">
             <button

@@ -42,9 +42,15 @@ class ChatRoom(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("courses.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(150), nullable=False)
+    room_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="general", server_default="general"
+    )
+    is_announcement_only: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"

@@ -45,6 +45,8 @@ class ChatRoomRepository:
         course_id: uuid.UUID,
         name: str,
         description: Optional[str] = None,
+        room_type: str = "general",
+        is_announcement_only: bool = False,
     ) -> ChatRoom:
         """Create a new chat room for a course.
 
@@ -52,6 +54,8 @@ class ChatRoomRepository:
             course_id: The course UUID.
             name: Room display name.
             description: Optional room description.
+            room_type: 'announcement' or 'general'.
+            is_announcement_only: Whether only teachers can send messages.
 
         Returns:
             ChatRoom: The newly created room.
@@ -60,28 +64,52 @@ class ChatRoomRepository:
             course_id=course_id,
             name=name,
             description=description,
+            room_type=room_type,
+            is_announcement_only=is_announcement_only,
         )
         self._db.add(room)
         await self._db.flush()
         return room
 
-    async def get_by_course_id(
+    async def list_by_course_id(
         self,
         course_id: uuid.UUID,
-    ) -> Optional[ChatRoom]:
-        """Fetch the chat room for a given course.
+    ) -> list[ChatRoom]:
+        """Fetch all chat rooms for a given course.
 
         Args:
             course_id: The course UUID.
 
         Returns:
+            list[ChatRoom]: List of active rooms for the course.
+        """
+        stmt = (
+            select(ChatRoom)
+            .where(ChatRoom.course_id == course_id, ChatRoom.is_active.is_(True))
+            .order_by(ChatRoom.room_type.asc(), ChatRoom.created_at.asc())
+        )
+        return list((await self._db.scalars(stmt)).all())
+
+    async def get_by_course_id(
+        self,
+        course_id: uuid.UUID,
+        room_type: Optional[str] = None,
+    ) -> Optional[ChatRoom]:
+        """Fetch a specific chat room for a given course by type.
+
+        Args:
+            course_id: The course UUID.
+            room_type: Optional room type ('general' or 'announcement').
+
+        Returns:
             ChatRoom | None: The room, or None.
         """
-        return (
-            await self._db.execute(
-                select(ChatRoom).where(ChatRoom.course_id == course_id)
-            )
-        ).scalar_one_or_none()
+        stmt = select(ChatRoom).where(ChatRoom.course_id == course_id, ChatRoom.is_active.is_(True))
+        if room_type:
+            stmt = stmt.where(ChatRoom.room_type == room_type)
+        stmt = stmt.order_by(ChatRoom.created_at.asc())
+        rooms = (await self._db.scalars(stmt)).all()
+        return rooms[0] if rooms else None
 
     async def list_all_rooms(self) -> list[dict[str, Any]]:
         """Return all chat rooms with joined course details."""
@@ -94,7 +122,7 @@ class ChatRoomRepository:
             )
             .join(Course, Course.id == ChatRoom.course_id)
             .where(ChatRoom.is_active.is_(True), Course.deleted_at.is_(None))
-            .order_by(Course.title.asc())
+            .order_by(Course.title.asc(), ChatRoom.room_type.asc())
         )
         rows = (await self._db.execute(stmt)).all()
         return [
@@ -102,6 +130,8 @@ class ChatRoomRepository:
                 "id": str(r.ChatRoom.id),
                 "course_id": str(r.ChatRoom.course_id),
                 "name": r.ChatRoom.name,
+                "room_type": r.ChatRoom.room_type,
+                "is_announcement_only": r.ChatRoom.is_announcement_only,
                 "description": r.ChatRoom.description,
                 "is_active": r.ChatRoom.is_active,
                 "slow_mode_seconds": r.ChatRoom.slow_mode_seconds,

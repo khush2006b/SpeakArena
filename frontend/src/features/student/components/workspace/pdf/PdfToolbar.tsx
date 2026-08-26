@@ -3,11 +3,10 @@
 import * as React from "react";
 import { 
   ZoomIn, ZoomOut, Maximize2, Columns, 
-  Search, Download, Bookmark, BookmarkCheck,
+  Download, Bookmark, BookmarkCheck,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { usePdfStore } from "@/stores/pdf.store";
 
 export function PdfToolbar() {
@@ -16,8 +15,7 @@ export function PdfToolbar() {
     fitMode, setFitMode,
     isLeftPanelOpen, toggleLeftPanel,
     isRightPanelOpen, toggleRightPanel,
-    currentPage, toggleBookmark, bookmarks,
-    searchQuery, setSearchQuery
+    currentPage, toggleBookmark, bookmarks
   } = usePdfStore();
 
   const isBookmarked = bookmarks.some(b => b.pageNumber === currentPage);
@@ -71,17 +69,6 @@ export function PdfToolbar() {
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
-        </div>
-
-        {/* Search */}
-        <div className="relative hidden lg:flex items-center w-48">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input 
-            placeholder="Search PDF..." 
-            className="h-8 pl-8 text-xs bg-secondary/50 border-border/30 focus-visible:ring-primary/30"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
         </div>
 
       </div>

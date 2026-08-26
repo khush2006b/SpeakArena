@@ -11,7 +11,6 @@ import {
   Unlock,
   Sparkles,
   Info,
-  Search,
   ChevronDown,
   ChevronRight,
   GraduationCap,
@@ -97,7 +96,7 @@ function getStudentUserId(student: any): string {
 // - "dm:{studentId}" → private DM with a student
 type ActiveChannel =
   | { type: "announcements" }
-  | { type: "course"; course: TeacherCourse }
+  | { type: "course"; course: TeacherCourse; subType?: "announcements" | "general" }
   | { type: "dm"; student: PlatformStudent };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -177,7 +176,6 @@ export function TeacherCommunicationView() {
   // Data
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [allStudents, setAllStudents] = useState<PlatformStudent[]>([]);
-  const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
   // Active channel selection
   const [activeChannel, setActiveChannel] = useState<ActiveChannel>({
@@ -302,10 +300,11 @@ export function TeacherCommunicationView() {
     if (activeChannel.type === "course") {
       const course = activeChannel.course;
       if (!course || !course.id) return;
+      const roomType = activeChannel.subType === "announcements" ? "announcement" : "general";
       setMessages([]);
       setRoom(null);
       apiClient
-        .get(`/api/v1/chat/${course.id}`)
+        .get(`/api/v1/chat/${course.id}?room_type=${roomType}`)
         .then((res: any) => {
           const r: ChatRoomData = res.data?.data;
           setRoom(r);
@@ -317,7 +316,7 @@ export function TeacherCommunicationView() {
       setMessages([]);
       setRoom(null);
       apiClient
-        .get(`/api/v1/chat/${courses[0].id}`)
+        .get(`/api/v1/chat/${courses[0].id}?room_type=general`)
         .then((res: any) => {
           const r: ChatRoomData = res.data?.data;
           setRoom(r);
@@ -416,11 +415,12 @@ export function TeacherCommunicationView() {
           setMessagesLoading(false);
           return;
         }
-        // Single course discussion
-        const url = `/api/v1/chat/${activeChannel.course.id}/messages?limit=50&public_only=true`;
+        const isAnn = activeChannel.subType === "announcements";
+        const url = isAnn
+          ? `/api/v1/chat/${activeChannel.course.id}/messages?limit=50&room_type=announcement&announcements_only=true`
+          : `/api/v1/chat/${activeChannel.course.id}/messages?limit=50&room_type=general&public_only=true`;
         const res = await apiClient.get(url);
         let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-        msgs = msgs.filter((m) => !m.is_announcement && !m.recipient_id);
         setMessages([...msgs].reverse());
 
       } else if (activeChannel.type === "announcements") {
@@ -570,9 +570,12 @@ export function TeacherCommunicationView() {
           recipient_id: studentUserId,
         });
       } else {
+        const isAnn = activeChannel.subType === "announcements";
         res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
           content,
           content_type: "text",
+          room_type: isAnn ? "announcement" : "general",
+          is_announcement: isAnn,
         });
       }
 
@@ -846,93 +849,97 @@ export function TeacherCommunicationView() {
                 </div>
               ) : (
                 courses.map((c) => {
-                  const isActive =
+                  const isAnnActive =
                     activeChannel.type === "course" &&
-                    activeChannel.course.id === c.id;
+                    activeChannel.course.id === c.id &&
+                    activeChannel.subType === "announcements";
+                  const isGenActive =
+                    activeChannel.type === "course" &&
+                    activeChannel.course.id === c.id &&
+                    activeChannel.subType !== "announcements";
+
                   return (
-                    <button
-                      key={c.id}
-                      className="ch-item"
-                      onClick={() => {
-                        setActiveChannel({ type: "course", course: c });
-                        setMobileShowChat(true);
-                      }}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "9px 10px",
-                        borderRadius: 8,
-                        background: isActive
-                          ? "rgba(124,58,237,0.12)"
-                          : "transparent",
-                        border: isActive
-                          ? "1px solid rgba(124,58,237,0.2)"
-                          : "1px solid transparent",
-                        color: isActive ? "#a78bfa" : "#94a3b8",
-                        fontWeight: isActive ? 700 : 400,
-                        cursor: "pointer",
-                        fontSize: 13,
-                        textAlign: "left",
-                      }}
-                    >
+                    <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
                       <div
                         style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 7,
-                          background: isActive
-                            ? "linear-gradient(135deg,#7c3aed,#4f46e5)"
-                            : "hsl(var(--border))",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 10,
-                          fontWeight: 800,
-                          color: isActive ? "hsl(var(--foreground))" : "#64748b",
-                          flexShrink: 0,
-                          letterSpacing: "-0.5px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#64748b",
+                          padding: "6px 8px 2px",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
                         }}
                       >
-                        {c.title.slice(0, 2).toUpperCase()}
+                        {c.title}
                       </div>
-                      <div
+
+                      {/* 1. Course Announcements sub-channel */}
+                      <button
+                        className="ch-item"
+                        onClick={() => {
+                          setActiveChannel({ type: "course", course: c, subType: "announcements" });
+                          setMobileShowChat(true);
+                        }}
                         style={{
-                          overflow: "hidden",
-                          flex: 1,
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "7px 10px 7px 16px",
+                          borderRadius: 6,
+                          background: isAnnActive
+                            ? "rgba(245,158,11,0.12)"
+                            : "transparent",
+                          border: isAnnActive
+                            ? "1px solid rgba(245,158,11,0.2)"
+                            : "1px solid transparent",
+                          color: isAnnActive ? "#f59e0b" : "#94a3b8",
+                          fontWeight: isAnnActive ? 700 : 400,
+                          cursor: "pointer",
+                          fontSize: 12,
                           textAlign: "left",
                         }}
                       >
-                        <div
-                          style={{
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            color: isActive ? "#f1f5f9" : "#cbd5e1",
-                            fontWeight: isActive ? 700 : 500,
-                            fontSize: 13,
-                          }}
-                        >
-                          {c.title}
-                        </div>
-                        {c.level && (
-                          <div style={{ fontSize: 10, color: "#475569" }}>
-                            {c.level}
-                            {c.total_enrollments !== undefined &&
-                              ` · ${c.total_enrollments} students`}
-                          </div>
-                        )}
-                      </div>
-                      <Hash
-                        style={{
-                          width: 12,
-                          height: 12,
-                          color: isActive ? "#a78bfa" : "#334155",
-                          flexShrink: 0,
+                        <Megaphone style={{ width: 14, height: 14, color: isAnnActive ? "#f59e0b" : "#64748b", flexShrink: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          Announcements
+                        </span>
+                      </button>
+
+                      {/* 2. Course General Talk sub-channel */}
+                      <button
+                        className="ch-item"
+                        onClick={() => {
+                          setActiveChannel({ type: "course", course: c, subType: "general" });
+                          setMobileShowChat(true);
                         }}
-                      />
-                    </button>
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "7px 10px 7px 16px",
+                          borderRadius: 6,
+                          background: isGenActive
+                            ? "rgba(124,58,237,0.12)"
+                            : "transparent",
+                          border: isGenActive
+                            ? "1px solid rgba(124,58,237,0.2)"
+                            : "1px solid transparent",
+                          color: isGenActive ? "#a78bfa" : "#94a3b8",
+                          fontWeight: isGenActive ? 700 : 400,
+                          cursor: "pointer",
+                          fontSize: 12,
+                          textAlign: "left",
+                        }}
+                      >
+                        <Hash style={{ width: 14, height: 14, color: isGenActive ? "#a78bfa" : "#64748b", flexShrink: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          General Talk
+                        </span>
+                      </button>
+                    </div>
                   );
                 })
               )}
@@ -986,37 +993,6 @@ export function TeacherCommunicationView() {
 
           {dmsSectionOpen && (
             <>
-              {/* Student Search */}
-              <div style={{ position: "relative", marginBottom: 6 }}>
-                <Search
-                  style={{
-                    width: 12,
-                    height: 12,
-                    color: "#475569",
-                    position: "absolute",
-                    left: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                  }}
-                />
-                <input
-                  type="text"
-                  value={studentSearchQuery}
-                  onChange={(e) => setStudentSearchQuery(e.target.value)}
-                  placeholder="Search students..."
-                  style={{
-                    width: "100%",
-                    background: "hsl(var(--border))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    padding: "7px 10px 7px 28px",
-                    fontSize: 16,
-                    color: "#f1f5f9",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {studentsLoading ? (

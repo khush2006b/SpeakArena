@@ -2,20 +2,18 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { MessageCircleQuestion, Megaphone, Hash, Bookmark, Pin, Radio, Search } from "lucide-react";
+import { MessageCircleQuestion, Megaphone, Hash, Bookmark, Pin, Radio } from "lucide-react";
 import { useDiscussionStore } from "@/stores/discussion.store";
 import { DiscussionCategory, DiscussionFilter } from "@/features/student/constants/discussion.mock";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export function DiscussionLeftPanel() {
   const { 
     isLeftPanelOpen, 
     activeCategory, setActiveCategory,
     activeFilter, setActiveFilter,
-    selectedTags, toggleTag,
-    searchQuery, setSearchQuery
+    selectedTags, toggleTag
   } = useDiscussionStore();
 
   if (!isLeftPanelOpen) return null;
@@ -44,19 +42,6 @@ export function DiscussionLeftPanel() {
       transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
       className="h-full shrink-0 border-r border-border/40 bg-background/80 backdrop-blur-xl flex flex-col relative overflow-hidden z-10"
     >
-      
-      {/* Search Header */}
-      <div className="p-4 border-b border-border/40 shrink-0">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search discussions..." 
-            className="pl-8 bg-secondary/50 border-border/50 h-9 text-sm focus-visible:ring-primary/20 w-full"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
 
       <ScrollArea className="flex-1 custom-scrollbar">
         <div className="p-3 space-y-6">

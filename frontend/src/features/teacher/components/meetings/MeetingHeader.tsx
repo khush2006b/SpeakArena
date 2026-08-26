@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Search,
   Filter,
   Plus
 } from "lucide-react";
@@ -75,15 +74,6 @@ export function MeetingHeader() {
 
         {/* Right: Actions & Views */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full sm:w-64 group">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search meetings..."
-              className="h-10 w-full rounded-xl bg-card/80 border border-border/60 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all backdrop-blur-sm"
-            />
-          </div>
-
           <Button
             variant="outline"
             size="icon"

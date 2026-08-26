@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Search, PlayCircle, CheckCircle2, ChevronDown, ChevronRight, X, Loader2 } from "lucide-react";
+import { PlayCircle, CheckCircle2, ChevronDown, ChevronRight, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspaceStore } from "@/stores/workspace.store";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useParams, useRouter } from "next/navigation";
@@ -20,8 +19,6 @@ export function WorkspaceLeftSidebar() {
 
   const { data: lectures, isLoading } = useCourseLectures(courseId);
   const { data: progress } = useCourseProgress(courseId);
-
-  const [searchQuery, setSearchQuery] = React.useState("");
   
   const modules = React.useMemo(() => {
     if (!lectures || lectures.length === 0) return [];
@@ -79,19 +76,6 @@ export function WorkspaceLeftSidebar() {
             <Button variant="ghost" size="icon" onClick={toggleLeftSidebar} className="h-8 w-8 text-muted-foreground md:hidden">
               <X className="h-4 w-4" />
             </Button>
-          </div>
-
-          {/* Search */}
-          <div className="p-3 border-b border-border/40 shrink-0">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search lessons..." 
-                className="pl-8 bg-secondary/50 border-border/50 h-9 text-sm focus-visible:ring-primary/20"
-              />
-            </div>
           </div>
 
           {/* Curriculum Accordion */}

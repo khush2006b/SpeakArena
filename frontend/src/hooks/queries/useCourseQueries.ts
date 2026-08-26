@@ -123,6 +123,8 @@ export function useDeleteCourse() {
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: queryKeys.courses.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.teacher() });
     },
   });
 }

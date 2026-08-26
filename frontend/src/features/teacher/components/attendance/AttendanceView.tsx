@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Users, 
   CheckCircle2, 
   Clock, 
   XCircle, 
   Download, 
-  Search, 
   Filter,
   Calendar,
   Sparkles,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
-import { useEffect } from "react";
 
 interface AttendanceItem {
   id: string;
@@ -29,7 +27,6 @@ interface AttendanceItem {
 }
 
 export function AttendanceView() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [isExporting, setIsExporting] = useState(false);
   const [attendanceData, setAttendanceData] = useState<AttendanceItem[]>([]);
@@ -62,15 +59,9 @@ export function AttendanceView() {
   }, []);
 
   const filteredData = attendanceData.filter((item) => {
-    const matchesSearch =
-      item.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.meetingTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.courseTitle.toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesStatus =
       statusFilter === "ALL" || item.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
+    return matchesStatus;
   });
 
   const handleExportCSV = async () => {
@@ -128,7 +119,7 @@ export function AttendanceView() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justify: 'center',
             gap: '8px',
             borderRadius: '10px',
             background: "hsl(var(--primary))",
@@ -213,27 +204,7 @@ export function AttendanceView() {
       {/* Filters & Table */}
       <div style={{ borderRadius: '18px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--border))', overflow: 'hidden' }}>
         {/* Controls */}
-        <div style={{ padding: '24px', borderBottom: '1px solid hsl(var(--border))', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between', background: 'hsl(var(--border))' }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
-            <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', height: '16px', width: '16px', color: "hsl(var(--muted-foreground))" }} />
-            <input
-              type="text"
-              placeholder="Search student or class..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                borderRadius: '10px',
-                border: '1px solid hsl(var(--border))',
-                background: 'bg-white/5',
-                padding: '8px 16px 8px 36px',
-                fontSize: '0.875rem',
-                color: "hsl(var(--foreground))",
-                outline: 'none',
-              }}
-            />
-          </div>
-
+        <div style={{ padding: '24px', borderBottom: '1px solid hsl(var(--border))', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'flex-end', background: 'hsl(var(--border))' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
             <Filter style={{ height: '16px', width: '16px', color: '#6b7280', flexShrink: 0, marginLeft: '4px' }} />
             {["ALL", "PRESENT", "LATE", "ABSENT"].map((status) => {
@@ -292,71 +263,72 @@ export function AttendanceView() {
               ) : (
                 filteredData.map((item, idx) => (
                   <tr
-                  key={item.id ? `att-${item.id}` : `att-idx-${idx}`}
-                  style={{
-                    borderBottom: '1px solid hsl(var(--border))',
-                    background: 'transparent',
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--border))')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <td style={{ padding: '16px 24px' }}>
-                    <div>
-                      <p style={{ fontWeight: 600, color: "hsl(var(--foreground))", margin: 0, fontSize: '0.875rem' }}>
-                        {item.studentName}
-                      </p>
-                      <p style={{ fontSize: '0.75rem', color: "hsl(var(--muted-foreground))", margin: 0, marginTop: '2px' }}>
-                        {item.studentEmail}
-                      </p>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '0.75rem', fontWeight: 500, color: "hsl(var(--foreground))", maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.courseTitle}
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--muted-foreground))", maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.meetingTitle}
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--muted-foreground))" }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <Calendar style={{ height: '14px', width: '14px', color: '#6b7280' }} />
-                      {item.date}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--foreground))", fontWeight: 500 }}>
-                    {item.durationMinutes > 0
-                      ? `${item.durationMinutes} mins`
-                      : "-"}
-                  </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        borderRadius: '999px',
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        ...(item.status === "PRESENT"
-                          ? { background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }
-                          : item.status === "LATE"
-                          ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }
-                          : { background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' })
-                      }}
-                    >
-                      {item.status === "PRESENT" && (
-                        <CheckCircle2 style={{ height: '12px', width: '12px' }} />
-                      )}
-                      {item.status === "LATE" && <Clock style={{ height: '12px', width: '12px' }} />}
-                      {item.status === "ABSENT" && (
-                        <XCircle style={{ height: '12px', width: '12px' }} />
-                      )}
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              )))}
+                    key={item.id ? `att-${item.id}` : `att-idx-${idx}`}
+                    style={{
+                      borderBottom: '1px solid hsl(var(--border))',
+                      background: 'transparent',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--border))')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '16px 24px' }}>
+                      <div>
+                        <p style={{ fontWeight: 600, color: "hsl(var(--foreground))", margin: 0, fontSize: '0.875rem' }}>
+                          {item.studentName}
+                        </p>
+                        <p style={{ fontSize: '0.75rem', color: "hsl(var(--muted-foreground))", margin: 0, marginTop: '2px' }}>
+                          {item.studentEmail}
+                        </p>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px', fontSize: '0.75rem', fontWeight: 500, color: "hsl(var(--foreground))", maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.courseTitle}
+                    </td>
+                    <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--muted-foreground))", maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.meetingTitle}
+                    </td>
+                    <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--muted-foreground))" }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <Calendar style={{ height: '14px', width: '14px', color: '#6b7280' }} />
+                        {item.date}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: "hsl(var(--foreground))", fontWeight: 500 }}>
+                      {item.durationMinutes > 0
+                        ? `${item.durationMinutes} mins`
+                        : "-"}
+                    </td>
+                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          borderRadius: '999px',
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          ...(item.status === "PRESENT"
+                            ? { background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }
+                            : item.status === "LATE"
+                            ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }
+                            : { background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' })
+                        }}
+                      >
+                        {item.status === "PRESENT" && (
+                          <CheckCircle2 style={{ height: '12px', width: '12px' }} />
+                        )}
+                        {item.status === "LATE" && <Clock style={{ height: '12px', width: '12px' }} />}
+                        {item.status === "ABSENT" && (
+                          <XCircle style={{ height: '12px', width: '12px' }} />
+                        )}
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -168,6 +168,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS is_late BOOLEAN NOT NULL DEFAULT FALSE;",
         # ── meetings.deleted_at missing column for soft-delete ───────────────────
         "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;",
+        # ── chat_rooms multiple room support & announcement-only channels ─────────
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS room_type VARCHAR(50) NOT NULL DEFAULT 'general';",
+        "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS is_announcement_only BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE chat_rooms DROP CONSTRAINT IF EXISTS chat_rooms_course_id_key;",
     ]
 
     # One-time data fix: videos stuck in 'uploading' status because the

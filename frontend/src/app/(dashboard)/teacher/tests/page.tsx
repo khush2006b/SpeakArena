@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   ClipboardCheck, Plus, Calendar, Clock, ExternalLink, Trash2, Edit2, 
-  Save, Search, Users, ChevronDown, ChevronUp, BookOpen
+  Save, Users, ChevronDown, ChevronUp, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ export default function TeacherTestsPage() {
   const [tests, setTests] = useState<TeacherTest[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseFilter, setSelectedCourseFilter] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal State
@@ -224,17 +223,6 @@ export default function TeacherTestsPage() {
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
-        </div>
-
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search tests..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-9 pr-4 rounded-lg border border-white/10 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
         </div>
       </div>
 

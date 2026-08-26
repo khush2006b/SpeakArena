@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Search, LayoutGrid, List, SlidersHorizontal, ArrowDownAZ } from "lucide-react";
+import { LayoutGrid, List, SlidersHorizontal, ArrowDownAZ } from "lucide-react";
 import { useCoursesStore } from "@/stores/courses.store";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,24 +13,15 @@ import {
 } from "@/components/ui/select";
 
 export function CoursesHeader() {
-  const { viewMode, setViewMode, searchQuery, setSearchQuery } = useCoursesStore();
+  const { viewMode, setViewMode } = useCoursesStore();
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 sticky top-16 z-30 backdrop-blur-xl -mx-4 px-4 sm:mx-0 sm:px-0"
          style={{ background: "hsla(var(--background), 0.8)", borderBottom: "1px solid hsl(var(--border))" }}>
       
-      {/* Title & Search */}
+      {/* Title */}
       <div className="flex items-center gap-6 flex-1 w-full sm:w-auto">
-        <h1 className="tracking-tight hidden md:block text-foreground font-extrabold text-responsive-xl" style={{ letterSpacing: "-0.03em" }}>My Courses</h1>
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search enrolled courses..." 
-            className="pl-9 h-10 w-full bg-card border-border text-foreground rounded-lg"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <h1 className="tracking-tight text-foreground font-extrabold text-responsive-xl" style={{ letterSpacing: "-0.03em" }}>My Courses</h1>
       </div>
 
       {/* Actions */}

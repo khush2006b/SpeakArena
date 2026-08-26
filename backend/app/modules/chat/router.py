@@ -135,6 +135,23 @@ async def get_all_rooms(
 
 
 @router.get(
+    "/courses/{course_id}/rooms",
+    summary="Get all chat rooms for a course",
+    description="Returns both Announcement and General chat rooms for a course.",
+)
+async def get_course_rooms(
+    course_id: uuid.UUID,
+    actor: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> JSONResponse:
+    """Return all chat rooms for a course."""
+    svc = ChatRoomService(db, redis, actor)
+    data = await svc.get_rooms_for_course(course_id)
+    return success_response(data)
+
+
+@router.get(
     "/{course_id}",
     summary="Get chat room",
     description=(
@@ -143,15 +160,15 @@ async def get_all_rooms(
     ),
 )
 async def get_room(
-
     course_id: uuid.UUID,
+    room_type: Optional[str] = Query(None),
     actor: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> JSONResponse:
     """Return chat room detail."""
     svc = ChatRoomService(db, redis, actor)
-    data = await svc.get_room(course_id)
+    data = await svc.get_room(course_id, room_type=room_type)
     return success_response(data)
 
 
@@ -205,6 +222,8 @@ async def list_messages(
         recipient_id=params.recipient_id,
         public_only=params.public_only,
         dm_student_id=params.dm_student_id,
+        room_type=params.room_type,
+        room_id=params.room_id,
     )
 
     return success_response({"messages": messages, "count": len(messages)})
@@ -229,7 +248,12 @@ async def send_message(
 ) -> JSONResponse:
     """Send a message."""
     svc = MessageService(db, redis, actor)
-    data = await svc.send(course_id, body)
+    data = await svc.send(
+        course_id,
+        body,
+        room_id=body.room_id,
+        room_type=body.room_type,
+    )
     await db.commit()
     await _broadcast_new_message(db, redis, course_id, data)
     return success_response(data, status_code=201)

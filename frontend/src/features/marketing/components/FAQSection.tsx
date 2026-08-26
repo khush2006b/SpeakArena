@@ -42,13 +42,9 @@ const FAQS = [
 ];
 
 export function FAQSection() {
-  const [search, setSearch] = useState("");
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
-  const filtered = FAQS.filter(f =>
-    f.question.toLowerCase().includes(search.toLowerCase()) ||
-    f.answer.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = FAQS;
 
   return (
     <section style={{ width: "100%", background: "#0b0e18", position: "relative", overflow: "hidden" }}>
@@ -68,26 +64,6 @@ export function FAQSection() {
           <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.7, maxWidth: 460, margin: "0 auto 36px auto" }}>
             Can't find what you're looking for? Reach out to our support team anytime.
           </p>
-
-          {/* Search */}
-          <div style={{ position: "relative", maxWidth: 520, margin: "0 auto" }}>
-            <Search style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, color: "#4b5563", pointerEvents: "none" }} />
-            <input
-              type="text"
-              placeholder="Search questions..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: "100%", boxSizing: "border-box",
-                paddingLeft: 50, paddingRight: 18, paddingTop: 14, paddingBottom: 14,
-                fontSize: 14, background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12,
-                color: "#e5e7eb", outline: "none",
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)")}
-              onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-            />
-          </div>
         </div>
 
         {/* Accordion */}

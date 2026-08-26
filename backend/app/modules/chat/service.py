@@ -147,17 +147,55 @@ class ChatRoomService:
         self._room_repo = ChatRoomRepository(db)
         self._mod_repo = ModerationRepository(db)
 
+    async def ensure_course_rooms(self, course_id: uuid.UUID) -> list[ChatRoom]:
+        """Ensure both Announcement and General rooms exist for a course."""
+        from app.models.course import Course
+        rooms = await self._room_repo.list_by_course_id(course_id)
+        types = {r.room_type for r in rooms}
+        
+        course = await self._db.get(Course, course_id)
+        if course is None:
+            raise RoomNotFoundError()
+
+        created_any = False
+        if "announcement" not in types:
+            ann = ChatRoom(
+                course_id=course_id,
+                name=f"{course.title} — Announcements",
+                room_type="announcement",
+                is_announcement_only=True,
+            )
+            self._db.add(ann)
+            created_any = True
+
+        if "general" not in types:
+            gen = ChatRoom(
+                course_id=course_id,
+                name=f"{course.title} — General",
+                room_type="general",
+                is_announcement_only=False,
+            )
+            self._db.add(gen)
+            created_any = True
+
+        if created_any:
+            await self._db.flush()
+            rooms = await self._room_repo.list_by_course_id(course_id)
+
+        return rooms
+
     async def get_room(
         self,
         course_id: uuid.UUID,
+        room_type: Optional[str] = None,
     ) -> dict[str, Any]:
         """Return the chat room for a course after access verification.
 
-        Students must be actively enrolled. Teachers must own the course
-        (enforced upstream via get_current_teacher dependency).
+        Students must be actively enrolled. Teachers must own the course.
 
         Args:
             course_id: The course UUID.
+            room_type: Optional room type ('general' or 'announcement').
 
         Returns:
             dict: ChatRoomResponse payload.
@@ -166,23 +204,15 @@ class ChatRoomService:
             RoomNotFoundError: If no room exists for the course.
             NotEnrolledError: If the student is not enrolled.
         """
-        room = await self._room_repo.get_by_course_id(course_id)
-        if room is None:
-            from app.models.course import Course
-            course = await self._db.get(Course, course_id)
-            if course is None:
-                raise RoomNotFoundError()
-            room = ChatRoom(
-                course_id=course_id,
-                name=f"{course.title} — Discussion",
-            )
-            self._db.add(room)
-            await self._db.flush()
+        rooms = await self.ensure_course_rooms(course_id)
 
         if self._actor.role == UserRole.STUDENT:
             enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
             if not enrolled:
                 raise NotEnrolledError()
+
+        target_type = room_type or "general"
+        room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         pinned = None
         if room.pinned_message_id and room.pinned_message:
@@ -198,12 +228,41 @@ class ChatRoomService:
             "id": room.id,
             "course_id": room.course_id,
             "name": room.name,
+            "room_type": room.room_type,
+            "is_announcement_only": room.is_announcement_only,
             "description": room.description,
             "is_active": room.is_active,
             "slow_mode_seconds": room.slow_mode_seconds,
             "pinned_message": pinned,
             "created_at": room.created_at,
         }
+
+    async def get_rooms_for_course(
+        self,
+        course_id: uuid.UUID,
+    ) -> list[dict[str, Any]]:
+        """Return all chat rooms for a course (Announcements + General)."""
+        rooms = await self.ensure_course_rooms(course_id)
+
+        if self._actor.role == UserRole.STUDENT:
+            enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
+            if not enrolled:
+                raise NotEnrolledError()
+
+        return [
+            {
+                "id": room.id,
+                "course_id": room.course_id,
+                "name": room.name,
+                "room_type": room.room_type,
+                "is_announcement_only": room.is_announcement_only,
+                "description": room.description,
+                "is_active": room.is_active,
+                "slow_mode_seconds": room.slow_mode_seconds,
+                "created_at": room.created_at,
+            }
+            for room in rooms
+        ]
 
     async def get_all_rooms(self) -> list[dict[str, Any]]:
         """Return all chat rooms in the platform (teacher-only)."""
@@ -296,39 +355,39 @@ class MessageService:
     async def _get_room_and_verify_access(
         self,
         course_id: uuid.UUID,
+        room_id: Optional[uuid.UUID] = None,
+        room_type: Optional[str] = None,
+        is_announcement: bool = False,
     ) -> Any:  # ChatRoom ORM
-        """Get and validate the chat room and enrollment for the actor.
+        """Get and validate the chat room, enrollment, and announcement permission for the actor."""
+        from app.models.course import Course
 
-        Args:
-            course_id: The course UUID.
+        if room_id:
+            room = await self._room_repo.get_by_id(room_id)
+        else:
+            target_type = "announcement" if is_announcement else (room_type or "general")
+            room = await self._room_repo.get_by_course_id(course_id, room_type=target_type)
 
-        Returns:
-            ChatRoom: The validated chat room ORM instance.
-
-        Raises:
-            RoomNotFoundError: If room not found.
-            ChatRoomInactiveError: If room is inactive.
-            NotEnrolledError: If student is not enrolled.
-        """
-        room = await self._room_repo.get_by_course_id(course_id)
         if room is None:
-            from app.models.course import Course
-            course = await self._db.get(Course, course_id)
-            if course is None:
-                raise RoomNotFoundError()
-            room = ChatRoom(
-                course_id=course_id,
-                name=f"{course.title} — Discussion",
-            )
-            self._db.add(room)
-            await self._db.flush()
+            room_svc = ChatRoomService(self._db, self._redis, self._actor)
+            rooms = await room_svc.ensure_course_rooms(course_id)
+            target_type = "announcement" if is_announcement else (room_type or "general")
+            room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         if not room.is_active:
             raise ChatRoomInactiveError()
+
         if self._actor.role == UserRole.STUDENT:
-            enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
+            enrolled = await self._mod_repo.is_enrolled(self._actor.id, room.course_id)
             if not enrolled:
                 raise NotEnrolledError()
+
+        # Permission check: Announcement channels allow ONLY the course teacher to post
+        if room.is_announcement_only or room.room_type == "announcement":
+            course = await self._db.get(Course, room.course_id)
+            if course is None or self._actor.id != course.teacher_id:
+                raise PermissionDeniedError(message="Only teachers can post announcements in this channel.")
+
         return room
 
     async def _enforce_slow_mode(
@@ -336,15 +395,7 @@ class MessageService:
         room_id: uuid.UUID,
         slow_mode_seconds: int,
     ) -> None:
-        """Enforce slow mode via Redis TTL.
-
-        Args:
-            room_id: The chat room UUID.
-            slow_mode_seconds: Cooldown in seconds. 0 = no throttle.
-
-        Raises:
-            SlowModeError: If the user is still in the cooldown window.
-        """
+        """Enforce slow mode via Redis TTL."""
         if slow_mode_seconds == 0:
             return
 
@@ -366,28 +417,28 @@ class MessageService:
         recipient_id: Optional[uuid.UUID] = None,
         public_only: bool = False,
         dm_student_id: Optional[uuid.UUID] = None,
+        room_id: Optional[uuid.UUID] = None,
+        room_type: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """List messages for a course's chat room."""
-        room = await self._room_repo.get_by_course_id(course_id)
+        if room_id:
+            room = await self._room_repo.get_by_id(room_id)
+        else:
+            target_type = "announcement" if announcements_only else (room_type or "general")
+            room = await self._room_repo.get_by_course_id(course_id, room_type=target_type)
+
         if room is None:
-            from app.models.course import Course
-            course = await self._db.get(Course, course_id)
-            if course is None:
-                raise RoomNotFoundError()
-            room = ChatRoom(
-                course_id=course_id,
-                name=f"{course.title} — Discussion",
-            )
-            self._db.add(room)
-            await self._db.flush()
+            room_svc = ChatRoomService(self._db, self._redis, self._actor)
+            rooms = await room_svc.ensure_course_rooms(course_id)
+            target_type = "announcement" if announcements_only else (room_type or "general")
+            room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         if self._actor.role == UserRole.STUDENT:
-            enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
+            enrolled = await self._mod_repo.is_enrolled(self._actor.id, room.course_id)
             if not enrolled:
                 raise NotEnrolledError()
 
         include_muted = self._actor.role == UserRole.TEACHER
-        logger.info("MessageService.list_messages: room_id=%s, public_only=%s, recipient_id=%s", room.id, public_only, recipient_id)
 
         return await self._msg_repo.list_messages(
             room.id,
@@ -405,9 +456,17 @@ class MessageService:
         self,
         course_id: uuid.UUID,
         body: SendMessageRequest,
+        room_id: Optional[uuid.UUID] = None,
+        room_type: Optional[str] = None,
     ) -> dict[str, Any]:
         """Send a message to a course chat room."""
-        room = await self._get_room_and_verify_access(course_id)
+        is_announcement = getattr(body, "is_announcement", False) or False
+        room = await self._get_room_and_verify_access(
+            course_id,
+            room_id=room_id,
+            room_type=room_type,
+            is_announcement=is_announcement,
+        )
 
         # Enforce slow mode for students only
         if self._actor.role == UserRole.STUDENT:

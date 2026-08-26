@@ -30,6 +30,9 @@ class SendMessageRequest(BaseModel):
         default=None,
         description="Optional recipient user UUID for 1-on-1 direct messages.",
     )
+    room_id: Optional[uuid.UUID] = Field(default=None)
+    room_type: Optional[str] = Field(default=None)
+    is_announcement: Optional[bool] = Field(default=False)
     attachments: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of {r2_key, file_name, mime_type, size_bytes}.",
@@ -172,6 +175,8 @@ class MessageListParams:
         recipient_id: Optional[uuid.UUID] = Query(default=None),
         public_only: bool = Query(default=False),
         dm_student_id: Optional[uuid.UUID] = Query(default=None),
+        room_type: Optional[str] = Query(default=None),
+        room_id: Optional[uuid.UUID] = Query(default=None),
     ) -> None:
         self.before = before
         self.limit = limit
@@ -179,4 +184,6 @@ class MessageListParams:
         self.recipient_id = recipient_id
         self.public_only = public_only
         self.dm_student_id = dm_student_id
+        self.room_type = room_type
+        self.room_id = room_id
 

@@ -29,6 +29,7 @@ from sqlalchemy import Select, and_, case, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.models.assignment import Assignment
 from app.models.auth import UserSession
 from app.models.chat import ChatRoom, Message
 from app.models.course import (
@@ -49,6 +50,7 @@ from app.models.enums import (
 from app.models.meeting import Meeting, SessionAttendance
 from app.models.payment import Payment
 from app.models.pdf import PDF
+from app.models.test import CourseTest
 from app.models.user import StudentProfile, TeacherProfile, User
 from app.models.video import Video
 
@@ -225,12 +227,62 @@ class CourseRepository:
         return course
 
     async def soft_delete(self, course: Course) -> None:
-        """Soft-delete a course by setting deleted_at.
+        """Soft-delete a course and cascade soft-delete/deactivation to all associated entities:
+        meetings, videos, pdfs, chat room & messages, tests, and assignments.
 
         Args:
             course: The course to soft-delete.
         """
-        course.deleted_at = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        course.deleted_at = now
+        course.status = CourseStatus.ARCHIVED
+
+        # 1. Soft-delete meetings belonging to this course
+        await self._db.execute(
+            update(Meeting)
+            .where(Meeting.course_id == course.id, Meeting.deleted_at.is_(None))
+            .values(deleted_at=now)
+        )
+
+        # 2. Soft-delete video resources
+        await self._db.execute(
+            update(Video)
+            .where(Video.course_id == course.id, Video.deleted_at.is_(None))
+            .values(deleted_at=now)
+        )
+
+        # 3. Soft-delete PDF resources
+        await self._db.execute(
+            update(PDF)
+            .where(PDF.course_id == course.id, PDF.deleted_at.is_(None))
+            .values(deleted_at=now)
+        )
+
+        # 4. Deactivate chat room and soft-delete messages
+        chat_room_stmt = select(ChatRoom).where(ChatRoom.course_id == course.id)
+        chat_rooms = (await self._db.scalars(chat_room_stmt)).all()
+        for room in chat_rooms:
+            room.is_active = False
+            await self._db.execute(
+                update(Message)
+                .where(Message.chat_room_id == room.id, Message.deleted_at.is_(None))
+                .values(deleted_at=now)
+            )
+
+        # 5. Deactivate course tests
+        await self._db.execute(
+            update(CourseTest)
+            .where(CourseTest.course_id == course.id)
+            .values(is_active=False)
+        )
+
+        # 6. Soft-delete assignments
+        await self._db.execute(
+            update(Assignment)
+            .where(Assignment.course_id == course.id, Assignment.deleted_at.is_(None))
+            .values(deleted_at=now)
+        )
+
         await self._db.flush()
 
     async def count_by_teacher(
@@ -806,19 +858,23 @@ class AnnouncementRepository:
     async def get_chat_room_by_course(
         self,
         course_id: uuid.UUID,
+        room_type: Optional[str] = None,
     ) -> Optional[ChatRoom]:
-        """Fetch the chat room for a course.
+        """Fetch a specific chat room for a course.
 
         Args:
             course_id: The course UUID.
+            room_type: Optional room type ('general' or 'announcement').
 
         Returns:
             ChatRoom | None: The chat room, or None if not created yet.
         """
-        result = await self._db.execute(
-            select(ChatRoom).where(ChatRoom.course_id == course_id)
-        )
-        return result.scalar_one_or_none()
+        stmt = select(ChatRoom).where(ChatRoom.course_id == course_id)
+        if room_type:
+            stmt = stmt.where(ChatRoom.room_type == room_type)
+        stmt = stmt.order_by(ChatRoom.created_at.asc())
+        rooms = (await self._db.scalars(stmt)).all()
+        return rooms[0] if rooms else None
 
     async def create(
         self,

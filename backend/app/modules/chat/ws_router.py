@@ -55,6 +55,7 @@ from app.modules.chat.schemas import EditMessageRequest, SendMessageRequest
 from app.modules.chat.service import (
     ChatRoomInactiveError,
     MessageService,
+    PermissionDeniedError,
     SlowModeError,
 )
 from app.modules.chat.tasks import cleanup_expired_typing_indicators
@@ -433,12 +434,15 @@ async def _on_message_send(
                     await manager.send_error(websocket, "RoomNotFound", "Room not found.")
                     return
                 svc = MessageService(db, redis, actor)
-                msg_data = await svc.send(row.course_id, req)
+                msg_data = await svc.send(row.course_id, req, room_id=room_id)
     except SlowModeError:
         await manager.send_error(websocket, "SlowMode", "Please wait before sending.")
         return
     except ChatRoomInactiveError:
         await manager.send_error(websocket, "RoomInactive", "Chat room is inactive.")
+        return
+    except PermissionDeniedError as exc:
+        await manager.send_error(websocket, "PermissionDenied", str(exc.message if hasattr(exc, 'message') else exc))
         return
     except Exception as exc:
         logger.error("message.send error: %s", exc)

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { 
-  Search, 
   Upload, 
   Filter, 
   SortDesc,
@@ -35,20 +34,7 @@ export function MediaHeader() {
   };
 
   return (
-    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between mb-8">
-      {/* Search Bar */}
-      <div className="relative w-full md:max-w-md group">
-        <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        <div className="relative flex items-center">
-          <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <input
-            type="text"
-            placeholder="Search media files..."
-            className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.02] pl-11 pr-4 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all hover:bg-white/[0.04]"
-          />
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-end mb-8">
       <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { 
-  Search, 
   LayoutGrid, 
   List, 
   Filter, 
@@ -26,26 +25,13 @@ import {
 export function CourseToolbar() {
   const viewType = useUIStore((state) => state.courseViewType);
   const setViewType = useUIStore((state) => state.setCourseViewType);
-  const search = useUIStore((state) => state.courseSearch);
-  const setSearch = useUIStore((state) => state.setCourseSearch);
   const statusFilter = useUIStore((state) => state.courseStatusFilter);
   const setStatusFilter = useUIStore((state) => state.setCourseStatusFilter);
 
   const [sortStatus, setSortStatus] = React.useState("newest");
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 mb-4">
-      {/* Search Bar */}
-      <div className="relative w-full sm:max-w-md group">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-        <input
-          type="text"
-          placeholder="Search courses..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-10 w-full rounded-lg bg-background border border-border pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all shadow-sm"
-        />
-      </div>
+    <div className="flex flex-col sm:flex-row items-center justify-end gap-4 py-4 mb-4">
 
       {/* Actions */}
       <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-3">

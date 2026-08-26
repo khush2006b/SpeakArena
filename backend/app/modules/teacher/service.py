@@ -281,6 +281,8 @@ class CourseService:
         self._teacher = teacher
         self._repo = CourseRepository(db)
         self._cat_repo = CourseCategoryRepository(db)
+        self._video_repo = VideoRepository(db)
+        self._pdf_repo = PDFRepository(db)
 
     async def create_course(self, data: CreateCourseRequest) -> Any:
         """Create a new course in draft status.
@@ -342,12 +344,20 @@ class CourseService:
                 course.id, data.category_ids, data.primary_category_id
             )
 
-        # Auto-create chat room
-        chat_room = ChatRoom(
+        # Auto-create chat rooms (Announcements + General)
+        ann_room = ChatRoom(
             course_id=course.id,
-            name=f"{data.title} — Discussion",
+            name=f"{data.title} — Announcements",
+            room_type="announcement",
+            is_announcement_only=True,
         )
-        self._db.add(chat_room)
+        gen_room = ChatRoom(
+            course_id=course.id,
+            name=f"{data.title} — General",
+            room_type="general",
+            is_announcement_only=False,
+        )
+        self._db.add_all([ann_room, gen_room])
         await self._db.flush()
 
         _audit(
@@ -514,7 +524,7 @@ class CourseService:
         return course
 
     async def delete_course(self, course_id: uuid.UUID) -> None:
-        """Soft-delete a course.
+        """Soft-delete a course and all related resources, meetings, chat rooms, and tests.
 
         Args:
             course_id: The course UUID.
@@ -526,6 +536,29 @@ class CourseService:
         if course is None:
             raise CourseNotFoundError()
 
+        # Best-effort cleanup of associated R2 storage objects
+        try:
+            videos = await self._video_repo.list_by_course(course_id)
+            for video in videos:
+                if video.r2_object_key:
+                    await r2.delete_object(video.r2_object_key)
+        except Exception as exc:
+            logger.warning("Failed to delete video R2 objects for course_id=%s: %s", course_id, exc)
+
+        try:
+            pdfs = await self._pdf_repo.list_by_course(course_id)
+            for pdf in pdfs:
+                if pdf.r2_object_key:
+                    await r2.delete_object(pdf.r2_object_key)
+        except Exception as exc:
+            logger.warning("Failed to delete PDF R2 objects for course_id=%s: %s", course_id, exc)
+
+        if course.thumbnail_r2_key:
+            try:
+                await r2.delete_object(course.thumbnail_r2_key)
+            except Exception as exc:
+                logger.warning("Failed to delete thumbnail R2 object for course_id=%s: %s", course_id, exc)
+
         await self._repo.soft_delete(course)
         _audit(
             self._db,
@@ -535,7 +568,7 @@ class CourseService:
             course.id,
             severity=AuditSeverity.WARNING,
         )
-        logger.info("Course soft-deleted id=%s", course_id)
+        logger.info("Course and all related resources soft-deleted id=%s", course_id)
 
     async def get_thumbnail_presign_url(
         self,
@@ -1245,14 +1278,17 @@ class AnnouncementService:
         self._repo = AnnouncementRepository(db)
         self._course_repo = CourseRepository(db)
 
-    async def _get_course_chat_room(self, course_id: uuid.UUID) -> ChatRoom:
-        """Validate course ownership and return the chat room.
+    async def _get_course_chat_room(
+        self, course_id: uuid.UUID, room_type: str = "announcement"
+    ) -> ChatRoom:
+        """Fetch the course's specified chat room, auto-creating both if missing.
 
         Args:
             course_id: The course UUID.
+            room_type: 'announcement' or 'general'.
 
         Returns:
-            ChatRoom: The course's chat room.
+            ChatRoom: The requested course chat room.
 
         Raises:
             CourseNotFoundError: If course not found.
@@ -1261,13 +1297,24 @@ class AnnouncementService:
         if course is None:
             raise CourseNotFoundError()
 
-        chat_room = await self._repo.get_chat_room_by_course(course_id)
+        chat_room = await self._repo.get_chat_room_by_course(course_id, room_type=room_type)
         if chat_room is None:
             # Auto-create if missing (edge case for legacy courses)
-            chat_room = ChatRoom(course_id=course_id, name=f"{course.title} — Discussion")
-            self._db.add(chat_room)
+            ann_room = ChatRoom(
+                course_id=course_id,
+                name=f"{course.title} — Announcements",
+                room_type="announcement",
+                is_announcement_only=True,
+            )
+            gen_room = ChatRoom(
+                course_id=course_id,
+                name=f"{course.title} — General",
+                room_type="general",
+                is_announcement_only=False,
+            )
+            self._db.add_all([ann_room, gen_room])
             await self._db.flush()
-            await self._db.refresh(chat_room)
+            chat_room = ann_room if room_type == "announcement" else gen_room
 
         return chat_room
 

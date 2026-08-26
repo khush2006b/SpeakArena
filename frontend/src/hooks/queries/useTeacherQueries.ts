@@ -127,6 +127,8 @@ export function useDeleteCourse() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.teacher() });
     },
   });
 }

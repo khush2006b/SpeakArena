@@ -284,9 +284,11 @@ export function StudentMessagesView() {
     setRoomError(null);
     setMessagesLoading(true);
 
+    const roomType = activeChannel.type === "announcements" ? "announcement" : "general";
+
     // 1. Parallel Request A: Fetch Chat Room metadata
     apiClient
-      .get(`/api/v1/chat/${courseId}`)
+      .get(`/api/v1/chat/${courseId}?room_type=${roomType}`)
       .then((res) => {
         if (!isMounted) return;
         const r: ChatRoom = res.data?.data;
@@ -306,30 +308,13 @@ export function StudentMessagesView() {
     let messagesPromise: Promise<BackendMessage[]>;
 
     if (activeChannel.type === "announcements") {
-      const currentCourses = coursesRef.current.length > 0 ? coursesRef.current : [activeCourse];
-      messagesPromise = Promise.all(
-        currentCourses.map((c) =>
-          apiClient
-            .get(`/api/v1/chat/${c.id}/messages?limit=50&announcements_only=true`)
-            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
-            .catch(() => [] as BackendMessage[])
-        )
-      ).then((results) => {
-        const allMsgs = results.flat().filter((m) => m.is_announcement);
-        const seen = new Set<string>();
-        const unique = allMsgs.filter((m) => {
-          if (seen.has(m.id)) return false;
-          const senderId = m.sender_id || m.sender?.id || "";
-          const timeKey = Math.floor(new Date(m.created_at).getTime() / 60000);
-          const contentKey = `${m.content?.trim()}__${senderId}__${timeKey}`;
-          if (seen.has(contentKey)) return false;
-          seen.add(m.id);
-          seen.add(contentKey);
-          return true;
-        });
-        unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        return unique;
-      });
+      messagesPromise = apiClient
+        .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=announcement&announcements_only=true`)
+        .then((res) => {
+          let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
+          return msgs.reverse();
+        })
+        .catch(() => []);
     } else if (activeChannel.type === "teacher_dm") {
       const teacherId = getCourseTeacherId(activeCourse);
       messagesPromise = apiClient
@@ -346,11 +331,10 @@ export function StudentMessagesView() {
         .catch(() => []);
     } else {
       messagesPromise = apiClient
-        .get(`/api/v1/chat/${courseId}/messages?limit=50&public_only=true`)
+        .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=general&public_only=true`)
         .then((res) => {
           let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-          msgs = msgs.filter((m) => !m.is_announcement && !m.recipient_id);
-          return [...msgs].reverse();
+          return msgs.reverse();
         })
         .catch(() => []);
     }
@@ -874,84 +858,95 @@ export function StudentMessagesView() {
                 </div>
               ) : (
                 courses.map((course) => {
-                  const isActive =
+                  const isAnnActive =
+                    activeChannel?.type === "announcements" &&
+                    activeChannel.course.id === course.id;
+                  const isGenActive =
                     activeChannel?.type === "course" &&
                     activeChannel.course.id === course.id;
+
                   return (
-                    <button
-                      key={course.id}
-                      className="ch-item"
-                      onClick={() => {
-                        setActiveChannel({ type: "course", course });
-                        setMobileShowChat(true);
-                      }}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "11px 10px",
-                        borderRadius: 8,
-                        background: isActive
-                          ? "rgba(99,102,241,0.12)"
-                          : "transparent",
-                        border: isActive
-                          ? "1px solid rgba(99,102,241,0.2)"
-                          : "1px solid transparent",
-                        color: isActive ? "#818cf8" : "#94a3b8",
-                        fontWeight: isActive ? 700 : 400,
-                        cursor: "pointer",
-                        fontSize: 13,
-                        textAlign: "left",
-                      }}
-                    >
+                    <div key={course.id} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
                       <div
                         style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 7,
-                          background: isActive
-                            ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
-                            : "rgba(255,255,255,0.07)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#64748b",
+                          padding: "6px 8px 2px",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {course.title}
+                      </div>
+
+                      {/* 1. Announcements channel */}
+                      <button
+                        className="ch-item"
+                        onClick={() => {
+                          setActiveChannel({ type: "announcements", course });
+                          setMobileShowChat(true);
+                        }}
+                        style={{
+                          width: "100%",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 10,
-                          fontWeight: 800,
-                          color: isActive ? "#fff" : "#64748b",
-                          flexShrink: 0,
+                          gap: 8,
+                          padding: "7px 10px 7px 16px",
+                          borderRadius: 6,
+                          background: isAnnActive
+                            ? "rgba(245,158,11,0.12)"
+                            : "transparent",
+                          border: isAnnActive
+                            ? "1px solid rgba(245,158,11,0.2)"
+                            : "1px solid transparent",
+                          color: isAnnActive ? "#f59e0b" : "#94a3b8",
+                          fontWeight: isAnnActive ? 700 : 400,
+                          cursor: "pointer",
+                          fontSize: 12,
+                          textAlign: "left",
                         }}
                       >
-                        {course.title.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div
-                        style={{ overflow: "hidden", flex: 1, textAlign: "left" }}
-                      >
-                        <div
-                          style={{
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            color: isActive ? "#f1f5f9" : "#cbd5e1",
-                            fontWeight: isActive ? 700 : 500,
-                            fontSize: 13,
-                          }}
-                        >
-                          {course.title}
-                        </div>
-                        <div style={{ fontSize: 10, color: "#475569" }}>
-                          {(course as any).teacherName || "Instructor"}
-                        </div>
-                      </div>
-                      <Hash
+                        <Megaphone style={{ width: 14, height: 14, color: isAnnActive ? "#f59e0b" : "#64748b", flexShrink: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          Announcements
+                        </span>
+                      </button>
+
+                      {/* 2. General Talk channel */}
+                      <button
+                        className="ch-item"
+                        onClick={() => {
+                          setActiveChannel({ type: "course", course });
+                          setMobileShowChat(true);
+                        }}
                         style={{
-                          width: 12,
-                          height: 12,
-                          color: isActive ? "#818cf8" : "#334155",
-                          flexShrink: 0,
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "7px 10px 7px 16px",
+                          borderRadius: 6,
+                          background: isGenActive
+                            ? "rgba(99,102,241,0.12)"
+                            : "transparent",
+                          border: isGenActive
+                            ? "1px solid rgba(99,102,241,0.2)"
+                            : "1px solid transparent",
+                          color: isGenActive ? "#818cf8" : "#94a3b8",
+                          fontWeight: isGenActive ? 700 : 400,
+                          cursor: "pointer",
+                          fontSize: 12,
+                          textAlign: "left",
                         }}
-                      />
-                    </button>
+                      >
+                        <Hash style={{ width: 14, height: 14, color: isGenActive ? "#818cf8" : "#64748b", flexShrink: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          General Talk
+                        </span>
+                      </button>
+                    </div>
                   );
                 })
               )}

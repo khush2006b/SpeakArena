@@ -6,13 +6,11 @@ import {
   Megaphone, 
   Video, 
   MessageSquare,
-  Search,
   Users,
   Loader2
 } from "lucide-react";
 import { useCommunicationStore, Channel } from "@/stores/communication.store";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 function ChannelIcon({ type }: { type: Channel["type"] }) {
@@ -27,15 +25,12 @@ function ChannelIcon({ type }: { type: Channel["type"] }) {
 export function ChatSidebar() {
   const { activeChannelId, setActiveChannelId, channels, channelsLoading, fetchChannels } =
     useCommunicationStore();
-  const [search, setSearch] = React.useState("");
 
   React.useEffect(() => {
     fetchChannels();
   }, [fetchChannels]);
 
-  const filtered = search.trim()
-    ? channels.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    : channels;
+  const filtered = channels;
 
   const grouped = filtered.reduce(
     (acc, channel) => {
@@ -92,15 +87,6 @@ export function ChatSidebar() {
             Pro
           </Badge>
         </h2>
-        <div className="relative mt-4 group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search channels..."
-            className="pl-9 h-9 bg-white/5 border-white/10 rounded-lg text-foreground w-full focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/50 transition-all placeholder:text-muted-foreground"
-          />
-        </div>
       </div>
 
       {/* Channel List */}

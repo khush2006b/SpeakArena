@@ -1,17 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
 
 interface ResourcesHeaderProps {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
+  searchQuery?: string;
+  setSearchQuery?: (query: string) => void;
   totalResourcesCount?: number;
 }
 
 export function ResourcesHeader({
-  searchQuery,
-  setSearchQuery,
   totalResourcesCount = 0,
 }: ResourcesHeaderProps) {
   return (
@@ -34,19 +31,6 @@ export function ResourcesHeader({
           <p className="text-sm text-muted-foreground mt-2">
             Access all your course materials, videos, and PDFs.
           </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search across all courses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 h-10 bg-secondary/50 border border-border/50 rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-            />
-          </div>
         </div>
       </div>
     </div>

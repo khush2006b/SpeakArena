@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Compass,
-  Search,
   BookOpen,
   Users,
   CheckCircle2,
@@ -32,7 +31,6 @@ export default function ExploreCoursesPage() {
   const [courses, setCourses] = React.useState<ExploreCourse[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
   const [enrollingId, setEnrollingId] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
@@ -122,25 +120,6 @@ export default function ExploreCoursesPage() {
           <p className="text-base text-slate-300 leading-relaxed">
             Browse through all available live and recorded speaking courses. Select any course to instantly enroll and start practicing with expert teachers and peers.
           </p>
-
-          {/* Search bar */}
-          <div className="pt-2 flex flex-col sm:flex-row gap-3 max-w-xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search courses by title or instructor..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-2xl text-sm transition-all focus:outline-none"
-                style={{
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#fff",
-                }}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Floating background graphic */}

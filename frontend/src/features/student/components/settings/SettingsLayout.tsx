@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useStudentSettingsStore } from "@/stores/student-settings.store";
 import { SettingsNavigation } from "./SettingsNavigation";
 import { LearningPreferences } from "./LearningPreferences";
@@ -13,7 +11,7 @@ import { ConnectedDevices } from "./ConnectedDevices";
 import { DangerZone } from "./DangerZone";
 
 export function SettingsLayout() {
-  const { activeTab, searchQuery, setSearchQuery } = useStudentSettingsStore();
+  const { activeTab } = useStudentSettingsStore();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -47,16 +45,6 @@ export function SettingsLayout() {
           <div>
             <h1 className="page-title">Settings</h1>
             <p className="page-subtitle">Manage your account configurations and learning preferences.</p>
-          </div>
-
-          <div className="relative w-full sm:w-72 shrink-0">
-            <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search settings..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-glass pl-8 h-9 text-sm"
-            />
           </div>
         </div>
       </div>
