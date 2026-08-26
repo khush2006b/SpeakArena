@@ -1470,32 +1470,57 @@ class StudentManagementRepository:
         if is_active is not None:
             conditions.append(User.is_active == is_active)
 
-        base_stmt = (
-            select(
-                CourseEnrollment.id.label("enrollment_id"),
-                User.id.label("student_id"),
-                User.full_name.label("student_name"),
-                User.email.label("student_email"),
-                User.avatar_r2_key.label("student_avatar_r2_key"),
-                Course.id.label("course_id"),
-                Course.title.label("course_title"),
-                CourseEnrollment.status.label("enrollment_status"),
-                CourseEnrollment.enrolled_at,
-                CourseEnrollment.progress_percentage.label("progress_percent"),
-                CourseEnrollment.completed_at,
-                Payment.amount.label("payment_amount"),
+        if course_id:
+            base_stmt = (
+                select(
+                    CourseEnrollment.id.label("enrollment_id"),
+                    User.id.label("student_id"),
+                    User.full_name.label("student_name"),
+                    User.email.label("student_email"),
+                    User.avatar_r2_key.label("student_avatar_r2_key"),
+                    Course.id.label("course_id"),
+                    Course.title.label("course_title"),
+                    CourseEnrollment.status.label("enrollment_status"),
+                    CourseEnrollment.enrolled_at,
+                    CourseEnrollment.progress_percentage.label("progress_percent"),
+                    CourseEnrollment.completed_at,
+                    Payment.amount.label("payment_amount"),
+                )
+                .join(Course, Course.id == CourseEnrollment.course_id)
+                .join(User, User.id == CourseEnrollment.student_id)
+                .outerjoin(Payment, Payment.id == CourseEnrollment.payment_id)
+                .where(and_(*conditions))
             )
-            .join(Course, Course.id == CourseEnrollment.course_id)
-            .join(User, User.id == CourseEnrollment.student_id)
-            .outerjoin(Payment, Payment.id == CourseEnrollment.payment_id)
-            .where(and_(*conditions))
-        )
+        else:
+            base_stmt = (
+                select(
+                    User.id.label("student_id"),
+                    User.full_name.label("student_name"),
+                    User.email.label("student_email"),
+                    User.avatar_r2_key.label("student_avatar_r2_key"),
+                    func.max(CourseEnrollment.id).label("enrollment_id"),
+                    func.max(Course.id).label("course_id"),
+                    func.string_agg(func.distinct(Course.title), ", ").label("course_title"),
+                    func.max(CourseEnrollment.status).label("enrollment_status"),
+                    func.max(CourseEnrollment.enrolled_at).label("enrolled_at"),
+                    func.avg(CourseEnrollment.progress_percentage).label("progress_percent"),
+                    func.max(CourseEnrollment.completed_at).label("completed_at"),
+                    func.sum(Payment.amount).label("payment_amount"),
+                )
+                .join(Course, Course.id == CourseEnrollment.course_id)
+                .join(User, User.id == CourseEnrollment.student_id)
+                .outerjoin(Payment, Payment.id == CourseEnrollment.payment_id)
+                .where(and_(*conditions))
+                .group_by(User.id, User.full_name, User.email, User.avatar_r2_key)
+            )
 
         count_stmt = select(func.count()).select_from(base_stmt.subquery())
         total: int = (await self._db.execute(count_stmt)).scalar_one()
 
         data_stmt = (
-            base_stmt.order_by(CourseEnrollment.enrolled_at.desc())
+            base_stmt.order_by(
+                CourseEnrollment.enrolled_at.desc() if course_id else func.max(CourseEnrollment.enrolled_at).desc()
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -1503,12 +1528,12 @@ class StudentManagementRepository:
 
         items = [
             {
-                "enrollment_id": str(r.enrollment_id),
+                "enrollment_id": str(r.enrollment_id) if r.enrollment_id else None,
                 "student_id": str(r.student_id),
                 "student_name": r.student_name,
                 "student_email": r.student_email,
                 "student_avatar_r2_key": r.student_avatar_r2_key,
-                "course_id": str(r.course_id),
+                "course_id": str(r.course_id) if r.course_id else None,
                 "course_title": r.course_title,
                 "enrollment_status": r.enrollment_status,
                 "enrolled_at": r.enrolled_at.isoformat() if r.enrolled_at else None,

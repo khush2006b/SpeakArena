@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Play, MoreHorizontal, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCoursesStore } from "@/stores/courses.store";
@@ -60,11 +59,11 @@ export function CourseList({ courses }: CourseListProps) {
               <TableCell>
                 <div className="flex items-center gap-3">
                   <div className="relative h-12 w-20 shrink-0 rounded-md overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
-                    <Image
-                      src={course.thumbnail}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={course.thumbnailUrl || course.thumbnail}
                       alt={course.title}
-                      fill
-                      className="object-cover"
+                      className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <Play className="h-5 w-5 fill-white text-white" />

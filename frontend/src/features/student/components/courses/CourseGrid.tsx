@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Play, Bookmark, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCoursesStore } from "@/stores/courses.store";
@@ -38,11 +37,11 @@ export function CourseGrid({ courses }: CourseGridProps) {
         >
           {/* Thumbnail & Overlays */}
           <div className="relative aspect-video w-full overflow-hidden bg-card">
-            <Image
-              src={course.thumbnail}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={course.thumbnailUrl || course.thumbnail}
               alt={course.title}
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
             
             {/* Gradients */}

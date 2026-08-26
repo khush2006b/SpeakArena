@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Play, PlayCircle, Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
+
+import { getCourseThumbnailUrl } from "@/lib/utils";
 
 export function DashboardHero() {
   const [imageError, setImageError] = React.useState(false);
@@ -33,8 +34,9 @@ export function DashboardHero() {
         const courses = coursesRes.data?.items ?? coursesRes.data?.data ?? coursesRes.data ?? [];
         const latest = Array.isArray(courses) ? courses[0] : null;
         if (latest) {
+          const resolvedThumb = getCourseThumbnailUrl(latest);
           setHero({
-            thumbnail: latest.thumbnail_url ?? latest.cover_image ?? "",
+            thumbnail: resolvedThumb,
             courseTitle: latest.title ?? "Your Learning Journey",
             lessonTitle: latest.subtitle ?? "Continue where you left off",
             progress: Math.round(latest.progress_percentage ?? 0),
@@ -56,14 +58,12 @@ export function DashboardHero() {
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
         {!imageError && hero.thumbnail ? (
-          <Image
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
             src={hero.thumbnail}
             alt={hero.courseTitle}
-            fill
-            className="object-cover transition-transform duration-1000 group-hover:scale-105"
-            priority
+            className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
             onError={() => setImageError(true)}
-            unoptimized
           />
         ) : null}
         

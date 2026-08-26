@@ -1,16 +1,20 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Play, Star, ChevronLeft, ChevronRight, Mic, Briefcase, Award, BookOpen, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { apiClient } from "@/services/api/client";
 
+import { getCourseThumbnailUrl } from "@/lib/utils";
+
 interface CourseItem {
   id: string;
   title: string;
-  thumbnail: string;
+  thumbnail?: string;
+  thumbnail_url?: string;
+  thumbnailUrl?: string;
+  thumbnail_r2_key?: string;
   gradient?: string;
   iconType?: string;
   category?: string;
@@ -119,10 +123,11 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
                 <div className="rounded-xl bg-muted h-32 w-64"></div>
               </div>
             </div>
-          ) : items.map((item) => {
+          ) : items.map((item, idx) => {
             const Icon = getCourseIcon(item.iconType);
-            const courseId = item.id || (item as any).course_id || (item as any)._id;
+            const courseId = item.id || (item as any).course_id || (item as any)._id || `carousel-item-${idx}`;
             const isImageFailed = failedImages[courseId];
+            const thumbUrl = getCourseThumbnailUrl(item, idx);
             const defaultGradient = item.gradient || "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 100%)";
 
             return (
@@ -133,19 +138,18 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
               >
                 {/* Thumbnail / Gradient Banner */}
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-3" style={{ background: defaultGradient }}>
-                  {!isImageFailed && item.thumbnail ? (
-                    <Image
-                      src={item.thumbnail}
+                  {!isImageFailed && thumbUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={thumbUrl}
                       alt={item.title}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover/card:scale-105"
-                      onError={() => handleImageError(item.id)}
-                      unoptimized
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                      onError={() => handleImageError(courseId)}
                     />
                   ) : null}
 
                   {/* Fallback Graphic Banner when image is missing / failed */}
-                  {(isImageFailed || !item.thumbnail) && (
+                  {(isImageFailed || !thumbUrl) && (
                     <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ background: defaultGradient }}>
                       <div className="flex items-center justify-between">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/15 backdrop-blur-sm">

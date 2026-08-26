@@ -11,14 +11,10 @@ import { apiClient } from "@/services/api/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
-const THUMBNAIL_FALLBACKS = [
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g1' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g1)'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g2' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23064e3b'/><stop offset='100%' stop-color='%23059669'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g2)'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g3' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23581c87'/><stop offset='100%' stop-color='%237e22ce'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g3)'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g4' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e293b'/><stop offset='100%' stop-color='%23334155'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g4)'/></svg>",
-];
+import { getCourseThumbnailUrl } from "@/lib/utils";
 
 function mapCourse(item: any, idx: number) {
+  const resolvedThumbnail = getCourseThumbnailUrl(item, idx);
   return {
     id: item.course_id || item.id || `my-course-${idx}`,
     title: item.title,
@@ -32,12 +28,8 @@ function mapCourse(item: any, idx: number) {
       : item.enrolled_at
       ? format(new Date(item.enrolled_at), "MMM d")
       : "Recently",
-    thumbnail: item.thumbnail_r2_key
-      ? item.thumbnail_r2_key
-      : THUMBNAIL_FALLBACKS[idx % THUMBNAIL_FALLBACKS.length],
-    thumbnailUrl: item.thumbnail_r2_key
-      ? item.thumbnail_r2_key
-      : THUMBNAIL_FALLBACKS[idx % THUMBNAIL_FALLBACKS.length],
+    thumbnail: resolvedThumbnail,
+    thumbnailUrl: resolvedThumbnail,
     isFavorite: false,
   };
 }
