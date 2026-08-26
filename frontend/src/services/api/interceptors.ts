@@ -12,6 +12,7 @@ import { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { apiClient } from "./client";
 import { ENDPOINTS } from "./endpoints";
 import type { APIError } from "@/types";
+import { useAuthStore } from "@/stores/auth.store";
 
 // ---------------------------------------------------------------------------
 // Token management (in-memory — never persisted to localStorage)
@@ -132,6 +133,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError: unknown) {
         processQueue(refreshError, null);
         setAccessToken(null);
+        useAuthStore.getState().clearUser();
         // Redirect to login — handled by AuthProvider on next render
         if (typeof window !== "undefined") {
           window.location.href = "/login?reason=session_expired";

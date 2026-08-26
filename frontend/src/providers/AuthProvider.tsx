@@ -66,13 +66,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           document.cookie = `sa_role=${user?.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
       } catch {
-        // 401 or network error — only clear if there was no stored session token
+        // 401 or network error — clear session state
         if (!cancelled) {
-          const { user: currentStoredUser } = useAuthStore.getState();
-          if (!currentStoredUser) {
-            setAccessToken(null);
-            clearUser();
-          }
+          setAccessToken(null);
+          clearUser();
         }
       } finally {
         if (!cancelled) {
