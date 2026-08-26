@@ -24,6 +24,7 @@ import {
   Circle,
   Info,
   ArrowLeft,
+  X,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -1724,31 +1725,74 @@ export function StudentMessagesView() {
 
       {/* ── RIGHT INFO PANEL ─────────────────────────────────────────────────── */}
       {showInfoPanel && (
-        <div
-          className="hidden md:flex"
-          style={{
-            width: 260,
-            background: "#0b0f1a",
-            borderLeft: "1px solid rgba(255,255,255,0.06)",
-            padding: 20,
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            overflowY: "auto",
-            flexShrink: 0,
-          }}
-        >
+        <>
+          {/* Mobile backdrop overlay */}
           <div
+            className="md:hidden"
+            onClick={() => setShowInfoPanel(false)}
             style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#64748b",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(4px)",
+              zIndex: 40,
+            }}
+          />
+
+          <div
+            className="fixed inset-y-0 right-0 z-50 md:static md:z-auto shadow-2xl md:shadow-none"
+            style={{
+              width: 280,
+              background: "#0b0f1a",
+              borderLeft: "1px solid rgba(255,255,255,0.08)",
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+              overflowY: "auto",
+              flexShrink: 0,
             }}
           >
-            Channel Info
-          </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingBottom: 8,
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#64748b",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                Channel Info
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInfoPanel(false)}
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 28,
+                  height: 28,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                }}
+                title="Close channel info"
+              >
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
 
           {!activeChannel && (
             <div style={{ fontSize: 13, color: "#475569" }}>
@@ -1936,7 +1980,7 @@ export function StudentMessagesView() {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
