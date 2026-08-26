@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Presentation, FileText, Users, CalendarDays,
   CreditCard, BarChart3, MessageSquare, Settings, ChevronLeft,
-  Mic2, GraduationCap, X, ClipboardCheck,
+  Mic2, X, ClipboardCheck, User,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -38,6 +38,7 @@ const NAVIGATION = [
   {
     group: "Business",
     items: [
+      { name: "Profile", href: "/teacher/profile", icon: User },
       { name: "Payments", href: "/teacher/payments", icon: CreditCard },
       { name: "Settings", href: "/teacher/settings", icon: Settings },
     ],

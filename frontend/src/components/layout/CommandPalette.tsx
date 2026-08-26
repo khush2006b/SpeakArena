@@ -75,7 +75,7 @@ export function CommandPalette() {
         <CommandSeparator />
         
         <CommandGroup heading="Communication">
-          <CommandItem onSelect={() => runCommand(() => router.push('/teacher/communications'))}>
+          <CommandItem onSelect={() => runCommand(() => router.push('/teacher/communication'))}>
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>Messages</span>
             <CommandShortcut>C M</CommandShortcut>
@@ -99,7 +99,7 @@ export function CommandPalette() {
             <span>Settings</span>
             <CommandShortcut>⌘S</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/teacher/revenue'))}>
+          <CommandItem onSelect={() => runCommand(() => router.push('/teacher/finance'))}>
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Revenue</span>
           </CommandItem>

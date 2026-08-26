@@ -13,7 +13,6 @@
 
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth.store";
@@ -21,7 +20,6 @@ import { apiClient } from "@/services/api/client";
 import { setAccessToken } from "@/services/api/interceptors";
 import { disconnectNotificationSocket } from "@/services/socket.client";
 import { ENDPOINTS } from "@/services/api/endpoints";
-import { ROUTES } from "@/constants/routes";
 import type { User, UserRole } from "@/types";
 
 export interface UseAuthReturn {
@@ -37,7 +35,6 @@ export interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
   const { user, isAuthenticated, isInitialized, clearUser, updateUser } = useAuthStore();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const logout = useCallback(async () => {

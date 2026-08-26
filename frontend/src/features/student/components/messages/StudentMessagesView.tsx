@@ -93,6 +93,7 @@ interface BackendMessage {
 // - "teacher_dm:{courseId}"  → private 1-on-1 DM with that course's instructor
 type ActiveChannel =
   | { type: "announcements"; course: Course }
+  | { type: "course_announcements"; course: Course }
   | { type: "course"; course: Course }
   | { type: "teacher_dm"; course: Course };
 
@@ -285,7 +286,12 @@ export function StudentMessagesView() {
     setRoomError(null);
     setMessagesLoading(true);
 
-    const roomType = activeChannel.type === "announcements" ? "announcement" : "general";
+    const roomType =
+      activeChannel.type === "announcements"
+        ? "global_announcement"
+        : activeChannel.type === "course_announcements"
+        ? "announcement"
+        : "general";
 
     // 1. Parallel Request A: Fetch Chat Room metadata
     apiClient
@@ -309,17 +315,18 @@ export function StudentMessagesView() {
     let messagesPromise: Promise<BackendMessage[]>;
 
     if (activeChannel.type === "announcements") {
-      messagesPromise = Promise.all([
-        apiClient
-          .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=announcement&announcements_only=true`)
-          .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
-          .catch(() => []),
-        apiClient
-          .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=global_announcement&announcements_only=true`)
-          .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
-          .catch(() => []),
-      ]).then(([annMsgs, globMsgs]) => {
-        const all = [...annMsgs, ...globMsgs];
+      // General Announcements: collect global_announcement messages across all student courses
+      const validCourses = courses.filter((c) => Boolean(c?.id));
+      const targetCourses = validCourses.length > 0 ? validCourses : [activeCourse];
+      messagesPromise = Promise.all(
+        targetCourses.map((c) =>
+          apiClient
+            .get(`/api/v1/chat/${c.id}/messages?limit=50&room_type=global_announcement&announcements_only=true`)
+            .then((res) => (res.data?.data?.messages ?? []) as BackendMessage[])
+            .catch(() => [])
+        )
+      ).then((results) => {
+        const all = results.flat().filter((m) => m.is_announcement);
         const seen = new Set<string>();
         const unique = all.filter((m) => {
           if (seen.has(m.id)) return false;
@@ -329,6 +336,15 @@ export function StudentMessagesView() {
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         return unique;
       });
+    } else if (activeChannel.type === "course_announcements") {
+      // Course-Specific Announcements: fetch ONLY announcement room messages for this specific course
+      messagesPromise = apiClient
+        .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=announcement&announcements_only=true`)
+        .then((res) => {
+          let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
+          return msgs.filter((m) => m.is_announcement).reverse();
+        })
+        .catch(() => []);
     } else if (activeChannel.type === "teacher_dm") {
       const teacherId = getCourseTeacherId(activeCourse);
       messagesPromise = apiClient
@@ -348,7 +364,7 @@ export function StudentMessagesView() {
         .get(`/api/v1/chat/${courseId}/messages?limit=50&room_type=general&public_only=true`)
         .then((res) => {
           let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-          return msgs.reverse();
+          return msgs.filter((m) => !m.is_announcement && !m.recipient_id).reverse();
         })
         .catch(() => []);
     }
@@ -412,22 +428,29 @@ export function StudentMessagesView() {
         }
       }
 
-      // Room guard for course channels.
-      // Always enforce room-id isolation — the student WS connects to the correct
-      // room per channel type (announcement room for announcements tab, general room
-      // for discussion tab). This prevents messages from other rooms bleeding in.
-      if (currentRoom?.id && msg.chat_room_id && ch?.type !== "teacher_dm") {
-        if (
-          String(msg.chat_room_id).toLowerCase() !==
-          String(currentRoom.id).toLowerCase()
-        )
-          return;
-      }
-
-      // Channel filter for group discussion / announcements
+      // Room guard and channel filter for course channels / announcements.
       if (!ch) return;
-      if (ch.type === "announcements" && !msg.is_announcement) return;
-      if (ch.type === "course" && (msg.is_announcement || msg.recipient_id)) return;
+      if (ch.type === "announcements") {
+        if (!msg.is_announcement) return;
+      } else if (ch.type === "course_announcements") {
+        if (!msg.is_announcement) return;
+        if (currentRoom?.id && msg.chat_room_id) {
+          if (
+            String(msg.chat_room_id).toLowerCase() !==
+            String(currentRoom.id).toLowerCase()
+          )
+            return;
+        }
+      } else if (ch.type === "course") {
+        if (msg.is_announcement || msg.recipient_id) return;
+        if (currentRoom?.id && msg.chat_room_id) {
+          if (
+            String(msg.chat_room_id).toLowerCase() !==
+            String(currentRoom.id).toLowerCase()
+          )
+            return;
+        }
+      }
 
       setMessages((prev) => {
         const tempIdx = prev.findIndex(
@@ -610,14 +633,18 @@ export function StudentMessagesView() {
     disconnected: { color: "#ef4444", label: "Disconnected" },
   }[connectionStatus];
 
-  const isReadOnly = activeChannel?.type === "announcements";
+  const isReadOnly =
+    activeChannel?.type === "announcements" ||
+    activeChannel?.type === "course_announcements";
   const isTeacherDm = activeChannel?.type === "teacher_dm";
 
   // Channel header labels
   const channelTitle = !activeChannel
     ? "Classroom Hub"
     : activeChannel.type === "announcements"
-    ? `📢 Announcements`
+    ? `📢 General Announcements`
+    : activeChannel.type === "course_announcements"
+    ? `📢 ${activeChannel.course.title} — Announcements`
     : activeChannel.type === "course"
     ? `# ${activeChannel.course.title}`
     : `✉️ ${(activeChannel.course as any).teacherName || "Instructor"}`;
@@ -625,7 +652,9 @@ export function StudentMessagesView() {
   const channelSubtitle = !activeChannel
     ? "Select a channel from the sidebar"
     : activeChannel.type === "announcements"
-    ? "Instructor broadcast channel — read-only for students"
+    ? "Platform & global announcements — read-only for students"
+    : activeChannel.type === "course_announcements"
+    ? `Official announcements for ${activeChannel.course.title}`
     : activeChannel.type === "course"
     ? `Group discussion for ${activeChannel.course.title}`
     : `Private 1-on-1 with ${(activeChannel.course as any).teacherName || "your instructor"}`;
@@ -876,7 +905,7 @@ export function StudentMessagesView() {
               ) : (
                 courses.map((course) => {
                   const isAnnActive =
-                    activeChannel?.type === "announcements" &&
+                    activeChannel?.type === "course_announcements" &&
                     activeChannel.course.id === course.id;
                   const isGenActive =
                     activeChannel?.type === "course" &&
@@ -902,7 +931,7 @@ export function StudentMessagesView() {
                       <button
                         className="ch-item"
                         onClick={() => {
-                          setActiveChannel({ type: "announcements", course });
+                          setActiveChannel({ type: "course_announcements", course });
                           setMobileShowChat(true);
                         }}
                         style={{

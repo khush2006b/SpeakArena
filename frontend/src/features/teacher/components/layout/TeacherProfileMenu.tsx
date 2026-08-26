@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LogOut, Settings, User, CreditCard } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,15 +49,15 @@ export function TeacherProfileMenu() {
             </div>
 
             <div className="flex flex-col gap-0.5">
-              <Link href="/teacher/profile" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <Link href={ROUTES.TEACHER.PROFILE} onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <User className="w-4 h-4" />
                 <span>Profile</span>
               </Link>
-              <Link href="/teacher/settings" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <Link href={ROUTES.TEACHER.SETTINGS} onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
               </Link>
-              <Link href="/teacher/finance" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <Link href={ROUTES.TEACHER.FINANCE} onClick={() => setIsOpen(false)} className={menuItemClass}>
                 <CreditCard className="w-4 h-4" />
                 <span>Billing</span>
               </Link>

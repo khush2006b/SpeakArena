@@ -31,6 +31,7 @@ export function ProfileMenu() {
 
   const dashboardRoute = user.role?.toLowerCase() === "teacher" ? ROUTES.TEACHER.DASHBOARD : ROUTES.STUDENT.DASHBOARD;
   const profileRoute = user.role?.toLowerCase() === "teacher" ? ROUTES.TEACHER.PROFILE : ROUTES.STUDENT.PROFILE;
+  const settingsRoute = user.role?.toLowerCase() === "teacher" ? ROUTES.TEACHER.SETTINGS : ROUTES.STUDENT.SETTINGS;
 
   return (
     <DropdownMenu>
@@ -66,7 +67,7 @@ export function ProfileMenu() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/settings" className="cursor-pointer">
+            <Link href={settingsRoute} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
               <span>Settings</span>
             </Link>
