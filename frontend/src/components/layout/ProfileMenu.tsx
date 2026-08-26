@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { LogOut, Settings, User as UserIcon, LayoutDashboard } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -15,11 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROUTES } from "@/constants/routes";
-import { useRouter } from "next/navigation";
 
 export function ProfileMenu() {
-  const { user, clearUser } = useAuthStore();
-  const router = useRouter();
+  const { user, logout } = useAuth();
 
   if (!user) return null;
 
@@ -27,10 +25,8 @@ export function ProfileMenu() {
     ? user.fullName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
 
-  const handleLogout = () => {
-    // In production, call logout API first
-    clearUser();
-    router.push(ROUTES.HOME);
+  const handleLogout = async () => {
+    await logout();
   };
 
   const dashboardRoute = user.role?.toLowerCase() === "teacher" ? ROUTES.TEACHER.DASHBOARD : ROUTES.STUDENT.DASHBOARD;

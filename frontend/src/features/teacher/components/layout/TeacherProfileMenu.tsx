@@ -5,25 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Settings, User, CreditCard } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
-import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function TeacherProfileMenu() {
-  const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
-  const user = useAuthStore((s) => s.user);
-  const clearUser = useAuthStore((s) => s.clearUser);
+  const { user, logout } = useAuth();
 
-  const teacherName = user?.fullName || (user as any)?.full_name || "Paras (Construction)";
+  const teacherName = user?.fullName || (user as any)?.full_name || "Teacher";
   const teacherEmail = user?.email || "teacher@speakarena.com";
   const initials = teacherName
     ? teacherName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "PC";
+    : "T";
 
-  const handleLogout = () => {
-    clearUser();
-    router.push(ROUTES.LOGIN);
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

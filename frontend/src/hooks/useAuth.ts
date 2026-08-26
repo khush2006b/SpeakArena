@@ -52,9 +52,11 @@ export function useAuth(): UseAuthReturn {
       disconnectNotificationSocket();
       // Clear the full TanStack Query cache — prevents stale data bleed
       queryClient.clear();
-      router.push(ROUTES.LOGIN);
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     }
-  }, [clearUser, router, queryClient]);
+  }, [clearUser, queryClient]);
 
   const role = user?.role?.toLowerCase() ?? null;
   const isTeacher = role === "teacher";

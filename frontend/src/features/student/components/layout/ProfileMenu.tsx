@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { User, Settings, LogOut, Award } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/services/api/client";
 import {
   DropdownMenu,
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function ProfileMenu() {
-  const { user, clearUser } = useAuthStore();
+  const { user, logout } = useAuth();
   const [profile, setProfile] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -97,7 +97,7 @@ export function ProfileMenu() {
         
         <DropdownMenuSeparator className="bg-white/10" />
         
-        <DropdownMenuItem onClick={() => clearUser()} className="focus:bg-red-500/10 cursor-pointer text-red-500">
+        <DropdownMenuItem onClick={() => logout()} className="focus:bg-red-500/10 cursor-pointer text-red-500">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

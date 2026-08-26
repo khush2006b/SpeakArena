@@ -98,7 +98,6 @@ export function useRegister() {
 export function useLogout() {
   const queryClient = useQueryClient();
   const { clearUser } = useAuthStore();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: () => authService.logout(),
@@ -109,7 +108,9 @@ export function useLogout() {
       clearAuthCookies();
       // Clear all cached server state — prevents stale data leaking between sessions
       queryClient.clear();
-      router.push(ROUTES.LOGIN);
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     },
   });
 }
