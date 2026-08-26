@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { DashboardHero } from "@/features/student/components/dashboard/DashboardHero";
-import { LearningStreakWidget } from "@/features/student/components/dashboard/LearningStreakWidget";
 import { NextLiveClassCard } from "@/features/student/components/dashboard/NextLiveClassCard";
 import { CourseCarousel } from "@/features/student/components/dashboard/CourseCarousel";
 import { DashboardCalendar } from "@/features/student/components/dashboard/DashboardCalendar";
@@ -22,9 +21,8 @@ export default function StudentDashboardPage() {
         <DashboardHero />
       </section>
 
-      {/* 2. Gamification & Urgent Actions */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <LearningStreakWidget />
+      {/* 2. Urgent Actions */}
+      <section>
         <NextLiveClassCard />
       </section>
 
