@@ -1540,7 +1540,11 @@ export function StudentMessagesView() {
                           }}
                         >
                           {msg.attachments.map((att: any, idx: number) => {
-                            const photoSrc = att.url || att.r2_key;
+                            const rawUrl = att.url || att.r2_key || "";
+                            const photoSrc =
+                              rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:")
+                                ? rawUrl
+                                : `https://storage.speakarena.com/${rawUrl.replace(/^\//, "")}`;
                             return (
                               <div
                                 key={idx}

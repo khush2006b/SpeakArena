@@ -214,6 +214,23 @@ class ChatRoomRepository:
 # ===========================================================================
 
 
+def _format_attachments(attachments: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    from app.core.storage.r2 import get_public_url
+    formatted = []
+    for att in attachments or []:
+        if isinstance(att, dict):
+            att_copy = dict(att)
+            r2_key = att_copy.get("r2_key") or ""
+            url = att_copy.get("url") or ""
+            if not (url.startswith("http://") or url.startswith("https://") or url.startswith("data:")):
+                public_url = get_public_url(r2_key) if r2_key else None
+                if not public_url and r2_key:
+                    public_url = f"https://storage.speakarena.com/{r2_key.lstrip('/')}"
+                att_copy["url"] = public_url or url or r2_key
+            formatted.append(att_copy)
+    return formatted
+
+
 class MessageRepository:
     """CRUD for Message and MessageReaction records."""
 
@@ -393,7 +410,7 @@ class MessageRepository:
                 "is_announcement": r.is_announcement,
                 "is_edited": r.is_edited,
                 "edited_at": r.edited_at.isoformat() if r.edited_at else None,
-                "attachments": r.attachments or [],
+                "attachments": _format_attachments(r.attachments),
                 "reactions": r.reactions or {},
                 "is_deleted": False,
                 "created_at": r.created_at.isoformat() if r.created_at else None,

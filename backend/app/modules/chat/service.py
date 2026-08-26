@@ -45,6 +45,24 @@ logger = logging.getLogger(__name__)
 _SLOW_MODE_KEY = "chat:slow_mode:{room_id}:{user_id}"  # TTL = slow_mode_seconds
 
 
+def _format_attachments(attachments: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    from app.core.storage.r2 import get_public_url
+    formatted = []
+    for att in attachments or []:
+        if isinstance(att, dict):
+            att_copy = dict(att)
+            r2_key = att_copy.get("r2_key") or ""
+            url = att_copy.get("url") or ""
+            if not (url.startswith("http://") or url.startswith("https://") or url.startswith("data:")):
+                public_url = get_public_url(r2_key) if r2_key else None
+                if not public_url and r2_key:
+                    public_url = f"https://storage.speakarena.com/{r2_key.lstrip('/')}"
+                att_copy["url"] = public_url or url or r2_key
+            formatted.append(att_copy)
+    return formatted
+
+
+
 # ---------------------------------------------------------------------------
 # Chat-specific domain errors
 # ---------------------------------------------------------------------------
@@ -543,10 +561,10 @@ class MessageService:
             "reply_count": 0,
             "is_pinned": False,
             "pinned_at": None,
-            "is_announcement": is_announcement,  # ← fixed: reflects actual value
+            "is_announcement": is_announcement,
             "is_edited": False,
             "edited_at": None,
-            "attachments": message.attachments or [],
+            "attachments": _format_attachments(message.attachments),
             "reactions": {},
             "is_deleted": False,
             "created_at": message.created_at.isoformat() if message.created_at else datetime.utcnow().isoformat(),
