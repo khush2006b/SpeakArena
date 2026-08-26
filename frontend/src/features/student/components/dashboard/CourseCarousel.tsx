@@ -121,11 +121,12 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
             </div>
           ) : items.map((item) => {
             const Icon = getCourseIcon(item.iconType);
-            const isImageFailed = failedImages[item.id];
+            const courseId = item.id || (item as any).course_id || (item as any)._id;
+            const isImageFailed = failedImages[courseId];
             const defaultGradient = item.gradient || "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 100%)";
 
             return (
-              <Link href={`/student/courses/${item.id}`} className="block shrink-0 snap-start w-[280px] sm:w-[320px]" key={item.id}>
+              <Link href={`/student/courses/${courseId}`} className="block shrink-0 snap-start w-[280px] sm:w-[320px]" key={courseId}>
               <div 
                 className="group/card cursor-pointer p-3 rounded-2xl transition-all duration-300 card-glass hover-lift h-full"
                 style={{ borderRadius: 16 }}
