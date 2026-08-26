@@ -14,10 +14,34 @@ export function DashboardCalendar() {
   React.useEffect(() => {
     const fetchMeetings = async () => {
       try {
-        const res = await apiClient.get("/api/v1/meetings?page=1&page_size=5");
+        const res = await apiClient.get("/api/v1/meetings?page=1&page_size=20");
         const data = res.data?.data || res.data || [];
-        const items = Array.isArray(data) ? data : (data.items || []);
-        setMeetings(items);
+        const items: any[] = Array.isArray(data) ? data : (data.items || []);
+        
+        const now = Date.now();
+        const activeUpcoming = items.filter((m) => {
+          const s = String(m.status || "").toUpperCase();
+          if (
+            s === "ENDED" ||
+            s === "COMPLETED" ||
+            s === "CANCELLED" ||
+            s === "EXPIRED" ||
+            s === "ARCHIVED"
+          ) {
+            return false;
+          }
+          try {
+            const startMs = new Date(m.scheduledAt || m.scheduled_at).getTime();
+            const durMinutes = m.durationMinutes || m.duration_minutes || 60;
+            const endMs = startMs + durMinutes * 60 * 1000;
+            if (!isNaN(endMs) && now > endMs) {
+              return false;
+            }
+          } catch {}
+          return true;
+        });
+
+        setMeetings(activeUpcoming.slice(0, 5));
       } catch (error) {
       } finally {
         setIsLoading(false);
