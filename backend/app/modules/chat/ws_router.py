@@ -204,34 +204,34 @@ async def websocket_chat_endpoint(
         except Exception:
             pass
 
-    # Send connected confirmation
-    connected_frame = make_envelope(
-        WSEventType.CONNECTED,
-        connected_payload(user_id_str, room_id_str, online_count),
-        room_id=room_id_str,
-    )
-    await websocket.send_text(connected_frame.to_json())
-
-    if presence_svc and redis:
-        try:
-            presence_json = await presence_svc.build_presence_update_envelope(
-                user_id_str, room_id_str, "online"
-            )
-            await redis.publish(f"chat:presence:{room_id_str}", presence_json)
-        except Exception:
-            pass
-
-    if redis is not None:
-        try:
-            await manager.ensure_room_subscription(redis, room_id_str)
-            await manager.ensure_user_subscription(redis, user_id_str)
-        except Exception as exc:
-            logger.warning("Redis subscription failed: %s", exc)
-
     # ------------------------------------------------------------------
-    # 5. Event loop
+    # 5. Event loop & Handshake Confirmation
     # ------------------------------------------------------------------
     try:
+        # Send connected confirmation
+        connected_frame = make_envelope(
+            WSEventType.CONNECTED,
+            connected_payload(user_id_str, room_id_str, online_count),
+            room_id=room_id_str,
+        )
+        await websocket.send_text(connected_frame.to_json())
+
+        if presence_svc and redis:
+            try:
+                presence_json = await presence_svc.build_presence_update_envelope(
+                    user_id_str, room_id_str, "online"
+                )
+                await redis.publish(f"chat:presence:{room_id_str}", presence_json)
+            except Exception:
+                pass
+
+        if redis is not None:
+            try:
+                await manager.ensure_room_subscription(redis, room_id_str)
+                await manager.ensure_user_subscription(redis, user_id_str)
+            except Exception as exc:
+                logger.warning("Redis subscription failed: %s", exc)
+
         while True:
             try:
                 raw = await asyncio.wait_for(websocket.receive_text(), timeout=70.0)
@@ -262,23 +262,32 @@ async def websocket_chat_endpoint(
                 read_svc=read_svc,
             )
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         logger.info("WS disconnected: user=%s room=%s", user_id_str, room_id_str)
     except Exception as exc:
         logger.error("WS error user=%s room=%s: %s", user_id_str, room_id_str, exc)
     finally:
         await manager.disconnect(websocket, redis)
-        await typing_svc.clear_typing(user_id_str, room_id_str)
-        await presence_svc.mark_offline(user_id_str, room_id_str)
-
-        offline_json = await presence_svc.build_presence_update_envelope(
-            user_id_str, room_id_str, "offline"
-        )
-        await redis.publish(f"chat:presence:{room_id_str}", offline_json)
-
-        typing_users = await typing_svc.get_typing_users(room_id_str)
-        typing_json = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
-        await redis.publish(f"chat:presence:{room_id_str}", typing_json)
+        if typing_svc:
+            try:
+                await typing_svc.clear_typing(user_id_str, room_id_str)
+            except Exception:
+                pass
+        if presence_svc:
+            try:
+                await presence_svc.mark_offline(user_id_str, room_id_str)
+                offline_json = await presence_svc.build_presence_update_envelope(
+                    user_id_str, room_id_str, "offline"
+                )
+                if redis:
+                    await redis.publish(f"chat:presence:{room_id_str}", offline_json)
+                if typing_svc:
+                    typing_users = await typing_svc.get_typing_users(room_id_str)
+                    typing_json = typing_svc.build_typing_update_envelope(room_id_str, typing_users)
+                    if redis:
+                        await redis.publish(f"chat:presence:{room_id_str}", typing_json)
+            except Exception:
+                pass
 
 
 # ===========================================================================
