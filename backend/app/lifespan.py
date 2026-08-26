@@ -172,6 +172,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS room_type VARCHAR(50) NOT NULL DEFAULT 'general';",
         "ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS is_announcement_only BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE chat_rooms DROP CONSTRAINT IF EXISTS chat_rooms_course_id_key;",
+        "DROP INDEX IF EXISTS ix_chat_rooms_course_id;",
+        "CREATE INDEX IF NOT EXISTS ix_chat_rooms_course_id ON chat_rooms(course_id);",
     ]
 
     # One-time data fix: videos stuck in 'uploading' status because the

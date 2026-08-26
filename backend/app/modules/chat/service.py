@@ -179,7 +179,10 @@ class ChatRoomService:
             created_any = True
 
         if created_any:
-            await self._db.flush()
+            try:
+                await self._db.flush()
+            except Exception:
+                await self._db.rollback()
             rooms = await self._room_repo.list_by_course_id(course_id)
 
         return rooms
