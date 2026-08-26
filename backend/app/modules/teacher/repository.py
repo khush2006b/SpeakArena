@@ -25,7 +25,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import Select, and_, case, desc, func, or_, select, update
+from sqlalchemy import Select, String, and_, case, cast, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -1498,10 +1498,10 @@ class StudentManagementRepository:
                     User.full_name.label("student_name"),
                     User.email.label("student_email"),
                     User.avatar_r2_key.label("student_avatar_r2_key"),
-                    func.max(CourseEnrollment.id).label("enrollment_id"),
-                    func.max(Course.id).label("course_id"),
+                    func.max(cast(CourseEnrollment.id, String)).label("enrollment_id"),
+                    func.max(cast(Course.id, String)).label("course_id"),
                     func.string_agg(func.distinct(Course.title), ", ").label("course_title"),
-                    func.max(CourseEnrollment.status).label("enrollment_status"),
+                    func.max(cast(CourseEnrollment.status, String)).label("enrollment_status"),
                     func.max(CourseEnrollment.enrolled_at).label("enrolled_at"),
                     func.avg(CourseEnrollment.progress_percentage).label("progress_percent"),
                     func.max(CourseEnrollment.completed_at).label("completed_at"),
