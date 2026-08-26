@@ -319,7 +319,12 @@ export function StudentMessagesView() {
         const seen = new Set<string>();
         const unique = allMsgs.filter((m) => {
           if (seen.has(m.id)) return false;
+          const senderId = m.sender_id || m.sender?.id || "";
+          const timeKey = Math.floor(new Date(m.created_at).getTime() / 60000);
+          const contentKey = `${m.content?.trim()}__${senderId}__${timeKey}`;
+          if (seen.has(contentKey)) return false;
           seen.add(m.id);
+          seen.add(contentKey);
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());

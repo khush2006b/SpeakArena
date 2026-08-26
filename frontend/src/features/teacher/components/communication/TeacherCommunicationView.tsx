@@ -433,12 +433,17 @@ export function TeacherCommunicationView() {
               .catch(() => [] as BackendMessage[])
           )
         );
-        // Merge, filter, de-dup by id, sort oldest-first
+        // Merge, filter, de-dup by id and content+sender+time window, sort oldest-first
         const allMsgs = results.flat().filter((m) => m.is_announcement);
         const seen = new Set<string>();
         const unique = allMsgs.filter((m) => {
           if (seen.has(m.id)) return false;
+          const senderId = m.sender_id || m.sender?.id || "";
+          const timeKey = Math.floor(new Date(m.created_at).getTime() / 60000);
+          const contentKey = `${m.content?.trim()}__${senderId}__${timeKey}`;
+          if (seen.has(contentKey)) return false;
           seen.add(m.id);
+          seen.add(contentKey);
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -556,15 +561,8 @@ export function TeacherCommunicationView() {
     try {
       let res: any = null;
       if (activeChannel.type === "announcements") {
-        // Broadcast to ALL teacher courses simultaneously
-        const results = await Promise.all(
-          courses.map((c) =>
-            apiClient
-              .post(`/api/v1/chat/${c.id}/announcements`, { content, pin: false })
-              .catch(() => null)
-          )
-        );
-        res = results.find((r) => r !== null) || null;
+        // Send announcement once to target course room (broadcasts to all enrolled students)
+        res = await apiClient.post(`/api/v1/chat/${targetCourseId}/announcements`, { content, pin: false });
       } else if (activeChannel.type === "dm") {
         res = await apiClient.post(`/api/v1/chat/${targetCourseId}/messages`, {
           content,
