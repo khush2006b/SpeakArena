@@ -4,7 +4,7 @@ import * as React from "react";
 import { format, parseISO } from "date-fns";
 import { Clock, Calendar, Video, ExternalLink } from "lucide-react";
 
-import { getMeetingStatus } from "@/lib/meeting-status";
+import { getMeetingStatus } from "@/lib/utils";
 
 interface LiveClassCardProps {
   liveClass: any;

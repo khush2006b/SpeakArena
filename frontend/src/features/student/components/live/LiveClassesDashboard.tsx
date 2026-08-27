@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { useMeetingList } from "@/hooks/queries/useMeetingQueries";
 import { Loader2 } from "lucide-react";
 
-import { getMeetingStatus } from "@/lib/meeting-status";
+import { getMeetingStatus } from "@/lib/utils";
 
 export function LiveClassesDashboard() {
   const [selectedClass, setSelectedClass] = React.useState<any | null>(null);

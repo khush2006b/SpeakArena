@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/services/api/client";
 
-import { getMeetingStatus } from "@/lib/meeting-status";
+import { getMeetingStatus } from "@/lib/utils";
 
 export function NextLiveClassCard() {
   const [allMeetings, setAllMeetings] = React.useState<any[]>([]);

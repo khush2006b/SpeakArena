@@ -7,7 +7,7 @@ import { Video, Calendar, Clock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
 
-import { getMeetingStatus } from "@/lib/meeting-status";
+import { getMeetingStatus } from "@/lib/utils";
 
 interface TodayScheduleProps {
   onJoinClick: (liveClass: any) => void;
