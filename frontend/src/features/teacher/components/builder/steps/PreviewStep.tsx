@@ -10,6 +10,7 @@ import { toast } from "sonner";
 export function PreviewStep() {
   const {
     prevStep,
+    courseId,
     courseTitle, description, price,
     publishCourse, isPublishing, error, reset,
   } = useBuilderStore();
@@ -21,11 +22,11 @@ export function PreviewStep() {
   const handlePublish = async () => {
     const ok = await publishCourse();
     if (ok) {
-      toast.success("🎉 Course published successfully and saved to database!");
+      toast.success(courseId ? "🎉 Course updated successfully!" : "🎉 Course published successfully!");
       reset();
       router.push("/teacher/courses");
     } else {
-      toast.error(error || "Failed to publish course.");
+      toast.error(error || "Failed to save course.");
     }
   };
 
@@ -142,12 +143,12 @@ export function PreviewStep() {
           {isPublishing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Publishing to DB...
+              {courseId ? "Updating Course..." : "Publishing to DB..."}
             </>
           ) : (
             <>
               <Rocket className="h-4 w-4 mr-2" />
-              Publish Course
+              {courseId ? "Save Changes" : "Publish Course"}
             </>
           )}
         </Button>

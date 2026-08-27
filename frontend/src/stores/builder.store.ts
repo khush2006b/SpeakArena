@@ -210,8 +210,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         targetCourseId = createData?.data?.id ?? (createData as any)?.id;
         if (!targetCourseId) throw new Error("No course ID returned from server.");
       } else {
-        // Update existing course metadata
-        await apiClient.patch(`/api/v1/teacher/courses/${targetCourseId}`, {
+        // Update existing course metadata using the dedicated update endpoint
+        await apiClient.patch(`/api/v1/teacher/courses/${targetCourseId}/update`, {
           title: courseTitle.trim(),
           description: description.trim() || undefined,
           price: typeof price === "number" ? price : 0,
@@ -221,35 +221,29 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       }
 
       // 2. Upload thumbnail via backend direct upload endpoint
-      // This sends the file to the backend, which uploads to Cloudflare R2 server-side.
-      // This bypasses local ISP/DNS/Proxy TLS blocking of *.r2.cloudflarestorage.com on client browsers.
       const thumbnailFileAtPublish = get().thumbnailFile;
-      console.log("[Builder] thumbnailFile at publish time:", thumbnailFileAtPublish?.name, thumbnailFileAtPublish?.size, thumbnailFileAtPublish?.type);
-
       if (thumbnailFileAtPublish) {
         try {
-          console.log("[Builder] Uploading thumbnail via backend direct upload endpoint...");
           const formData = new FormData();
           formData.append("file", thumbnailFileAtPublish);
 
-          const { data: uploadData } = await apiClient.post(
+          await apiClient.post(
             `/api/v1/teacher/courses/${targetCourseId}/thumbnail/upload`,
             formData
           );
-          console.log("[Builder] Thumbnail uploaded via backend successfully:", uploadData);
         } catch (thumbErr) {
           console.error("[Builder] Failed to upload thumbnail via backend:", thumbErr);
         }
-      } else {
-        console.log("[Builder] No thumbnailFile set in store — skipping thumbnail upload.");
       }
 
-      // 3. Publish the course via the teacher publish endpoint
-      try {
-        await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(targetCourseId));
-      } catch (pubErr: any) {
-        if (pubErr?.response?.status !== 409) {
-          console.warn("[Builder] Teacher publish endpoint call warning:", pubErr);
+      // 3. If new course creation (was draft), trigger publish
+      if (!courseId) {
+        try {
+          await apiClient.post(ENDPOINTS.COURSES.TEACHER_PUBLISH(targetCourseId));
+        } catch (pubErr: any) {
+          if (pubErr?.response?.status !== 409) {
+            console.warn("[Builder] Teacher publish endpoint call warning:", pubErr);
+          }
         }
       }
 

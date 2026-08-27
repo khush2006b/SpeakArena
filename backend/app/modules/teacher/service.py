@@ -38,6 +38,7 @@ from app.core.exceptions.errors import (
     CourseNotFoundError,
     CourseNotReadyError,
     EnrollmentNotFoundError,
+    InvalidSeatLimitError,
     InvalidUploadTypeError,
     MeetingInPastError,
     MeetingNotCancellableError,
@@ -393,6 +394,13 @@ class CourseService:
             raise CourseNotFoundError()
 
         updates: dict[str, Any] = {}
+
+        if data.max_students is not None:
+            active_enrolled = await self._repo.get_active_enrolled_count(course_id)
+            if data.max_students < active_enrolled:
+                raise InvalidSeatLimitError(
+                    message=f"Cannot reduce seat limit to {data.max_students} because {active_enrolled} student(s) are already enrolled."
+                )
 
         if data.title is not None:
             new_slug = _slugify(data.title)

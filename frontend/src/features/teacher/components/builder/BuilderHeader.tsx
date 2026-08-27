@@ -10,6 +10,7 @@ import { useBuilderStore } from "@/stores/builder.store";
 export function BuilderHeader() {
   const router = useRouter();
   const {
+    courseId,
     courseTitle,
     isPublishing,
     publishCourse,
@@ -87,11 +88,11 @@ export function BuilderHeader() {
                 flexShrink: 0,
               }}
             >
-              New Course
+              {courseId ? "Editing Course" : "New Course"}
             </Badge>
           </div>
           <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))", marginTop: "2px" }}>
-            Will be saved to database when published
+            {courseId ? "Saving changes to existing course" : "Will be saved to database when published"}
           </span>
         </div>
       </div>
@@ -117,7 +118,7 @@ export function BuilderHeader() {
           ) : (
             <Rocket style={{ height: "16px", width: "16px", marginRight: "8px" }} />
           )}
-          Publish Course
+          {courseId ? "Save Changes" : "Publish Course"}
         </Button>
       </div>
     </header>

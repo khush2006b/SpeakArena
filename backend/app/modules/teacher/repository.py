@@ -115,6 +115,19 @@ class CourseRepository:
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_active_enrolled_count(self, course_id: uuid.UUID) -> int:
+        """Count active enrollments for a given course."""
+        from app.infrastructure.db.models import CourseEnrollment
+        stmt = (
+            select(func.count(CourseEnrollment.id))
+            .where(
+                CourseEnrollment.course_id == course_id,
+                CourseEnrollment.status.notin_(["cancelled", "revoked", "deleted", "CANCELLED", "REVOKED", "DELETED"])
+            )
+        )
+        result = await self._db.execute(stmt)
+        return result.scalar() or 0
+
     async def get_by_slug(self, slug: str) -> Optional[Course]:
         """Fetch an active course by slug.
 

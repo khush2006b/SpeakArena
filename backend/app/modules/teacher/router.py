@@ -375,7 +375,42 @@ async def update_course(
     course = await svc.update_course(course_id, body)
     await db.commit()
     return success_response(
-        {"id": str(course.id), "title": course.title, "slug": course.slug, "status": course.status},
+        {
+            "id": str(course.id),
+            "title": course.title,
+            "slug": course.slug,
+            "status": course.status,
+            "max_students": course.max_students,
+            "price": float(course.price),
+        },
+        message="Course updated successfully.",
+    )
+
+
+@router.patch(
+    "/courses/{course_id}/update",
+    summary="Dedicated course details update endpoint",
+    description="Updates course details with enrollment and capacity validation.",
+)
+async def update_course_details(
+    course_id: uuid.UUID,
+    body: UpdateCourseRequest,
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Dedicated endpoint for updating course details."""
+    svc = CourseService(db, teacher)
+    course = await svc.update_course(course_id, body)
+    await db.commit()
+    return success_response(
+        {
+            "id": str(course.id),
+            "title": course.title,
+            "slug": course.slug,
+            "status": course.status,
+            "max_students": course.max_students,
+            "price": float(course.price),
+        },
         message="Course updated successfully.",
     )
 

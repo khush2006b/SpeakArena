@@ -354,6 +354,14 @@ class CourseNotReadyError(UnprocessableEntityError):
     message = "Course is missing required content before it can be published."
 
 
+class InvalidSeatLimitError(AppError):
+    """Attempted to reduce max_students below the currently enrolled student count."""
+
+    status_code = 400
+    error_code = "InvalidSeatLimit"
+    message = "Cannot set seat limit lower than the number of currently enrolled students."
+
+
 class MeetingNotFoundError(NotFoundError):
     """Meeting does not exist or does not belong to the teacher's course."""
 
