@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   PlayCircle,
   FileText,
   CheckCircle2,
@@ -12,10 +14,13 @@ import {
   HardDrive,
   BookOpen,
   Loader2,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { StudentCourse, CourseVideo, CoursePDF } from "../../hooks/useStudentResources";
 import { apiClient } from "@/services/api/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface CourseResourcesSectionProps {
   course: StudentCourse;
@@ -31,6 +36,7 @@ function formatDuration(seconds: number = 0) {
 }
 
 function formatSize(bytes: number = 0) {
+  if (!bytes || bytes === 0) return "–";
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -43,7 +49,17 @@ export function CourseResourcesSection({
 }: CourseResourcesSectionProps) {
   const [isExpanded, setIsExpanded] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState<"videos" | "pdfs">("videos");
+  const [viewMode, setViewMode] = React.useState<"carousel" | "list">("carousel");
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === "left" ? -300 : 300;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
 
   const handleDownloadVideo = async (video: CourseVideo) => {
     try {
@@ -115,23 +131,24 @@ export function CourseResourcesSection({
   }
 
   return (
-    <div className="card-glass overflow-hidden mb-6 hover-lift">
+    <div className="card-glass overflow-hidden rounded-2xl border border-border/50 shadow-lg transition-all hover:border-primary/30">
       {/* Course Header */}
       <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`p-5 flex items-center justify-between cursor-pointer bg-card/30 transition-colors hover:bg-card/50 ${
-          isExpanded ? "border-b border-border/50" : ""
-        }`}
+        className={cn(
+          "p-5 flex items-center justify-between cursor-pointer bg-card/40 transition-colors hover:bg-card/60 select-none",
+          isExpanded && "border-b border-border/50"
+        )}
       >
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center text-primary border border-primary/20">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center text-primary border border-primary/25 shadow-sm">
             <BookOpen size={22} />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="text-base font-bold text-foreground">
               {course.title}
             </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
               Instructor: {course.teacherName}
             </p>
           </div>
@@ -139,17 +156,17 @@ export function CourseResourcesSection({
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
+            <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary rounded-full"
+                className="h-full bg-primary rounded-full transition-all duration-300"
                 style={{ width: `${course.progressPercentage}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs font-bold text-muted-foreground">
               {course.progressPercentage}%
             </span>
           </div>
-          <button className="text-muted-foreground hover:text-foreground transition-colors">
+          <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
         </div>
@@ -157,28 +174,154 @@ export function CourseResourcesSection({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="p-5">
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-border/50 mb-4">
-            <TabButton
-              active={activeTab === "videos"}
-              onClick={() => setActiveTab("videos")}
-              icon={<PlayCircle size={15} />}
-              label={`Videos (${filteredVideos.length})`}
-            />
-            <TabButton
-              active={activeTab === "pdfs"}
-              onClick={() => setActiveTab("pdfs")}
-              icon={<FileText size={15} />}
-              label={`PDFs (${filteredPdfs.length})`}
-            />
+        <div className="p-5 space-y-5">
+          {/* Controls Bar: Tabs + Slide Arrows + Layout Toggle */}
+          <div className="flex items-center justify-between border-b border-border/50 pb-3 flex-wrap gap-3">
+            {/* Tabs */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab("videos")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all press-scale",
+                  activeTab === "videos"
+                    ? "bg-primary/15 text-primary border border-primary/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/40 border border-transparent"
+                )}
+              >
+                <PlayCircle size={15} />
+                <span>Videos ({filteredVideos.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("pdfs")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all press-scale",
+                  activeTab === "pdfs"
+                    ? "bg-orange-500/15 text-orange-400 border border-orange-500/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/40 border border-transparent"
+                )}
+              >
+                <FileText size={15} />
+                <span>PDFs ({filteredPdfs.length})</span>
+              </button>
+            </div>
+
+            {/* Slide Arrows & View Mode */}
+            <div className="flex items-center gap-2">
+              {viewMode === "carousel" && (
+                <div className="flex items-center gap-1 bg-secondary/30 rounded-xl p-1 border border-border/40">
+                  <button
+                    onClick={() => scroll("left")}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    title="Slide Left"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => scroll("right")}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    title="Slide Right"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1 bg-secondary/30 rounded-xl p-1 border border-border/40">
+                <button
+                  onClick={() => setViewMode("carousel")}
+                  className={cn(
+                    "p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1",
+                    viewMode === "carousel"
+                      ? "bg-primary text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Sliding Cards View"
+                >
+                  <LayoutGrid size={14} />
+                  <span className="hidden sm:inline">Sliding</span>
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1",
+                    viewMode === "list"
+                      ? "bg-primary text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="List View"
+                >
+                  <List size={14} />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Tab Content */}
-          <div className="flex flex-col gap-3">
-            {activeTab === "videos" &&
-              (filteredVideos.length > 0 ? (
-                filteredVideos.map((video) => (
+          {/* Videos Tab Content */}
+          {activeTab === "videos" && (
+            filteredVideos.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground bg-card/20 rounded-2xl border border-dashed border-border/40">
+                <PlayCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                No video resources available for this course.
+              </div>
+            ) : viewMode === "carousel" ? (
+              /* Sliding Cards Layout */
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none no-scrollbar touch-pan-x snap-x"
+              >
+                {filteredVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="flex flex-col justify-between p-4 bg-card/40 hover:bg-card/70 rounded-2xl border border-border/50 transition-all w-[270px] sm:w-[290px] shrink-0 snap-start shadow-md hover:shadow-xl hover:border-primary/40 group"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center text-red-500 border border-red-500/20 group-hover:scale-105 transition-transform">
+                          <PlayCircle size={20} />
+                        </div>
+                        {video.isCompleted && (
+                          <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            <CheckCircle2 size={12} /> Watched
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                          {video.title}
+                        </h4>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground font-medium">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} /> {formatDuration(video.durationSeconds)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <HardDrive size={12} /> {formatSize(video.fileSizeBytes)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-4 mt-3 border-t border-border/40">
+                      <button
+                        onClick={() => handleDownloadVideo(video)}
+                        disabled={downloadingId === video.id}
+                        className="w-full py-2 bg-primary/10 text-primary border border-primary/25 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all press-scale flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {downloadingId === video.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Download size={14} />
+                        )}
+                        Download Video
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* List View */
+              <div className="flex flex-col gap-3">
+                {filteredVideos.map((video) => (
                   <div
                     key={video.id}
                     className="flex items-center justify-between p-3 sm:p-4 bg-card/30 rounded-xl border border-border/40 hover:border-border transition-colors"
@@ -219,16 +362,73 @@ export function CourseResourcesSection({
                       </button>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  No videos found.
-                </div>
-              ))}
+                ))}
+              </div>
+            )
+          )}
 
-            {activeTab === "pdfs" &&
-              (filteredPdfs.length > 0 ? (
-                filteredPdfs.map((pdf) => (
+          {/* PDFs Tab Content */}
+          {activeTab === "pdfs" && (
+            filteredPdfs.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground bg-card/20 rounded-2xl border border-dashed border-border/40">
+                <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                No PDF resources available for this course.
+              </div>
+            ) : viewMode === "carousel" ? (
+              /* Sliding Cards Layout */
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none no-scrollbar touch-pan-x snap-x"
+              >
+                {filteredPdfs.map((pdf) => (
+                  <div
+                    key={pdf.id}
+                    className="flex flex-col justify-between p-4 bg-card/40 hover:bg-card/70 rounded-2xl border border-border/50 transition-all w-[270px] sm:w-[290px] shrink-0 snap-start shadow-md hover:shadow-xl hover:border-primary/40 group"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-400 border border-orange-500/20 group-hover:scale-105 transition-transform">
+                          <FileText size={20} />
+                        </div>
+                        {pdf.isCompleted && (
+                          <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            <CheckCircle2 size={12} /> Read
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground line-clamp-2 leading-tight group-hover:text-orange-400 transition-colors">
+                          {pdf.title}
+                        </h4>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground font-medium">
+                          <span>{pdf.pageCount || 0} pages</span>
+                          <span className="flex items-center gap-1">
+                            <HardDrive size={12} /> {formatSize(pdf.fileSizeBytes)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-4 mt-3 border-t border-border/40">
+                      <button
+                        onClick={() => handleDownloadPdf(pdf)}
+                        disabled={downloadingId === pdf.id}
+                        className="w-full py-2 bg-orange-500/10 text-orange-400 border border-orange-500/25 rounded-xl text-xs font-bold hover:bg-orange-500/20 transition-all press-scale flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {downloadingId === pdf.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Download size={14} />
+                        )}
+                        Download PDF
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* List View */
+              <div className="flex flex-col gap-3">
+                {filteredPdfs.map((pdf) => (
                   <div
                     key={pdf.id}
                     className="flex items-center justify-between p-3 sm:p-4 bg-card/30 rounded-xl border border-border/40 hover:border-border transition-colors"
@@ -269,40 +469,12 @@ export function CourseResourcesSection({
                       </button>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  No PDFs found.
-                </div>
-              ))}
-          </div>
+                ))}
+              </div>
+            )
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px press-scale ${
-        active
-          ? "text-primary border-primary"
-          : "text-muted-foreground border-transparent hover:text-foreground"
-      }`}
-    >
-      {icon} {label}
-    </button>
   );
 }
