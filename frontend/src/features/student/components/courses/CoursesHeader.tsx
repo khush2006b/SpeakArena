@@ -12,12 +12,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function CoursesHeader() {
+interface CoursesHeaderProps {
+  sortBy?: string;
+  onSortChange?: (val: string) => void;
+}
+
+export function CoursesHeader({ sortBy = "recent", onSortChange }: CoursesHeaderProps) {
   const { viewMode, setViewMode } = useCoursesStore();
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 sticky top-16 z-30 backdrop-blur-xl -mx-4 px-4 sm:mx-0 sm:px-0"
-         style={{ background: "hsla(var(--background), 0.8)", borderBottom: "1px solid hsl(var(--border))" }}>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-2">
       
       {/* Title */}
       <div className="flex items-center gap-6 flex-1 w-full sm:w-auto">
@@ -34,8 +38,8 @@ export function CoursesHeader() {
         </Button>
 
         {/* Sort */}
-        <div className="shrink-0 w-[160px]">
-          <Select defaultValue="recent">
+        <div className="shrink-0 w-[170px]">
+          <Select value={sortBy} onValueChange={onSortChange}>
             <SelectTrigger className="h-10 bg-card border-border text-muted-foreground rounded-lg">
               <div className="flex items-center gap-2">
                 <ArrowDownAZ className="h-4 w-4 text-muted-foreground" />

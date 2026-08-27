@@ -37,6 +37,7 @@ function mapCourse(item: any, idx: number) {
 export default function MyCoursesPage() {
   const { viewMode, searchQuery } = useCoursesStore();
   const [courses, setCourses] = React.useState<any[]>([]);
+  const [sortBy, setSortBy] = React.useState<string>("recent");
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -58,19 +59,35 @@ export default function MyCoursesPage() {
   }, []);
 
   const filteredCourses = React.useMemo(() => {
-    if (!searchQuery.trim()) return courses;
-    const q = searchQuery.toLowerCase();
-    return courses.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.teacher.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q)
-    );
-  }, [courses, searchQuery]);
+    let result = courses;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          c.teacher.toLowerCase().includes(q) ||
+          c.category.toLowerCase().includes(q)
+      );
+    }
+
+    return [...result].sort((a, b) => {
+      if (sortBy === "progress") {
+        return (b.progress || 0) - (a.progress || 0);
+      }
+      if (sortBy === "alpha") {
+        return (a.title || "").localeCompare(b.title || "");
+      }
+      if (sortBy === "newest") {
+        return String(b.id).localeCompare(String(a.id));
+      }
+      // default: "recent"
+      return 0;
+    });
+  }, [courses, searchQuery, sortBy]);
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
-      <CoursesHeader />
+      <CoursesHeader sortBy={sortBy} onSortChange={setSortBy} />
       <section>
         <CourseStatistics />
       </section>
