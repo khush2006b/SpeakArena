@@ -117,7 +117,6 @@ class CourseRepository:
 
     async def get_active_enrolled_count(self, course_id: uuid.UUID) -> int:
         """Count active enrollments for a given course."""
-        from app.infrastructure.db.models import CourseEnrollment
         stmt = (
             select(func.count(CourseEnrollment.id))
             .where(
