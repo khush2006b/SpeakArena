@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { apiClient } from "@/services/api/client";
 
+import { getMeetingStatus } from "@/lib/meeting-status";
+
 export function DashboardCalendar() {
-  const [meetings, setMeetings] = React.useState<any[]>([]);
+  const [allMeetings, setAllMeetings] = React.useState<any[]>([]);
+  const [nowMs, setNowMs] = React.useState<number>(Date.now());
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -17,38 +20,30 @@ export function DashboardCalendar() {
         const res = await apiClient.get("/api/v1/meetings?page=1&page_size=20");
         const data = res.data?.data || res.data || [];
         const items: any[] = Array.isArray(data) ? data : (data.items || []);
-        
-        const now = Date.now();
-        const activeUpcoming = items.filter((m) => {
-          const s = String(m.status || "").toUpperCase();
-          if (
-            s === "ENDED" ||
-            s === "COMPLETED" ||
-            s === "CANCELLED" ||
-            s === "EXPIRED" ||
-            s === "ARCHIVED"
-          ) {
-            return false;
-          }
-          try {
-            const startMs = new Date(m.scheduledAt || m.scheduled_at).getTime();
-            const durMinutes = m.durationMinutes || m.duration_minutes || 60;
-            const endMs = startMs + durMinutes * 60 * 1000;
-            if (!isNaN(endMs) && now > endMs) {
-              return false;
-            }
-          } catch {}
-          return true;
-        });
-
-        setMeetings(activeUpcoming.slice(0, 5));
+        setAllMeetings(items);
       } catch (error) {
+        // ignore
       } finally {
         setIsLoading(false);
       }
     };
     fetchMeetings();
   }, []);
+
+  // 5s real-time timer ticker
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Filter out ENDED / CANCELLED meetings for Dashboard Calendar
+  const activeMeetings = allMeetings.filter((m) => {
+    const st = getMeetingStatus(m, nowMs);
+    return st === "LIVE" || st === "UPCOMING";
+  });
+
+  const meetings = activeMeetings.slice(0, 5);
+
 
   return (
     <Card className="h-full flex flex-col card-glass hover-lift" style={{ borderRadius: 16 }}>

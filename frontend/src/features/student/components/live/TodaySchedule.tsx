@@ -7,29 +7,28 @@ import { Video, Calendar, Clock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
 
+import { getMeetingStatus } from "@/lib/meeting-status";
+
 interface TodayScheduleProps {
   onJoinClick: (liveClass: any) => void;
   meetings: any[];
 }
 
 export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
-  const now = Date.now();
-  // Find next or current class that is actually active/scheduled and not past its end time
+  const [nowMs, setNowMs] = React.useState<number>(Date.now());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Find next or current class that is LIVE or UPCOMING
   const nextClass = meetings.find((c) => {
-    const s = String(c.status || "").toUpperCase();
-    if (s === "ENDED" || s === "COMPLETED" || s === "EXPIRED" || s === "CANCELLED" || s === "ARCHIVED") {
-      return false;
-    }
-    try {
-      const startMs = new Date(c.scheduledAt || c.scheduled_at).getTime();
-      const durMinutes = c.durationMinutes || c.duration_minutes || 60;
-      const endMs = startMs + durMinutes * 60 * 1000;
-      if (!isNaN(endMs) && now > endMs) {
-        return false;
-      }
-    } catch {}
-    return s === "SCHEDULED" || s === "LIVE";
+    const st = getMeetingStatus(c, nowMs);
+    return st === "LIVE" || st === "UPCOMING";
   });
+
+  const nextClassStatus = nextClass ? getMeetingStatus(nextClass, nowMs) : "ENDED";
 
   const [countdown, setCountdown] = React.useState<string>("");
   const [attendance, setAttendance] = React.useState({ percentage: 0, present: 0, late: 0, absent: 0 });
@@ -62,9 +61,11 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
   }, []);
 
   React.useEffect(() => {
-    if (!nextClass || nextClass.status === "LIVE") return;
+    if (!nextClass || nextClassStatus === "LIVE") return;
 
-    const target = parseISO(nextClass.scheduledAt).getTime();
+    const startIso = nextClass.scheduledAt || nextClass.scheduled_at;
+    if (!startIso) return;
+    const target = parseISO(startIso).getTime();
 
     const updateCountdown = () => {
       const now = new Date().getTime();
@@ -101,7 +102,7 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
 
         <div className="p-6 md:p-8 relative z-10 flex flex-col h-full">
           <div className="flex items-center gap-2 mb-4">
-            {nextClass.status === "LIVE" ? (
+            {nextClassStatus === "LIVE" ? (
               <span className="bg-red-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
                 <span className="h-1.5 w-1.5 bg-white rounded-full" /> Live Now
               </span>
@@ -110,7 +111,7 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
                 Up Next
               </span>
             )}
-            {nextClass.status === "SCHEDULED" && countdown && (
+            {nextClassStatus === "UPCOMING" && countdown && (
               <span className="text-sm font-medium text-muted-foreground font-mono bg-secondary/50 px-2 py-0.5 rounded border border-border/50">
                 {countdown}
               </span>
@@ -132,8 +133,8 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               <span>
-                {format(parseISO(nextClass.scheduledAt), "h:mm a")} (
-                {nextClass.durationMinutes} min)
+                {format(parseISO(nextClass.scheduledAt || nextClass.scheduled_at), "h:mm a")} (
+                {nextClass.durationMinutes || nextClass.duration_minutes || 60} min)
               </span>
             </div>
           </div>
@@ -142,14 +143,14 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
             <Button
               size="lg"
               className={`btn-primary press-scale font-semibold shadow-xl ${
-                nextClass.status === "LIVE"
+                nextClassStatus === "LIVE"
                   ? "bg-red-500 hover:bg-red-600 shadow-red-500/20"
                   : ""
               }`}
               onClick={() => onJoinClick(nextClass)}
             >
               <Video className="mr-2 h-4 w-4" />
-              {nextClass.status === "LIVE"
+              {nextClassStatus === "LIVE"
                 ? "Join Class Now"
                 : "Pre-flight Check"}
             </Button>

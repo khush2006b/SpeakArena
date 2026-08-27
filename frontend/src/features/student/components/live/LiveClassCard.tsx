@@ -4,37 +4,39 @@ import * as React from "react";
 import { format, parseISO } from "date-fns";
 import { Clock, Calendar, Video, ExternalLink } from "lucide-react";
 
+import { getMeetingStatus } from "@/lib/meeting-status";
+
 interface LiveClassCardProps {
   liveClass: any;
   onJoinClick?: (liveClass: any) => void;
 }
 
 export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
-  const now = Date.now();
+  const [nowMs, setNowMs] = React.useState<number>(Date.now());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentStatus = getMeetingStatus(liveClass, nowMs);
+
   let date: Date;
   try {
-    date = parseISO(liveClass.scheduledAt);
+    const startIso = liveClass.scheduledAt || liveClass.scheduled_at;
+    date = parseISO(startIso);
     if (isNaN(date.getTime())) date = new Date();
   } catch {
     date = new Date();
   }
-  const startMs = date.getTime();
-  const durationMs = (liveClass.durationMinutes || 60) * 60 * 1000;
-  const endMs = startMs + durationMs;
 
-  const isCancelled = liveClass.status === "CANCELLED" || liveClass.status === "Cancelled";
-  const isCompleted = liveClass.status === "ENDED" || liveClass.status === "COMPLETED" || now > endMs;
-  const isInProgress = !isCancelled && !isCompleted && (now >= startMs && now <= endMs || liveClass.status === "LIVE");
-  const isUpcoming = !isCancelled && !isCompleted && !isInProgress;
-
-  const rawMeetLink = liveClass.meetLink || liveClass.meet_link || liveClass.meeting_url || "";
-  const meetUrl = rawMeetLink.startsWith("http") ? rawMeetLink : `https://${rawMeetLink}`;
+  const durationMins = liveClass.durationMinutes || liveClass.duration_minutes || 60;
   const thumbnail = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='800' height='400' fill='url(%23g)'/></svg>`;
 
   return (
     <div
       className={`card-glass hover-lift overflow-hidden transition-all flex flex-col cursor-pointer ${
-        isCancelled ? "opacity-60 grayscale" : ""
+        currentStatus === "CANCELLED" ? "opacity-60 grayscale" : ""
       }`}
       onClick={() => onJoinClick?.(liveClass)}
     >
@@ -48,19 +50,24 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
 
         {/* Status Badge */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
-          {isInProgress && (
+          {currentStatus === "LIVE" && (
             <span className="bg-red-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
               <span className="h-1.5 w-1.5 bg-white rounded-full" /> Live Now
             </span>
           )}
-          {isCancelled && (
-            <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-border/50">
-              Cancelled
+          {currentStatus === "UPCOMING" && (
+            <span className="bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">
+              Upcoming
             </span>
           )}
-          {isCompleted && (
-            <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">
-              Completed
+          {currentStatus === "ENDED" && (
+            <span className="bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">
+              Ended
+            </span>
+          )}
+          {currentStatus === "CANCELLED" && (
+            <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-border/50">
+              Cancelled
             </span>
           )}
         </div>
@@ -84,26 +91,26 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
-              {format(date, "h:mm a")} • {liveClass.durationMinutes} mins
+              {format(date, "h:mm a")} • {durationMins} mins
             </span>
           </div>
         </div>
 
         {/* Action Button */}
         <div className="mt-auto">
-          {isInProgress ? (
+          {currentStatus === "LIVE" ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onJoinClick?.(liveClass);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/25 transition-all press-scale"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-red-600 hover:bg-red-500 shadow-md shadow-red-600/25 transition-all press-scale"
             >
               <Video className="h-4 w-4" />
-              Join Live Class
+              Join Live Class Now
               <ExternalLink className="h-3.5 w-3.5 opacity-70 ml-auto" />
             </button>
-          ) : isUpcoming ? (
+          ) : currentStatus === "UPCOMING" ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -115,8 +122,8 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
               Scheduled ({format(date, "h:mm a")})
             </button>
           ) : (
-            <div className="w-full py-2 px-3 rounded-xl bg-secondary/30 text-center text-xs font-semibold text-muted-foreground border border-border/40">
-              Session Ended
+            <div className="w-full py-2.5 px-3 rounded-xl bg-secondary/30 text-center text-xs font-bold text-muted-foreground border border-border/40 uppercase tracking-wider">
+              Ended
             </div>
           )}
         </div>

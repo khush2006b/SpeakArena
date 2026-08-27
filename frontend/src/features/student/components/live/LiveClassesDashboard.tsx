@@ -10,33 +10,32 @@ import { motion } from "framer-motion";
 import { useMeetingList } from "@/hooks/queries/useMeetingQueries";
 import { Loader2 } from "lucide-react";
 
+import { getMeetingStatus } from "@/lib/meeting-status";
+
 export function LiveClassesDashboard() {
   const [selectedClass, setSelectedClass] = React.useState<any | null>(null);
+  const [nowMs, setNowMs] = React.useState<number>(Date.now());
 
   const { data, isLoading } = useMeetingList({ page: 1, pageSize: 50 });
   const meetings = data?.items || [];
 
-  const now = Date.now();
-  const upcomingClasses = meetings.filter((c) => {
-    const s = String(c.status || "").toUpperCase();
-    if (
-      s === "ENDED" ||
-      s === "COMPLETED" ||
-      s === "CANCELLED" ||
-      s === "EXPIRED" ||
-      s === "ARCHIVED"
-    ) {
-      return false;
+  // Real-time 5s ticker interval for status transitions
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Sort classes: LIVE first, then UPCOMING (earliest start), then ENDED (latest start)
+  const sortedClasses = [...meetings].sort((a, b) => {
+    const stA = getMeetingStatus(a, nowMs);
+    const stB = getMeetingStatus(b, nowMs);
+    const order: Record<string, number> = { LIVE: 0, UPCOMING: 1, ENDED: 2, CANCELLED: 3 };
+    if (order[stA] !== order[stB]) {
+      return order[stA] - order[stB];
     }
-    try {
-      const startMs = new Date(c.scheduledAt || c.scheduled_at).getTime();
-      const durMinutes = c.durationMinutes || c.duration_minutes || 60;
-      const endMs = startMs + durMinutes * 60 * 1000;
-      if (!isNaN(endMs) && now > endMs) {
-        return false;
-      }
-    } catch {}
-    return true;
+    const timeA = new Date(a.scheduledAt || a.scheduled_at || 0).getTime();
+    const timeB = new Date(b.scheduledAt || b.scheduled_at || 0).getTime();
+    return stA === "ENDED" ? timeB - timeA : timeA - timeB;
   });
 
   const container = {
@@ -69,16 +68,16 @@ export function LiveClassesDashboard() {
 
       <div className="mt-12">
         <h3 className="text-responsive-lg font-bold text-foreground mb-6">
-          Upcoming Classes
+          Live & Scheduled Classes
         </h3>
 
-        {upcomingClasses.length === 0 ? (
+        {sortedClasses.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center card-glass border-dashed">
             <p className="text-sm font-semibold text-foreground">
-              No upcoming classes scheduled.
+              No classes scheduled yet.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Enjoy your free time!
+              Check back soon for new sessions!
             </p>
           </div>
         ) : (
@@ -88,7 +87,7 @@ export function LiveClassesDashboard() {
             animate="show"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {upcomingClasses.map((liveClass) => (
+            {sortedClasses.map((liveClass) => (
               <motion.div key={liveClass.id} variants={item}>
                 <LiveClassCard
                   liveClass={liveClass}
@@ -101,17 +100,7 @@ export function LiveClassesDashboard() {
       </div>
 
       <RecordingsList
-        meetings={meetings.filter((m) => {
-          const s = String(m.status || "").toUpperCase();
-          if (s === "ENDED" || s === "COMPLETED") return true;
-          try {
-            const startMs = new Date(m.scheduledAt || m.scheduled_at).getTime();
-            const durMinutes = m.durationMinutes || m.duration_minutes || 60;
-            const endMs = startMs + durMinutes * 60 * 1000;
-            if (!isNaN(endMs) && now > endMs) return true;
-          } catch {}
-          return false;
-        })}
+        meetings={meetings.filter((m) => getMeetingStatus(m, nowMs) === "ENDED")}
       />
 
       {/* Join Pre-flight Experience Drawer */}
