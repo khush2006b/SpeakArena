@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     R2_ACCESS_KEY_ID: str = ""
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
-    R2_PUBLIC_URL: str = ""
+    R2_PUBLIC_URL: str = "https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev"
     R2_PRESIGNED_URL_EXPIRY_UPLOAD: int = 900
     R2_PRESIGNED_URL_EXPIRY_STREAM: int = 3600
     R2_PRESIGNED_URL_EXPIRY_DOWNLOAD: int = 1800

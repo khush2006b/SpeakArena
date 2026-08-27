@@ -95,22 +95,52 @@ export function MessageBubble({ message, isSequential }: MessageBubbleProps) {
         {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {message.attachments.map((file, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 py-2 pr-3 pl-2 rounded-xl border border-white/5 bg-white/5 cursor-pointer transition-colors shadow-sm hover:border-primary/50"
-              >
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-primary" />
+            {message.attachments.map((file: any, i: number) => {
+              const rawUrl = file.url || file.r2_key || file.path || "";
+              const fileName = file.name || file.file_name || "Attachment";
+              const isImage =
+                file.mime_type?.startsWith("image/") ||
+                file.type?.includes("image") ||
+                /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(rawUrl || fileName);
+              const photoSrc =
+                rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:")
+                  ? rawUrl
+                  : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${rawUrl.replace(/^\//, "")}`;
+
+              if (isImage && photoSrc) {
+                return (
+                  <div
+                    key={i}
+                    className="rounded-xl overflow-hidden border border-white/10 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(photoSrc, "_blank")}
+                  >
+                    <img
+                      src={photoSrc}
+                      alt={fileName}
+                      className="max-w-[260px] max-h-[200px] object-cover rounded-xl block"
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={i}
+                  onClick={() => photoSrc && window.open(photoSrc, "_blank")}
+                  className="flex items-center gap-2 py-2 pr-3 pl-2 rounded-xl border border-white/5 bg-white/5 cursor-pointer transition-colors shadow-sm hover:border-primary/50"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                      {fileName}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{file.type || "file"}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
-                    {file.name}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground uppercase">{file.type}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -1725,7 +1725,7 @@ export function TeacherCommunicationView() {
                             const photoSrc =
                               rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:")
                                 ? rawUrl
-                                : `https://storage.speakarena.com/${rawUrl.replace(/^\//, "")}`;
+                                : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${rawUrl.replace(/^\//, "")}`;
                             return (
                               <div
                                 key={idx}

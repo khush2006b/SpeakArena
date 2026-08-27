@@ -56,7 +56,7 @@ def _format_attachments(attachments: list[dict[str, Any]] | None) -> list[dict[s
             if not (url.startswith("http://") or url.startswith("https://") or url.startswith("data:")):
                 public_url = get_public_url(r2_key) if r2_key else None
                 if not public_url and r2_key:
-                    public_url = f"https://storage.speakarena.com/{r2_key.lstrip('/')}"
+                    public_url = f"https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/{r2_key.lstrip('/')}"
                 att_copy["url"] = public_url or url or r2_key
             formatted.append(att_copy)
     return formatted

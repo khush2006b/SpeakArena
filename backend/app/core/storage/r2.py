@@ -215,9 +215,7 @@ def get_public_url(object_key: str | None) -> str | None:
     if object_key.startswith("http://") or object_key.startswith("https://"):
         return object_key
     settings = get_settings()
-    base = (settings.R2_PUBLIC_URL or "").rstrip("/")
-    if not base:
-        return None
+    base = (settings.R2_PUBLIC_URL or "https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev").rstrip("/")
     return f"{base}/{object_key.lstrip('/')}"
 
 
