@@ -92,6 +92,19 @@ def resolve_course_thumbnail_url(c) -> str | None:
     return None
 
 
+def resolve_course_enrollments_count(c) -> int:
+    try:
+        from sqlalchemy import inspect
+        insp = inspect(c)
+        if insp and "enrollments" not in insp.unloaded:
+            enrollments = getattr(c, "enrollments", None)
+            if enrollments:
+                return len([e for e in enrollments if str(getattr(e, "status", "")).lower() not in ("cancelled", "revoked", "deleted")])
+    except Exception:
+        pass
+    return getattr(c, "total_enrollments", 0) or 0
+
+
 # ===========================================================================
 # DB Patch Diagnostic & Fix
 # ===========================================================================
@@ -255,7 +268,7 @@ async def list_courses(
                 "price": float(c.price),
                 "thumbnail_r2_key": c.thumbnail_r2_key,
                 "thumbnail_url": resolve_course_thumbnail_url(c),
-                "total_enrollments": len([e for e in (c.enrollments or []) if str(getattr(e, "status", "")).lower() not in ("cancelled", "revoked", "deleted")]) if c.enrollments is not None else (c.total_enrollments or 0),
+                "total_enrollments": resolve_course_enrollments_count(c),
                 "max_students": c.max_students,
                 "total_lectures": c.total_lectures,
                 "level": c.level,
@@ -347,7 +360,7 @@ async def get_course(
             "language": course.language,
             "total_duration_seconds": course.total_duration_seconds,
             "total_lectures": course.total_lectures,
-            "total_enrollments": len([e for e in (course.enrollments or []) if str(getattr(e, "status", "")).lower() not in ("cancelled", "revoked", "deleted")]) if course.enrollments is not None else (course.total_enrollments or 0),
+            "total_enrollments": resolve_course_enrollments_count(course),
             "max_students": course.max_students,
             "is_certificate_enabled": course.is_certificate_enabled,
             "metadata": course.metadata_,

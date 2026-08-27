@@ -252,7 +252,7 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         "Assignment", back_populates="course", lazy="raise"
     )
     chat_room: Mapped[Optional[ChatRoom]] = relationship(
-        "ChatRoom", back_populates="course", uselist=False, lazy="selectin"
+        "ChatRoom", back_populates="course", uselist=False, lazy="selectin", order_by="ChatRoom.created_at.desc()"
     )
 
     def __repr__(self) -> str:
