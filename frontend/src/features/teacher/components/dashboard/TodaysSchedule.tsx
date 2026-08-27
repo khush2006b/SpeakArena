@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Video, CalendarDays, Loader2 } from "lucide-react";
+import { Video, CalendarDays, Loader2, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeacherMeetings, useJoinMeeting } from "@/hooks/queries/useTeacherQueries";
+import { useMeetingStore } from "@/stores/meeting.store";
 import { format, isToday, parseISO } from "date-fns";
 import type { Meeting } from "@/types";
 
@@ -18,51 +19,84 @@ function getMeetingStatus(meeting: Meeting) {
 
 export function TodaysSchedule() {
   const { data, isLoading } = useTeacherMeetings(
-    { page: 1, pageSize: 10 },
-    { status: "LIVE,SCHEDULED" },
+    { page: 1, pageSize: 20 },
+    { status: "LIVE,SCHEDULED" }
   );
   const joinMutation = useJoinMeeting();
+  const setCreateModalOpen = useMeetingStore((s) => s.setCreateModalOpen);
 
-  const todaysMeetings = (data?.items ?? []).filter((m) => {
-    try { return isToday(parseISO(m.scheduledAt)); } catch { return false; }
-  });
+  const allMeetings = React.useMemo(() => {
+    const raw = data?.items ?? [];
+    return raw
+      .map((m) => ({
+        ...m,
+        scheduledAt: m.scheduledAt || (m as any).scheduled_at || new Date().toISOString(),
+      }))
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }, [data]);
+
+  const todaysMeetings = React.useMemo(() => {
+    return allMeetings.filter((m) => {
+      try {
+        return isToday(parseISO(m.scheduledAt));
+      } catch {
+        return false;
+      }
+    });
+  }, [allMeetings]);
+
+  const displayMeetings = todaysMeetings.length > 0 ? todaysMeetings : allMeetings.slice(0, 5);
+  const isShowingUpcomingFallback = todaysMeetings.length === 0 && displayMeetings.length > 0;
 
   return (
     <div className="card-glass hover-lift rounded-2xl bg-card border border-border overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="p-4 sm:p-5 border-b border-border bg-muted/30 flex items-center justify-between">
         <div>
-          <h3 className="m-0 text-base font-extrabold text-foreground tracking-tight">Today's Schedule</h3>
-          <p className="m-0 text-xs text-muted-foreground mt-0.5">{format(new Date(), "EEEE, MMM d")}</p>
+          <h3 className="m-0 text-base font-extrabold text-foreground tracking-tight">
+            {isShowingUpcomingFallback ? "Upcoming Schedule" : "Today's Schedule"}
+          </h3>
+          <p className="m-0 text-xs text-muted-foreground mt-0.5">{format(new Date(), "EEEE, MMM d, yyyy")}</p>
         </div>
-        <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-violet-500/10">
-          <CalendarDays className="h-4 w-4 text-violet-400" />
-        </div>
+        <button
+          onClick={() => setCreateModalOpen(true)}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 border border-violet-500/30 text-xs font-bold transition-all press-scale cursor-pointer"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Schedule
+        </button>
       </div>
 
       {/* Session list */}
       <div className="flex-1 overflow-y-auto custom-scrollbar max-h-[380px]">
         {isLoading ? (
           <div className="p-4 flex flex-col gap-3">
-            {[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl bg-border" />)}
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl bg-border" />
+            ))}
           </div>
-        ) : todaysMeetings.length === 0 ? (
+        ) : displayMeetings.length === 0 ? (
           <div className="py-10 px-5 flex flex-col items-center text-center">
             <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
               <CalendarDays className="h-5 w-5 text-muted-foreground" />
             </div>
-            <p className="m-0 text-sm font-semibold text-foreground">No sessions today</p>
-            <p className="m-0 text-xs text-muted-foreground mt-1">Enjoy your free time!</p>
-            <Link href="/teacher/meetings" className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors">
-              + Schedule a session
-            </Link>
+            <p className="m-0 text-sm font-semibold text-foreground">No sessions scheduled</p>
+            <p className="m-0 text-xs text-muted-foreground mt-1">Schedule your next live class session for your students.</p>
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-violet-600 text-white hover:bg-violet-500 transition-all press-scale cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" /> Schedule a Session
+            </button>
           </div>
         ) : (
           <div className="p-3 flex flex-col gap-2">
-            {todaysMeetings.map((session) => {
+            {displayMeetings.map((session) => {
               const status = getMeetingStatus(session);
               const start = parseISO(session.scheduledAt);
               const isJoining = joinMutation.isPending && joinMutation.variables === session.id;
+              const rawMeetLink = session.meetLink || session.meet_link || (session as any).meeting_url;
+              const meetUrl = rawMeetLink ? (rawMeetLink.startsWith("http") ? rawMeetLink : `https://${rawMeetLink}`) : null;
 
               return (
                 <div
@@ -78,8 +112,9 @@ export function TodaysSchedule() {
                     status === "live" ? "bg-red-500" : "bg-violet-500"
                   }`} />
 
-                  {/* Time */}
-                  <div className="flex flex-col items-center min-w-[40px]">
+                  {/* Date/Time */}
+                  <div className="flex flex-col items-center min-w-[50px]">
+                    <span className="text-[10px] font-semibold text-muted-foreground">{format(start, "MMM d")}</span>
                     <span className="text-xs font-bold text-foreground">{format(start, "h:mm")}</span>
                     <span className="text-[9px] font-semibold text-muted-foreground">{format(start, "a")}</span>
                   </div>
@@ -105,15 +140,16 @@ export function TodaysSchedule() {
                   </div>
 
                   {/* Action */}
-                  {status === "live" ? (
-                    <button
-                      disabled={isJoining}
-                      onClick={() => joinMutation.mutate(session.id)}
-                      className="shrink-0 flex items-center gap-1 h-7 px-2.5 text-[10px] font-bold bg-red-500 text-white border-none rounded-lg cursor-pointer hover:bg-red-400 transition-all press-scale disabled:opacity-70"
+                  {status === "live" || meetUrl ? (
+                    <a
+                      href={meetUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 flex items-center gap-1 h-7 px-2.5 text-[10px] font-bold bg-violet-600 text-white border-none rounded-lg cursor-pointer hover:bg-violet-500 transition-all press-scale no-underline"
                     >
-                      {isJoining ? <Loader2 className="w-3 h-3 animate-spin" /> : <Video className="w-3 h-3" />}
+                      <Video className="w-3 h-3" />
                       Join
-                    </button>
+                    </a>
                   ) : (
                     <Link
                       href="/teacher/meetings"
@@ -130,12 +166,18 @@ export function TodaysSchedule() {
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border flex items-center justify-between gap-2">
+        <button
+          onClick={() => setCreateModalOpen(true)}
+          className="flex-1 py-2 rounded-xl text-xs font-bold text-violet-400 hover:bg-violet-500/10 border border-violet-500/20 transition-all cursor-pointer"
+        >
+          + Schedule New Session
+        </button>
         <Link
           href="/teacher/meetings"
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-violet-400 hover:text-violet-300 hover:bg-violet-500/5 transition-all no-underline"
+          className="py-2 px-3 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all no-underline shrink-0"
         >
-          View all meetings
+          All Meetings →
         </Link>
       </div>
     </div>

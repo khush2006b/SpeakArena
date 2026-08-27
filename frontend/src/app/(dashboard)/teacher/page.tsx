@@ -6,6 +6,7 @@ import { TodaysSchedule } from "@/features/teacher/components/dashboard/TodaysSc
 import { ActivityFeed } from "@/features/teacher/components/dashboard/ActivityFeed";
 import { RightSidebarWidgets } from "@/features/teacher/components/dashboard/RightSidebarWidgets";
 import { RevenueChart } from "@/features/teacher/components/dashboard/RevenueChart";
+import { MeetingModal } from "@/features/teacher/components/meetings/MeetingModal";
 
 export const metadata: Metadata = {
   title: "Dashboard Overview",
@@ -38,6 +39,8 @@ export default function TeacherDashboardPage() {
           <RightSidebarWidgets />
         </div>
       </div>
+
+      <MeetingModal />
     </div>
   );
 }
