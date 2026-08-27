@@ -19,6 +19,8 @@ import {
   PanelLeftOpen,
   X,
   Image as ImageIcon,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -213,6 +215,7 @@ export function TeacherCommunicationView() {
   const [inputText, setInputText] = useState("");
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1746,7 +1749,7 @@ export function TeacherCommunicationView() {
                                     cursor: "pointer",
                                     display: "block",
                                   }}
-                                  onClick={() => window.open(photoSrc, "_blank")}
+                                  onClick={() => setLightboxPhoto(photoSrc)}
                                 />
                               </div>
                             );
@@ -2195,6 +2198,121 @@ export function TeacherCommunicationView() {
           </div>
         </div>
       </>
+      )}
+
+      {/* Photo Lightbox Modal */}
+      {lightboxPhoto && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => setLightboxPhoto(null)}
+        >
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, width: "100%", marginBottom: 12 }}>
+              <button
+                onClick={() => {
+                  if (lightboxPhoto.startsWith("data:")) {
+                    const win = window.open("");
+                    if (win) {
+                      win.document.write(
+                        `<!DOCTYPE html><html><head><title>Photo Preview</title><style>body{margin:0;background:#090d16;display:flex;align-items:center;justify-content:center;height:100vh;}img{max-width:100%;max-height:100%;object-fit:contain;}</style></head><body><img src="${lightboxPhoto}"/></body></html>`
+                      );
+                      win.document.close();
+                    }
+                  } else {
+                    window.open(lightboxPhoto, "_blank");
+                  }
+                }}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <ExternalLink style={{ width: 14, height: 14 }} /> Open in New Tab
+              </button>
+              <button
+                onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = lightboxPhoto;
+                  a.download = "chat_photo.jpg";
+                  a.click();
+                }}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "rgba(99,102,241,0.25)",
+                  color: "#818cf8",
+                  border: "1px solid rgba(99,102,241,0.4)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Download style={{ width: 14, height: 14 }} /> Download
+              </button>
+              <button
+                onClick={() => setLightboxPhoto(null)}
+                style={{
+                  padding: 6,
+                  borderRadius: 8,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <img
+              src={lightboxPhoto}
+              alt="Photo Preview"
+              style={{
+                maxHeight: "80vh",
+                maxWidth: "100%",
+                objectFit: "contain",
+                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.15)",
+                boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

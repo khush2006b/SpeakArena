@@ -112,7 +112,19 @@ export function MessageBubble({ message, isSequential }: MessageBubbleProps) {
                   <div
                     key={i}
                     className="rounded-xl overflow-hidden border border-white/10 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(photoSrc, "_blank")}
+                    onClick={() => {
+                      if (photoSrc.startsWith("data:")) {
+                        const win = window.open("");
+                        if (win) {
+                          win.document.write(
+                            `<!DOCTYPE html><html><head><title>Photo Preview</title><style>body{margin:0;background:#090d16;display:flex;align-items:center;justify-content:center;height:100vh;}img{max-width:100%;max-height:100%;object-fit:contain;}</style></head><body><img src="${photoSrc}"/></body></html>`
+                          );
+                          win.document.close();
+                        }
+                      } else {
+                        window.open(photoSrc, "_blank");
+                      }
+                    }}
                   >
                     <img
                       src={photoSrc}
