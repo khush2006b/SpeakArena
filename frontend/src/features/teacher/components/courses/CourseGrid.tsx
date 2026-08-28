@@ -100,6 +100,12 @@ function CourseCard({ course }: { course: Course }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-xl border-white/10 shadow-2xl">
                 <DropdownMenuItem className="font-medium" asChild>
+                  <Link href={`/teacher/courses/${course.id}`}>
+                    <PlayCircle className="mr-2 h-4 w-4 text-primary" />
+                    View Course Details
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="font-medium" asChild>
                   <Link href={`/teacher/builder?courseId=${course.id}`}>
                     <FileEdit className="mr-2 h-4 w-4 text-muted-foreground" />
                     Edit Course
@@ -126,11 +132,11 @@ function CourseCard({ course }: { course: Course }) {
             </DropdownMenu>
           </div>
         {!isDraft && !isArchived && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none">
+          <Link href={`/teacher/courses/${course.id}`} className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.6)] transform scale-90 group-hover:scale-100 transition-transform duration-300">
               <PlayCircle className="h-6 w-6" />
             </div>
-          </div>
+          </Link>
         )}
         
         {/* Ambient overlay gradient for blending the image into the card content slightly */}
@@ -139,7 +145,7 @@ function CourseCard({ course }: { course: Course }) {
 
       <div className="p-5 flex-1 flex flex-col relative z-10 -mt-6">
         <div className="flex items-start justify-between gap-4 mb-2">
-          <Link href={`/teacher/builder?courseId=${course.id}`} className="hover:text-primary transition-colors">
+          <Link href={`/teacher/courses/${course.id}`} className="hover:text-primary transition-colors">
             <h3 className="font-bold text-lg line-clamp-2 leading-tight text-foreground tracking-tight drop-shadow-sm">
               {course.title}
             </h3>

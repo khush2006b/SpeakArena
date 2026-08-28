@@ -183,7 +183,7 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <Link href={`/teacher/builder?courseId=${course.id}`} style={{ textDecoration: 'none' }}>
+                          <Link href={`/teacher/courses/${course.id}`} style={{ textDecoration: 'none' }}>
                             <span style={{ fontWeight: 800, color: "hsl(var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }} className="hover:text-primary transition-colors">
                               {course.title}
                             </span>
@@ -243,6 +243,12 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" style={{ background: "hsl(var(--background))", border: '1px solid hsl(var(--border))', color: "hsl(var(--foreground))", borderRadius: '10px' }}>
+                          <DropdownMenuItem style={{ fontWeight: 500, cursor: 'pointer' }} asChild>
+                            <Link href={`/teacher/courses/${course.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+                              <BarChart style={{ marginRight: '8px', height: '16px', width: '16px', color: "hsl(var(--primary))" }} />
+                              View Course Details
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem style={{ fontWeight: 500, cursor: 'pointer' }} asChild>
                             <Link href={`/teacher/builder?courseId=${course.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
                               <FileEdit style={{ marginRight: '8px', height: '16px', width: '16px', color: "hsl(var(--muted-foreground))" }} />
