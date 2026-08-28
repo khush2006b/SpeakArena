@@ -32,6 +32,7 @@ interface ChatState {
   optimisticMessages: OptimisticMessage[];
   typingUsers: TypingUser[];
   hasUnread: boolean;
+  unreadChannelKeys: Record<string, boolean>;
 }
 
 interface ChatActions {
@@ -47,6 +48,9 @@ interface ChatActions {
   removeTypingUser: (userId: string) => void;
   setHasUnread: (hasUnread: boolean) => void;
   clearUnread: () => void;
+  setChannelUnread: (channelKey: string, isUnread: boolean) => void;
+  markChannelRead: (channelKey: string) => void;
+  clearAllUnread: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -57,12 +61,30 @@ export const useChatStore = create<ChatStore>()((set) => ({
   optimisticMessages: [],
   typingUsers: [],
   hasUnread: false,
+  unreadChannelKeys: {},
 
   setActiveRoom: (roomId) => set({ activeRoomId: roomId }),
   clearActiveRoom: () => set({ activeRoomId: null, connectionStatus: "idle", optimisticMessages: [], typingUsers: [] }),
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   setHasUnread: (hasUnread) => set({ hasUnread }),
-  clearUnread: () => set({ hasUnread: false }),
+  clearUnread: () => set({ hasUnread: false, unreadChannelKeys: {} }),
+
+  setChannelUnread: (channelKey, isUnread) =>
+    set((s) => {
+      const updated = { ...s.unreadChannelKeys, [channelKey]: isUnread };
+      const hasAny = Object.values(updated).some(Boolean);
+      return { unreadChannelKeys: updated, hasUnread: hasAny };
+    }),
+
+  markChannelRead: (channelKey) =>
+    set((s) => {
+      const updated = { ...s.unreadChannelKeys, [channelKey]: false };
+      const hasAny = Object.values(updated).some(Boolean);
+      return { unreadChannelKeys: updated, hasUnread: hasAny };
+    }),
+
+  clearAllUnread: () =>
+    set({ unreadChannelKeys: {}, hasUnread: false }),
 
   addOptimisticMessage: (message) =>
     set((s) => ({

@@ -6,103 +6,113 @@ import { useChatStore } from "@/stores/chat.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { apiClient } from "@/services/api/client";
 
+function getCourseTeacherId(course: any): string {
+  if (!course) return "";
+  const id =
+    course.teacher_id ||
+    course.teacherId ||
+    course.teacher?.id ||
+    course.teacher_info?.id ||
+    course.instructor_id ||
+    course.instructorId ||
+    course.created_by ||
+    course.createdBy ||
+    course.user_id;
+  return id ? String(id) : "";
+}
+
 export function ChatUnreadTracker() {
   const pathname = usePathname();
   const { user } = useAuthStore();
-  const { setHasUnread, clearUnread } = useChatStore();
+  const { setChannelUnread } = useChatStore();
 
-  // 1. Clear unread badge when user visits messages or chat
-  useEffect(() => {
-    if (pathname?.startsWith("/student/messages") || pathname?.startsWith("/student/chat")) {
-      clearUnread();
-    }
-  }, [pathname, clearUnread]);
-
-  // 2. Periodically check across student courses for any unread messages from teacher
   useEffect(() => {
     const currentUserId = user?.id ? String(user.id) : "";
 
-    const checkUnread = async () => {
-      // Skip check if student is actively viewing the messages/chat screen
-      if (pathname?.startsWith("/student/messages") || pathname?.startsWith("/student/chat")) {
-        return;
-      }
-
+    const checkAllChannels = async () => {
       try {
-        // Step A: Check unread notifications endpoint
-        try {
-          const notifRes = await apiClient.get("/api/v1/notifications?unread_only=true&page_size=5");
-          const notifRaw = notifRes.data;
-          const total = notifRaw?.total ?? notifRaw?.data?.total ?? (Array.isArray(notifRaw?.data) ? notifRaw.data.length : 0);
-          if (total > 0) {
-            setHasUnread(true);
-            return;
-          }
-        } catch {
-          // continue to course check
-        }
-
-        // Step B: Fetch student's enrolled courses
+        // Fetch enrolled courses
         const coursesRes = await apiClient.get("/api/v1/courses");
-        let courses: any[] = [];
         const raw = coursesRes.data;
+        let courses: any[] = [];
         if (Array.isArray(raw?.data)) courses = raw.data;
         else if (Array.isArray(raw?.data?.items)) courses = raw.data.items;
         else if (Array.isArray(raw?.items)) courses = raw.items;
         else if (Array.isArray(raw)) courses = raw;
 
-        if (courses.length > 0) {
-          let foundUnread = false;
+        if (courses.length === 0) return;
 
-          for (const course of courses.slice(0, 8)) {
-            const courseId = course.course_id || course.id;
-            if (!courseId) continue;
+        // Check each enrolled course (up to 6)
+        for (const course of courses.slice(0, 6)) {
+          const courseId = course.course_id || course.id;
+          if (!courseId) continue;
+          const teacherId = getCourseTeacherId(course);
 
-            try {
-              // Fetch latest messages for this course room
-              const msgRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=10`);
-              const msgs: any[] = msgRes.data?.data?.messages ?? msgRes.data?.messages ?? [];
-
-              if (msgs.length > 0) {
-                // Find newest message sent by someone else (teacher/classmate)
-                const otherMsgs = msgs.filter((m: any) => {
-                  const sid = m.sender_id || m.sender?.id;
-                  return !currentUserId || String(sid) !== currentUserId;
-                });
-
-                if (otherMsgs.length > 0) {
-                  const latest = otherMsgs[0];
-                  const lastReadId = typeof window !== "undefined"
-                    ? localStorage.getItem(`sa_last_read_msg_${courseId}`)
-                    : null;
-
-                  // If user has not read this specific latest message
-                  if (!lastReadId || latest.id !== lastReadId) {
-                    foundUnread = true;
-                    setHasUnread(true);
-                    return;
-                  }
-                }
-              }
-            } catch {
-              // Continue checking other courses
+          // 1. Check General Course Talk
+          try {
+            const genRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=general&public_only=true`);
+            const genMsgs: any[] = genRes.data?.data?.messages ?? genRes.data?.messages ?? [];
+            const otherGen = genMsgs.filter((m: any) => {
+              const sid = m.sender_id || m.sender?.id;
+              return !currentUserId || String(sid) !== currentUserId;
+            });
+            if (otherGen.length > 0) {
+              const latest = otherGen[0];
+              const lastRead = typeof window !== "undefined"
+                ? (localStorage.getItem(`sa_read_course:${courseId}`) || localStorage.getItem(`sa_last_read_msg_${courseId}`))
+                : null;
+              setChannelUnread(`course:${courseId}`, !lastRead || latest.id !== lastRead);
+            } else {
+              setChannelUnread(`course:${courseId}`, false);
             }
-          }
+          } catch {}
 
-          if (!foundUnread) {
-            setHasUnread(false);
+          // 2. Check Course Announcements
+          try {
+            const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
+            const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
+            const otherAnn = annMsgs.filter((m: any) => {
+              const sid = m.sender_id || m.sender?.id;
+              return !currentUserId || String(sid) !== currentUserId;
+            });
+            if (otherAnn.length > 0) {
+              const latest = otherAnn[0];
+              const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_course_announcements:${courseId}`) : null;
+              setChannelUnread(`course_announcements:${courseId}`, !lastRead || latest.id !== lastRead);
+            } else {
+              setChannelUnread(`course_announcements:${courseId}`, false);
+            }
+          } catch {}
+
+          // 3. Check Teacher DM if instructor exists
+          if (teacherId) {
+            try {
+              const dmRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&dm_student_id=${teacherId}`);
+              const dmMsgs: any[] = dmRes.data?.data?.messages ?? dmRes.data?.messages ?? [];
+              const otherDm = dmMsgs.filter((m: any) => {
+                const sid = m.sender_id || m.sender?.id;
+                return !currentUserId || String(sid) !== currentUserId;
+              });
+              if (otherDm.length > 0) {
+                const latest = otherDm[0];
+                const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_teacher_dm:${teacherId}`) : null;
+                setChannelUnread(`teacher_dm:${teacherId}`, !lastRead || latest.id !== lastRead);
+              } else {
+                setChannelUnread(`teacher_dm:${teacherId}`, false);
+              }
+            } catch {}
           }
         }
       } catch {
-        // Silently ignore
+        // Silently catch errors
       }
     };
 
-    checkUnread();
-    const interval = setInterval(checkUnread, 6000); // Check every 6 seconds
+    checkAllChannels();
+    const interval = setInterval(checkAllChannels, 7000); // Check every 7 seconds
 
     return () => clearInterval(interval);
-  }, [pathname, user?.id, setHasUnread]);
+  }, [pathname, user?.id, setChannelUnread]);
 
   return null;
 }

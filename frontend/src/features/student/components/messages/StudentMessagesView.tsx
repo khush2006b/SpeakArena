@@ -183,7 +183,30 @@ export function StudentMessagesView() {
     setActiveRoom,
     clearActiveRoom,
     typingUsers,
+    unreadChannelKeys,
+    markChannelRead,
   } = useChatStore();
+
+  const openChannel = useCallback(
+    (channel: ActiveChannel) => {
+      setActiveChannel(channel);
+      setMobileShowChat(true);
+
+      let key = "";
+      if (channel.type === "course_announcements" || channel.type === "announcements") {
+        key = `course_announcements:${channel.course.id}`;
+      } else if (channel.type === "teacher_dm") {
+        const tid = getCourseTeacherId(channel.course);
+        key = `teacher_dm:${tid}`;
+      } else {
+        key = `course:${channel.course.id}`;
+      }
+      if (key) {
+        markChannelRead(key);
+      }
+    },
+    [markChannelRead]
+  );
 
   // Enrolled courses
   const [courses, setCourses] = useState<Course[]>([]);
@@ -384,7 +407,19 @@ export function StudentMessagesView() {
           if (fetchedMsgs.length > 0 && activeCourse?.id) {
             const latest = fetchedMsgs[fetchedMsgs.length - 1] || fetchedMsgs[0];
             if (latest?.id) {
-              localStorage.setItem(`sa_last_read_msg_${activeCourse.id}`, latest.id);
+              if (activeChannel.type === "course_announcements" || activeChannel.type === "announcements") {
+                localStorage.setItem(`sa_read_course_announcements:${activeCourse.id}`, latest.id);
+                markChannelRead(`course_announcements:${activeCourse.id}`);
+              } else if (activeChannel.type === "teacher_dm") {
+                const tid = getCourseTeacherId(activeCourse);
+                if (tid) {
+                  localStorage.setItem(`sa_read_teacher_dm:${tid}`, latest.id);
+                  markChannelRead(`teacher_dm:${tid}`);
+                }
+              } else {
+                localStorage.setItem(`sa_read_course:${activeCourse.id}`, latest.id);
+                markChannelRead(`course:${activeCourse.id}`);
+              }
             }
           }
         }
@@ -437,6 +472,7 @@ export function StudentMessagesView() {
             });
           } else if (recId === myId && senderId !== myId) {
             toast.info(`New DM from ${msg.sender?.full_name || "Instructor"}: ${msg.content.slice(0, 40)}`);
+            useChatStore.getState().setChannelUnread(`teacher_dm:${senderId}`, true);
           }
           return;
         }
@@ -785,8 +821,7 @@ export function StudentMessagesView() {
             <button
               className="ch-item"
               onClick={() => {
-                setActiveChannel({ type: "announcements", course: courses[0] });
-                setMobileShowChat(true);
+                openChannel({ type: "announcements", course: courses[0] });
               }}
               style={{
                 width: "100%",
@@ -826,6 +861,19 @@ export function StudentMessagesView() {
                 }}
               />
               <span style={{ flex: 1 }}>Announcements</span>
+              {courses[0] && unreadChannelKeys[`course_announcements:${courses[0].id}`] && (
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#ef4444",
+                    flexShrink: 0,
+                    marginRight: 6,
+                  }}
+                  className="animate-pulse"
+                />
+              )}
               <Lock
                 style={{
                   width: 11,
@@ -944,24 +992,37 @@ export function StudentMessagesView() {
                     <div key={course.id} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
                       <div
                         style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                           fontSize: 11,
                           fontWeight: 700,
                           color: "#64748b",
                           padding: "6px 8px 2px",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
                         }}
                       >
-                        {course.title}
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {course.title}
+                        </span>
+                        {(unreadChannelKeys[`course:${course.id}`] || unreadChannelKeys[`course_announcements:${course.id}`]) && (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </div>
 
                       {/* 1. Announcements channel */}
                       <button
                         className="ch-item"
                         onClick={() => {
-                          setActiveChannel({ type: "course_announcements", course });
-                          setMobileShowChat(true);
+                          openChannel({ type: "course_announcements", course });
                         }}
                         style={{
                           width: "100%",
@@ -987,14 +1048,25 @@ export function StudentMessagesView() {
                         <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           Announcements
                         </span>
+                        {unreadChannelKeys[`course_announcements:${course.id}`] && (
+                          <span
+                            style={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </button>
 
                       {/* 2. General Talk channel */}
                       <button
                         className="ch-item"
                         onClick={() => {
-                          setActiveChannel({ type: "course", course });
-                          setMobileShowChat(true);
+                          openChannel({ type: "course", course });
                         }}
                         style={{
                           width: "100%",
@@ -1020,6 +1092,18 @@ export function StudentMessagesView() {
                         <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           General Talk
                         </span>
+                        {unreadChannelKeys[`course:${course.id}`] && (
+                          <span
+                            style={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </button>
                     </div>
                   );
@@ -1096,8 +1180,7 @@ export function StudentMessagesView() {
                       key={`dm-${teacherId}`}
                       className="ch-item"
                       onClick={() => {
-                        setActiveChannel({ type: "teacher_dm", course });
-                        setMobileShowChat(true);
+                        openChannel({ type: "teacher_dm", course });
                       }}
                       style={{
                         width: "100%",
@@ -1156,6 +1239,19 @@ export function StudentMessagesView() {
                           Your instructor
                         </div>
                       </div>
+                      {unreadChannelKeys[`teacher_dm:${teacherId}`] && (
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: "#ef4444",
+                            flexShrink: 0,
+                            marginRight: 4,
+                          }}
+                          className="animate-pulse"
+                        />
+                      )}
                       {isActive && (
                         <BookOpen
                           style={{
