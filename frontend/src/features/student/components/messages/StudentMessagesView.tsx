@@ -203,10 +203,27 @@ export function StudentMessagesView() {
       }
       if (key) {
         markChannelRead(key);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`sa_read_ts_${key}`, String(Date.now()));
+        }
         apiClient.post("/api/v1/chat/read", { channel_key: key }).catch(() => {});
       }
+
+      // If opening general announcements, mark all enrolled courses announcement keys read
+      if (channel.type === "announcements" && courses.length > 0) {
+        courses.forEach((c) => {
+          if (c?.id) {
+            const annKey = `course_announcements:${c.id}`;
+            markChannelRead(annKey);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(`sa_read_ts_${annKey}`, String(Date.now()));
+            }
+            apiClient.post("/api/v1/chat/read", { channel_key: annKey }).catch(() => {});
+          }
+        });
+      }
     },
-    [markChannelRead]
+    [markChannelRead, courses]
   );
 
   // Enrolled courses
@@ -409,20 +426,26 @@ export function StudentMessagesView() {
             const latest = fetchedMsgs[fetchedMsgs.length - 1] || fetchedMsgs[0];
             if (latest?.id) {
               if (activeChannel.type === "course_announcements" || activeChannel.type === "announcements") {
-                localStorage.setItem(`sa_read_course_announcements:${activeCourse.id}`, latest.id);
-                markChannelRead(`course_announcements:${activeCourse.id}`);
-                apiClient.post("/api/v1/chat/read", { channel_key: `course_announcements:${activeCourse.id}`, message_id: latest.id }).catch(() => {});
+                const k = `course_announcements:${activeCourse.id}`;
+                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
+                localStorage.setItem(k, latest.id);
+                markChannelRead(k);
+                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
               } else if (activeChannel.type === "teacher_dm") {
                 const tid = getCourseTeacherId(activeCourse);
                 if (tid) {
-                  localStorage.setItem(`sa_read_teacher_dm:${tid}`, latest.id);
-                  markChannelRead(`teacher_dm:${tid}`);
-                  apiClient.post("/api/v1/chat/read", { channel_key: `teacher_dm:${tid}`, message_id: latest.id, dm_user_id: tid }).catch(() => {});
+                  const k = `teacher_dm:${tid}`;
+                  localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
+                  localStorage.setItem(k, latest.id);
+                  markChannelRead(k);
+                  apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id, dm_user_id: tid }).catch(() => {});
                 }
               } else {
-                localStorage.setItem(`sa_read_course:${activeCourse.id}`, latest.id);
-                markChannelRead(`course:${activeCourse.id}`);
-                apiClient.post("/api/v1/chat/read", { channel_key: `course:${activeCourse.id}`, message_id: latest.id }).catch(() => {});
+                const k = `course:${activeCourse.id}`;
+                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
+                localStorage.setItem(k, latest.id);
+                markChannelRead(k);
+                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
               }
             }
           }

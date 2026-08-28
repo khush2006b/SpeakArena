@@ -44,7 +44,12 @@ export function ChatUnreadTracker() {
 
         if (serverChannels && typeof serverChannels === "object" && Object.keys(serverChannels).length > 0) {
           for (const [chKey, isUnread] of Object.entries(serverChannels)) {
-            setChannelUnread(chKey, Boolean(isUnread));
+            const localReadTs = typeof window !== "undefined" ? Number(localStorage.getItem(`sa_read_ts_${chKey}`) || 0) : 0;
+            if (localReadTs && Date.now() - localReadTs < 15000) {
+              setChannelUnread(chKey, false);
+            } else {
+              setChannelUnread(chKey, Boolean(isUnread));
+            }
           }
           return;
         }
