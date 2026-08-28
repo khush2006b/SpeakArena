@@ -345,7 +345,8 @@ class MeetingService:
 
         # Audit log
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.created",
             entity_type="meeting",
             entity_id=meeting.id,
@@ -479,7 +480,8 @@ class MeetingService:
         updated = await self._repo.update(meeting_id, updates)
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.updated",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -524,7 +526,8 @@ class MeetingService:
         updated = await self._repo.set_status(meeting_id, MeetingStatus.CANCELLED)
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.cancelled",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -571,7 +574,8 @@ class MeetingService:
         await self._repo.soft_delete(meeting_id)
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.deleted",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -642,7 +646,8 @@ class MeetingService:
         new_meeting = await self._repo.create(data)
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.duplicated",
             entity_type="meeting",
             entity_id=new_meeting.id,
@@ -716,7 +721,8 @@ class MeetingService:
             created.append(self._serialize_meeting(meeting))
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.recurring_series_created",
             entity_type="course",
             entity_id=body.course_id,
@@ -776,7 +782,8 @@ class MeetingService:
         )
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.went_live",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -834,7 +841,8 @@ class MeetingService:
         await att_svc.finalize_attendance(meeting_id, actual_end, meeting)
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.ended",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -1059,7 +1067,8 @@ class AttendanceService:
 
         # Step 7: Audit log
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.joined",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -1167,7 +1176,8 @@ class AttendanceService:
         )
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="meeting.left",
             entity_type="meeting",
             entity_id=meeting_id,
@@ -1395,7 +1405,8 @@ class AttendanceService:
         )
 
         self._db.add(AuditLog(
-            user_id=self._user.id,
+            actor_id=self._user.id,
+            actor_role=str(getattr(self._user, "role", "user")),
             action="attendance.manual_override",
             entity_type="session_attendance",
             entity_id=record.id,

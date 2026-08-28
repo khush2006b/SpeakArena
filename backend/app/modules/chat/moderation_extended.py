@@ -137,7 +137,8 @@ class ExtendedModerationService:
         )
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.student_muted",
             entity_type="chat_room",
             entity_id=room.id,
@@ -212,7 +213,8 @@ class ExtendedModerationService:
         )
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.student_unmuted",
             entity_type="chat_room",
             entity_id=room.id,
@@ -290,7 +292,8 @@ class ExtendedModerationService:
         await self._redis.set(_KEY_LOCK.format(room_id=room_id_str), "true", ex=2592000)
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.room_locked",
             entity_type="chat_room",
             entity_id=room.id,
@@ -338,7 +341,8 @@ class ExtendedModerationService:
         await self._redis.delete(_KEY_LOCK.format(room_id=room_id_str))
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.room_unlocked",
             entity_type="chat_room",
             entity_id=room.id,
@@ -410,7 +414,8 @@ class ExtendedModerationService:
             deleted += 1
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.bulk_delete",
             entity_type="chat_message",
             entity_id=None,
@@ -472,7 +477,8 @@ class ExtendedModerationService:
         student_id_str = str(student_id)
 
         self._db.add(AuditLog(
-            user_id=self._teacher.id,
+            actor_id=self._teacher.id,
+            actor_role="teacher",
             action="chat.student_kicked",
             entity_type="chat_room",
             entity_id=room.id,
