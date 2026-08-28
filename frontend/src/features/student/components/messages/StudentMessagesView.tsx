@@ -187,6 +187,53 @@ export function StudentMessagesView() {
     markChannelRead,
   } = useChatStore();
 
+  // ── State Hooks ──────────────────────────────────────────────────────────────
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+
+  const [activeChannel, setActiveChannel] = useState<ActiveChannel | null>(null);
+  const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
+  const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
+
+  const [room, setRoom] = useState<ChatRoom | null>(null);
+  const [roomLoading, setRoomLoading] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
+
+  const [messages, setMessages] = useState<BackendMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+
+  // ── Refs ─────────────────────────────────────────────────────────────────────
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeChannelRef = useRef<ActiveChannel | null>(null);
+  const roomRef = useRef<ChatRoom | null>(null);
+  const userIdRef = useRef<string>("");
+  const coursesRef = useRef<Course[]>([]);
+
+  useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { userIdRef.current = user?.id ?? ""; }, [user?.id]);
+  useEffect(() => { coursesRef.current = courses; }, [courses]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const openChannel = useCallback(
     (channel: ActiveChannel) => {
       setActiveChannel(channel);
@@ -210,8 +257,9 @@ export function StudentMessagesView() {
       }
 
       // If opening general announcements, mark all enrolled courses announcement keys read
-      if (channel.type === "announcements" && courses.length > 0) {
-        courses.forEach((c) => {
+      const currentCourses = coursesRef.current;
+      if (channel.type === "announcements" && currentCourses.length > 0) {
+        currentCourses.forEach((c) => {
           if (c?.id) {
             const annKey = `course_announcements:${c.id}`;
             markChannelRead(annKey);
@@ -223,62 +271,8 @@ export function StudentMessagesView() {
         });
       }
     },
-    [markChannelRead, courses]
+    [markChannelRead]
   );
-
-  // Enrolled courses
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [coursesLoading, setCoursesLoading] = useState(true);
-  const [coursesError, setCoursesError] = useState<string | null>(null);
-
-  // The currently open channel
-  const [activeChannel, setActiveChannel] = useState<ActiveChannel | null>(null);
-
-  // Collapse state for sidebar sections
-  const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
-  const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
-
-  // Room (fetched from backend for the selected course)
-  const [room, setRoom] = useState<ChatRoom | null>(null);
-  const [roomLoading, setRoomLoading] = useState(false);
-  const [roomError, setRoomError] = useState<string | null>(null);
-
-  // Messages
-  const [messages, setMessages] = useState<BackendMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-
-  // Input
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-
-  // Misc
-  const [showInfoPanel, setShowInfoPanel] = useState(false);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Refs
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isTypingRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const activeChannelRef = useRef<ActiveChannel | null>(null);
-  const roomRef = useRef<ChatRoom | null>(null);
-  const userIdRef = useRef<string>("");
-  const coursesRef = useRef<Course[]>([]);
-
-  useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
-  useEffect(() => { roomRef.current = room; }, [room]);
-  useEffect(() => { userIdRef.current = user?.id ?? ""; }, [user?.id]);
-  useEffect(() => { coursesRef.current = courses; }, [courses]);
 
   // ── Fetch enrolled courses ────────────────────────────────────────────────────
   useEffect(() => {
