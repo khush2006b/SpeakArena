@@ -203,6 +203,7 @@ export function StudentMessagesView() {
       }
       if (key) {
         markChannelRead(key);
+        apiClient.post("/api/v1/chat/read", { channel_key: key }).catch(() => {});
       }
     },
     [markChannelRead]
@@ -410,15 +411,18 @@ export function StudentMessagesView() {
               if (activeChannel.type === "course_announcements" || activeChannel.type === "announcements") {
                 localStorage.setItem(`sa_read_course_announcements:${activeCourse.id}`, latest.id);
                 markChannelRead(`course_announcements:${activeCourse.id}`);
+                apiClient.post("/api/v1/chat/read", { channel_key: `course_announcements:${activeCourse.id}`, message_id: latest.id }).catch(() => {});
               } else if (activeChannel.type === "teacher_dm") {
                 const tid = getCourseTeacherId(activeCourse);
                 if (tid) {
                   localStorage.setItem(`sa_read_teacher_dm:${tid}`, latest.id);
                   markChannelRead(`teacher_dm:${tid}`);
+                  apiClient.post("/api/v1/chat/read", { channel_key: `teacher_dm:${tid}`, message_id: latest.id, dm_user_id: tid }).catch(() => {});
                 }
               } else {
                 localStorage.setItem(`sa_read_course:${activeCourse.id}`, latest.id);
                 markChannelRead(`course:${activeCourse.id}`);
+                apiClient.post("/api/v1/chat/read", { channel_key: `course:${activeCourse.id}`, message_id: latest.id }).catch(() => {});
               }
             }
           }

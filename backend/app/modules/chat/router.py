@@ -39,12 +39,16 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel
 from app.core.redis.client import get_redis
 from app.core.utils.response import success_response
 from app.database import get_db_session
-from app.models.chat import ChatRoom
+from app.models.chat import ChatRoom, Message
+from app.models.course import Course, CourseEnrollment
+from app.models.enums import EnrollmentStatus
 from app.models.user import User
 from app.modules.auth.dependencies import get_current_teacher, get_current_user
+from app.modules.chat.presence import ReadReceiptService
 from app.modules.chat.repository import ChatRoomRepository
 from app.modules.chat.schemas import (
     AttachmentPresignRequest,
@@ -154,6 +158,175 @@ async def get_course_rooms(
     svc = ChatRoomService(db, redis, actor)
     data = await svc.get_rooms_for_course(course_id)
     return success_response(data)
+
+
+class MarkReadPayload(BaseModel):
+    channel_key: Optional[str] = None
+    room_id: Optional[uuid.UUID] = None
+    course_id: Optional[uuid.UUID] = None
+    room_type: Optional[str] = None
+    dm_user_id: Optional[uuid.UUID] = None
+    message_id: Optional[uuid.UUID] = None
+
+
+@router.get(
+    "/unread",
+    summary="Get unread chats summary for authenticated user",
+    description="Returns an unread status map for all enrolled course chat rooms and direct messages.",
+)
+async def get_unread_summary(
+    actor: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> JSONResponse:
+    read_svc = ReadReceiptService(redis) if redis is not None else None
+    unread_channels: dict[str, bool] = {}
+
+    try:
+        # 1. Determine user courses
+        course_ids: list[uuid.UUID] = []
+        if actor.role == "student":
+            stmt = select(CourseEnrollment.course_id).where(
+                CourseEnrollment.student_id == actor.id,
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+            )
+            res = await db.execute(stmt)
+            course_ids = [r[0] for r in res.all()]
+        else:
+            stmt = select(Course.id).where(Course.teacher_id == actor.id)
+            res = await db.execute(stmt)
+            course_ids = [r[0] for r in res.all()]
+
+        if course_ids:
+            rooms_stmt = select(ChatRoom).where(
+                ChatRoom.course_id.in_(course_ids),
+                ChatRoom.is_active == True,
+            )
+            rooms_res = await db.execute(rooms_stmt)
+            rooms = rooms_res.scalars().all()
+
+            for room in rooms:
+                ck = (
+                    f"course_announcements:{room.course_id}"
+                    if (room.room_type == "announcement" or room.is_announcement_only)
+                    else f"course:{room.course_id}"
+                )
+
+                msg_stmt = (
+                    select(Message.id)
+                    .where(
+                        Message.chat_room_id == room.id,
+                        Message.is_deleted == False,
+                        Message.sender_id != actor.id,
+                        Message.recipient_id == None,
+                    )
+                    .order_by(Message.created_at.desc())
+                    .limit(1)
+                )
+                msg_res = await db.execute(msg_stmt)
+                latest_msg_id = msg_res.scalar_one_or_none()
+
+                if latest_msg_id:
+                    latest_id_str = str(latest_msg_id)
+                    last_read_id = None
+                    if read_svc:
+                        last_read_id = await read_svc.get_last_read(str(actor.id), str(room.id))
+
+                    unread_channels[ck] = (last_read_id != latest_id_str)
+                else:
+                    unread_channels[ck] = False
+
+        # 2. Check Direct Messages (DMs) where actor is recipient
+        dm_stmt = (
+            select(Message.id, Message.sender_id)
+            .where(
+                Message.recipient_id == actor.id,
+                Message.is_deleted == False,
+                Message.sender_id != actor.id,
+            )
+            .order_by(Message.created_at.desc())
+            .limit(40)
+        )
+        dm_res = await db.execute(dm_stmt)
+        dm_rows = dm_res.all()
+
+        seen_senders: set[uuid.UUID] = set()
+        for row in dm_rows:
+            partner_id = row[1]
+            if partner_id in seen_senders:
+                continue
+            seen_senders.add(partner_id)
+            msg_id_str = str(row[0])
+            ck = f"teacher_dm:{partner_id}"
+
+            last_read_dm = None
+            if redis:
+                val = await redis.get(f"chat:read:dm:{partner_id}:{actor.id}")
+                if val:
+                    last_read_dm = val.decode() if isinstance(val, bytes) else str(val)
+
+            unread_channels[ck] = (last_read_dm != msg_id_str)
+
+    except Exception as exc:
+        logger.warning(f"Error computing unread summary: {exc}")
+
+    has_unread = any(unread_channels.values())
+    return success_response({
+        "has_unread": has_unread,
+        "unread_channels": unread_channels,
+    })
+
+
+@router.post(
+    "/read",
+    summary="Mark channel or chat room as read",
+    description="Updates the user's read cursor in Redis for a specific channel, room, or DM thread.",
+)
+async def mark_chat_read(
+    body: MarkReadPayload,
+    actor: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> JSONResponse:
+    read_svc = ReadReceiptService(redis) if redis is not None else None
+    msg_id_str = str(body.message_id) if body.message_id else "read"
+
+    try:
+        # Case A: Room ID provided
+        if body.room_id and read_svc:
+            await read_svc.mark_read(str(actor.id), str(body.room_id), msg_id_str)
+
+        # Case B: Channel key provided
+        if body.channel_key:
+            ck = body.channel_key
+            if ck.startswith("teacher_dm:"):
+                other_id = ck.split(":", 1)[1]
+                if redis:
+                    await redis.set(f"chat:read:dm:{other_id}:{actor.id}", msg_id_str)
+            elif ck.startswith("course:") or ck.startswith("course_announcements:"):
+                parts = ck.split(":", 1)
+                rtype = "announcement" if parts[0] == "course_announcements" else "general"
+                try:
+                    course_uuid = uuid.UUID(parts[1])
+                    room_stmt = select(ChatRoom.id).where(
+                        ChatRoom.course_id == course_uuid,
+                        ChatRoom.room_type == rtype,
+                    )
+                    r_res = await db.execute(room_stmt)
+                    rid = r_res.scalar_one_or_none()
+                    if rid and read_svc:
+                        await read_svc.mark_read(str(actor.id), str(rid), msg_id_str)
+                except Exception:
+                    pass
+
+        # Case C: Direct DM user ID provided
+        if body.dm_user_id and redis:
+            await redis.set(f"chat:read:dm:{body.dm_user_id}:{actor.id}", msg_id_str)
+
+    except Exception as exc:
+        logger.warning(f"Error marking chat read: {exc}")
+
+    return success_response({"status": "marked_read"})
 
 
 @router.get(

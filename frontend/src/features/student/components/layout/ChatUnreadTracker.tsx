@@ -27,11 +27,28 @@ export function ChatUnreadTracker() {
   const { setChannelUnread } = useChatStore();
 
   useEffect(() => {
-    const currentUserId = user?.id ? String(user.id) : "";
+    if (!user?.id) return;
+    const currentUserId = String(user.id);
 
     const checkAllChannels = async () => {
       try {
-        // Fetch enrolled courses
+        // Step 1: Server-authoritative backend endpoint
+        const unreadRes = await apiClient.get("/api/v1/chat/unread");
+        const unreadData = unreadRes.data?.data ?? unreadRes.data ?? {};
+        const serverChannels = unreadData.unread_channels;
+
+        if (serverChannels && typeof serverChannels === "object" && Object.keys(serverChannels).length > 0) {
+          for (const [chKey, isUnread] of Object.entries(serverChannels)) {
+            setChannelUnread(chKey, Boolean(isUnread));
+          }
+          return;
+        }
+      } catch {
+        // Fall back to client-side verification if server endpoint is waking up
+      }
+
+      // Step 2: Resilient client-side fallback
+      try {
         const coursesRes = await apiClient.get("/api/v1/courses");
         const raw = coursesRes.data;
         let courses: any[] = [];
@@ -42,19 +59,18 @@ export function ChatUnreadTracker() {
 
         if (courses.length === 0) return;
 
-        // Check each enrolled course (up to 6)
         for (const course of courses.slice(0, 6)) {
           const courseId = course.course_id || course.id;
           if (!courseId) continue;
           const teacherId = getCourseTeacherId(course);
 
-          // 1. Check General Course Talk
+          // Check General Talk
           try {
             const genRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=general&public_only=true`);
             const genMsgs: any[] = genRes.data?.data?.messages ?? genRes.data?.messages ?? [];
             const otherGen = genMsgs.filter((m: any) => {
               const sid = m.sender_id || m.sender?.id;
-              return !currentUserId || String(sid) !== currentUserId;
+              return String(sid) !== currentUserId;
             });
             if (otherGen.length > 0) {
               const latest = otherGen[0];
@@ -67,13 +83,13 @@ export function ChatUnreadTracker() {
             }
           } catch {}
 
-          // 2. Check Course Announcements
+          // Check Announcements
           try {
             const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
             const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
             const otherAnn = annMsgs.filter((m: any) => {
               const sid = m.sender_id || m.sender?.id;
-              return !currentUserId || String(sid) !== currentUserId;
+              return String(sid) !== currentUserId;
             });
             if (otherAnn.length > 0) {
               const latest = otherAnn[0];
@@ -84,14 +100,14 @@ export function ChatUnreadTracker() {
             }
           } catch {}
 
-          // 3. Check Teacher DM if instructor exists
+          // Check Teacher DM
           if (teacherId) {
             try {
               const dmRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&dm_student_id=${teacherId}`);
               const dmMsgs: any[] = dmRes.data?.data?.messages ?? dmRes.data?.messages ?? [];
               const otherDm = dmMsgs.filter((m: any) => {
                 const sid = m.sender_id || m.sender?.id;
-                return !currentUserId || String(sid) !== currentUserId;
+                return String(sid) !== currentUserId;
               });
               if (otherDm.length > 0) {
                 const latest = otherDm[0];
@@ -103,13 +119,11 @@ export function ChatUnreadTracker() {
             } catch {}
           }
         }
-      } catch {
-        // Silently catch errors
-      }
+      } catch {}
     };
 
     checkAllChannels();
-    const interval = setInterval(checkAllChannels, 7000); // Check every 7 seconds
+    const interval = setInterval(checkAllChannels, 6000);
 
     return () => clearInterval(interval);
   }, [pathname, user?.id, setChannelUnread]);
