@@ -128,7 +128,7 @@ export function ChatUnreadTracker() {
     };
 
     checkAllChannels();
-    const interval = setInterval(checkAllChannels, 15000);
+    const interval = setInterval(checkAllChannels, 8000);
 
     return () => clearInterval(interval);
   }, [pathname, user?.id, setChannelUnread]);

@@ -185,7 +185,8 @@ async def get_unread_summary(
     try:
         # 1. Determine user courses
         course_ids: list[uuid.UUID] = []
-        if actor.role == "student":
+        role_str = str(getattr(actor, "role", "")).lower()
+        if "student" in role_str:
             stmt = select(CourseEnrollment.course_id).where(
                 CourseEnrollment.student_id == actor.id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
@@ -216,9 +217,9 @@ async def get_unread_summary(
                     select(Message.id)
                     .where(
                         Message.chat_room_id == room.id,
-                        Message.is_deleted == False,
+                        Message.deleted_at.is_(None),
                         Message.sender_id != actor.id,
-                        Message.recipient_id == None,
+                        Message.recipient_id.is_(None),
                     )
                     .order_by(Message.created_at.desc())
                     .limit(1)
@@ -241,7 +242,7 @@ async def get_unread_summary(
             select(Message.id, Message.sender_id)
             .where(
                 Message.recipient_id == actor.id,
-                Message.is_deleted == False,
+                Message.deleted_at.is_(None),
                 Message.sender_id != actor.id,
             )
             .order_by(Message.created_at.desc())
@@ -289,20 +290,56 @@ async def mark_chat_read(
     redis: Redis = Depends(get_redis),
 ) -> JSONResponse:
     read_svc = ReadReceiptService(redis) if redis is not None else None
-    msg_id_str = str(body.message_id) if body.message_id else "read"
+    msg_id_str = str(body.message_id) if body.message_id else None
 
     try:
         # Case A: Room ID provided
         if body.room_id and read_svc:
-            await read_svc.mark_read(str(actor.id), str(body.room_id), msg_id_str)
+            target_msg_id = msg_id_str
+            if not target_msg_id:
+                latest_q = (
+                    select(Message.id)
+                    .where(
+                        Message.chat_room_id == body.room_id,
+                        Message.deleted_at.is_(None),
+                    )
+                    .order_by(Message.created_at.desc())
+                    .limit(1)
+                )
+                l_res = await db.execute(latest_q)
+                lid = l_res.scalar_one_or_none()
+                if lid:
+                    target_msg_id = str(lid)
+            if target_msg_id:
+                await read_svc.mark_read(str(actor.id), str(body.room_id), target_msg_id)
 
         # Case B: Channel key provided
         if body.channel_key:
             ck = body.channel_key
             if ck.startswith("teacher_dm:"):
                 other_id = ck.split(":", 1)[1]
-                if redis:
-                    await redis.set(f"chat:read:dm:{other_id}:{actor.id}", msg_id_str)
+                target_dm_msg_id = msg_id_str
+                if not target_dm_msg_id:
+                    try:
+                        other_uuid = uuid.UUID(other_id)
+                        dm_q = (
+                            select(Message.id)
+                            .where(
+                                Message.sender_id == other_uuid,
+                                Message.recipient_id == actor.id,
+                                Message.deleted_at.is_(None),
+                            )
+                            .order_by(Message.created_at.desc())
+                            .limit(1)
+                        )
+                        d_res = await db.execute(dm_q)
+                        did = d_res.scalar_one_or_none()
+                        if did:
+                            target_dm_msg_id = str(did)
+                    except Exception:
+                        pass
+                if redis and target_dm_msg_id:
+                    await redis.set(f"chat:read:dm:{other_id}:{actor.id}", target_dm_msg_id)
             elif ck.startswith("course:") or ck.startswith("course_announcements:"):
                 parts = ck.split(":", 1)
                 rtype = "announcement" if parts[0] == "course_announcements" else "general"
@@ -315,13 +352,49 @@ async def mark_chat_read(
                     r_res = await db.execute(room_stmt)
                     rid = r_res.scalar_one_or_none()
                     if rid and read_svc:
-                        await read_svc.mark_read(str(actor.id), str(rid), msg_id_str)
+                        target_room_msg_id = msg_id_str
+                        if not target_room_msg_id:
+                            latest_q = (
+                                select(Message.id)
+                                .where(
+                                    Message.chat_room_id == rid,
+                                    Message.deleted_at.is_(None),
+                                )
+                                .order_by(Message.created_at.desc())
+                                .limit(1)
+                            )
+                            l_res = await db.execute(latest_q)
+                            lid = l_res.scalar_one_or_none()
+                            if lid:
+                                target_room_msg_id = str(lid)
+                        if target_room_msg_id:
+                            await read_svc.mark_read(str(actor.id), str(rid), target_room_msg_id)
                 except Exception:
                     pass
 
         # Case C: Direct DM user ID provided
         if body.dm_user_id and redis:
-            await redis.set(f"chat:read:dm:{body.dm_user_id}:{actor.id}", msg_id_str)
+            dm_id_str = msg_id_str
+            if not dm_id_str:
+                try:
+                    dm_q = (
+                        select(Message.id)
+                        .where(
+                            Message.sender_id == body.dm_user_id,
+                            Message.recipient_id == actor.id,
+                            Message.deleted_at.is_(None),
+                        )
+                        .order_by(Message.created_at.desc())
+                        .limit(1)
+                    )
+                    d_res = await db.execute(dm_q)
+                    did = d_res.scalar_one_or_none()
+                    if did:
+                        dm_id_str = str(did)
+                except Exception:
+                    pass
+            if dm_id_str:
+                await redis.set(f"chat:read:dm:{body.dm_user_id}:{actor.id}", dm_id_str)
 
     except Exception as exc:
         logger.warning(f"Error marking chat read: {exc}")

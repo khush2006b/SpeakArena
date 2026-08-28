@@ -492,8 +492,13 @@ export function StudentMessagesView() {
           if (
             String(msg.chat_room_id).toLowerCase() !==
             String(currentRoom.id).toLowerCase()
-          )
+          ) {
+            const crsId = msg.course_id || (msg as any).courseId;
+            if (crsId) {
+              useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
+            }
             return;
+          }
         }
       } else if (ch.type === "course") {
         if (msg.is_announcement || msg.recipient_id) return;
@@ -501,8 +506,13 @@ export function StudentMessagesView() {
           if (
             String(msg.chat_room_id).toLowerCase() !==
             String(currentRoom.id).toLowerCase()
-          )
+          ) {
+            const crsId = msg.course_id || (msg as any).courseId;
+            if (crsId) {
+              useChatStore.getState().setChannelUnread(`course:${crsId}`, true);
+            }
             return;
+          }
         }
       }
 
