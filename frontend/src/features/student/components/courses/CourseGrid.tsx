@@ -2,15 +2,15 @@
 
 import * as React from "react";
 import { Play, Bookmark, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useCoursesStore } from "@/stores/courses.store";
 
 interface CourseGridProps {
   courses: any[];
 }
 
 export function CourseGrid({ courses }: CourseGridProps) {
-  const { setSelectedCourseId } = useCoursesStore();
+  const router = useRouter();
 
   if (courses.length === 0) {
     return (
@@ -33,7 +33,7 @@ export function CourseGrid({ courses }: CourseGridProps) {
           key={course.id ? `${course.id}-${idx}` : `student-course-${idx}`} 
           className="group relative flex flex-col overflow-hidden transition-all duration-300 cursor-pointer active:scale-[0.98] card-glass hover-lift"
           style={{ borderRadius: 16 }}
-          onClick={() => setSelectedCourseId(course.id)}
+          onClick={() => router.push(`/student/courses/${course.id}`)}
         >
           {/* Thumbnail & Overlays */}
           <div className="relative aspect-video w-full overflow-hidden bg-card">

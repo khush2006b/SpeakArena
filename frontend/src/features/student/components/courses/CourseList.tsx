@@ -1,9 +1,8 @@
 "use client";
 
-import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Play, MoreHorizontal, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCoursesStore } from "@/stores/courses.store";
 import {
   Table,
   TableBody,
@@ -18,7 +17,7 @@ interface CourseListProps {
 }
 
 export function CourseList({ courses }: CourseListProps) {
-  const { setSelectedCourseId } = useCoursesStore();
+  const router = useRouter();
 
   if (courses.length === 0) {
     return (
@@ -54,7 +53,7 @@ export function CourseList({ courses }: CourseListProps) {
               key={course.id ? `${course.id}-${idx}` : `student-course-list-${idx}`} 
               className="group cursor-pointer transition-colors hover:bg-white/5"
               style={{ background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.03)" }}
-              onClick={() => setSelectedCourseId(course.id)}
+              onClick={() => router.push(`/student/courses/${course.id}`)}
             >
               <TableCell>
                 <div className="flex items-center gap-3">

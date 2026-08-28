@@ -196,7 +196,7 @@ export default function ExploreCoursesPage() {
                   }}
                 >
                   {/* Thumbnail / Header */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-950">
+                  <Link href={`/student/courses/${course.id}`} className="relative h-44 w-full overflow-hidden bg-slate-950 block">
                     <img
                       src={
                         course.thumbnailUrl ||
@@ -233,14 +233,16 @@ export default function ExploreCoursesPage() {
                         </span>
                       )}
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Body Content */}
                   <div className="flex flex-1 flex-col p-5 space-y-4">
                     <div>
-                      <h3 className="font-bold text-base text-foreground line-clamp-1 group-hover:text-indigo-400 transition-colors">
-                        {course.title}
-                      </h3>
+                      <Link href={`/student/courses/${course.id}`}>
+                        <h3 className="font-bold text-base text-foreground line-clamp-1 group-hover:text-indigo-400 transition-colors">
+                          {course.title}
+                        </h3>
+                      </Link>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         {course.description || "Master communication skills with interactive live sessions and personalized guidance."}
                       </p>
@@ -273,7 +275,7 @@ export default function ExploreCoursesPage() {
 
                         {isEnrolled ? (
                           <Link
-                            href="/student/courses"
+                            href={`/student/courses/${course.id}`}
                             className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all"
                             style={{
                               background: "rgba(16,185,129,0.15)",

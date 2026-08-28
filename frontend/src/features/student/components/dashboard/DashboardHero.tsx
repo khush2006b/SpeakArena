@@ -13,6 +13,7 @@ export function DashboardHero() {
   const [imageError, setImageError] = React.useState(false);
   const [studentName, setStudentName] = React.useState("");
   const [hero, setHero] = React.useState({
+    courseId: "",
     thumbnail: "",
     courseTitle: "Your Learning Journey",
     lessonTitle: "Pick up where you left off",
@@ -36,6 +37,7 @@ export function DashboardHero() {
         if (latest) {
           const resolvedThumb = getCourseThumbnailUrl(latest);
           setHero({
+            courseId: latest.id || latest.course_id || "",
             thumbnail: resolvedThumb,
             courseTitle: latest.title ?? "Your Learning Journey",
             lessonTitle: latest.subtitle ?? "Continue where you left off",
@@ -49,6 +51,8 @@ export function DashboardHero() {
     };
     fetchData();
   }, []);
+
+  const heroCourseUrl = hero.courseId ? `/student/courses/${hero.courseId}` : "/student/courses";
 
   return (
     <div className="relative w-full min-h-[350px] md:min-h-[450px] lg:min-h-[500px] h-auto overflow-hidden group card-glass" style={{ background: "hsl(var(--card))" }}>
@@ -109,13 +113,13 @@ export function DashboardHero() {
           </div>
 
           <div className="pt-4 flex items-center gap-3">
-            <Link href="/student/courses">
+            <Link href={heroCourseUrl}>
               <Button size="lg" className="px-8 text-base shadow-lg transition-transform btn-primary press-scale"
                       style={{ borderRadius: 10 }}>
                 <Play className="mr-2 h-5 w-5 fill-current" /> Resume Video
               </Button>
             </Link>
-            <Link href="/student/courses">
+            <Link href={heroCourseUrl}>
               <Button size="lg" variant="secondary" className="px-8 text-base backdrop-blur-md transition-transform hidden sm:flex btn-outline press-scale"
                       style={{ borderRadius: 10 }}>
                 Course Overview
