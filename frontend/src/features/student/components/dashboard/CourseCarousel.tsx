@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Play, Star, ChevronLeft, ChevronRight, Mic, Briefcase, Award, BookOpen, Volume2 } from "lucide-react";
+import { Play, Star, ChevronLeft, ChevronRight, Mic, Briefcase, Award, BookOpen, Volume2, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { apiClient } from "@/services/api/client";
@@ -21,7 +21,9 @@ interface CourseItem {
   progress?: number;
   lastWatched?: string;
   teacherName?: string;
+  teacher_name?: string;
   rating?: number;
+  average_rating?: number;
 }
 
 interface CourseCarouselProps {
@@ -51,8 +53,8 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
     const fetchCourses = async () => {
       try {
         const endpoint = type === "enrolled" 
-          ? "/api/v1/courses?enrolled=true&page=1&page_size=6" 
-          : "/api/v1/courses?page=1&page_size=6";
+          ? "/api/v1/courses?page=1&page_size=6" 
+          : "/api/v1/courses/explore?page=1&page_size=6";
         const res = await apiClient.get(endpoint);
         const data = res.data?.items || res.data?.data || res.data || [];
         setItems(Array.isArray(data) ? data : []);
@@ -82,32 +84,58 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
     setFailedImages((prev) => ({ ...prev, [id]: true }));
   };
 
+  if (!isLoading && items.length === 0 && type === "enrolled") {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-responsive-xl tracking-tight text-foreground font-extrabold">{title}</h2>
+        <div className="flex flex-col items-center justify-center p-8 sm:p-12 rounded-2xl border border-dashed border-border/60 card-glass text-center space-y-4">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-foreground">You haven't enrolled in any courses yet</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Explore our Spoken English, Accent Reduction, and Communication courses to start your learning journey.
+            </p>
+          </div>
+          <Link href="/courses">
+            <Button className="btn-primary press-scale font-semibold">
+              Explore Courses <Compass className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 relative group">
       <div className="flex items-center justify-between px-1">
         <h2 className="text-responsive-xl tracking-tight text-foreground font-extrabold">{title}</h2>
         
         {/* Scroll Controls (Desktop only) */}
-        <div className="hidden md:flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 btn-outline press-scale" 
-            onClick={() => scroll("left")}
-            disabled={!showLeftScroll}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 btn-outline press-scale" 
-            onClick={() => scroll("right")}
-            disabled={!showRightScroll}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {items.length > 0 && (
+          <div className="hidden md:flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 btn-outline press-scale" 
+              onClick={() => scroll("left")}
+              disabled={!showLeftScroll}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 btn-outline press-scale" 
+              onClick={() => scroll("right")}
+              disabled={!showRightScroll}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -129,6 +157,8 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
             const isImageFailed = failedImages[courseId];
             const thumbUrl = getCourseThumbnailUrl(item, idx);
             const defaultGradient = item.gradient || "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 100%)";
+            const teacherName = item.teacherName || item.teacher_name || (item as any).instructor || "SpeakArena Team";
+            const rating = item.rating || item.average_rating || 4.9;
 
             return (
               <Link href={`/student/courses/${courseId}`} className="block shrink-0 snap-start w-[280px] sm:w-[320px]" key={courseId}>
@@ -192,14 +222,14 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
                   
                   {type === "enrolled" ? (
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{item.progress}% Complete</span>
-                      <span>{item.lastWatched}</span>
+                      <span>{item.progress ?? 0}% Complete</span>
+                      <span>{item.lastWatched ?? "Enrolled"}</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{item.teacherName}</span>
+                      <span>{teacherName}</span>
                       <span className="flex items-center gap-1 font-medium text-amber-500">
-                        <Star className="h-3 w-3 fill-current" /> {item.rating}
+                        <Star className="h-3 w-3 fill-current" /> {rating}
                       </span>
                     </div>
                   )}

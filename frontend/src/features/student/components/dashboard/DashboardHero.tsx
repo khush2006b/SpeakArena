@@ -52,7 +52,8 @@ export function DashboardHero() {
     fetchData();
   }, []);
 
-  const heroCourseUrl = hero.courseId ? `/student/courses/${hero.courseId}` : "/student/courses";
+  const heroCourseUrl = hero.courseId ? `/student/courses/${hero.courseId}` : "/courses";
+  const hasEnrolledCourse = Boolean(hero.courseId);
 
   return (
     <div className="relative w-full min-h-[350px] md:min-h-[450px] lg:min-h-[500px] h-auto overflow-hidden group card-glass" style={{ background: "hsl(var(--card))" }}>
@@ -91,38 +92,40 @@ export function DashboardHero() {
           </div>
           
           <h1 className="drop-shadow-md text-foreground font-extrabold tracking-tighter text-responsive-xl" style={{ fontSize: "clamp(24px, 2.5vw, 36px)" }}>
-            {hero.courseTitle}
+            {hasEnrolledCourse ? hero.courseTitle : "Start Your Learning Journey"}
           </h1>
           
           <p className="font-medium flex items-center gap-2 drop-shadow text-muted-foreground leading-relaxed text-responsive-lg">
             <PlayCircle className="h-5 w-5 text-primary" />
-            {hero.lessonTitle}
+            {hasEnrolledCourse ? hero.lessonTitle : "Discover top Spoken English & Accent Reduction courses"}
           </p>
 
-          <div className="space-y-2 pt-2 max-w-md">
-            <div className="flex justify-between text-xs font-medium text-muted-foreground">
-              <span>{hero.progress}% Completed</span>
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {hero.timeRemaining}</span>
+          {hasEnrolledCourse && (
+            <div className="space-y-2 pt-2 max-w-md">
+              <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                <span>{hero.progress}% Completed</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {hero.timeRemaining}</span>
+              </div>
+              <div className="w-full rounded-full h-1.5 backdrop-blur-sm overflow-hidden bg-border">
+                <div 
+                  className="h-1.5 rounded-full transition-all duration-1000 ease-out bg-primary" 
+                  style={{ width: `${hero.progress}%` }} 
+                />
+              </div>
             </div>
-            <div className="w-full rounded-full h-1.5 backdrop-blur-sm overflow-hidden bg-border">
-              <div 
-                className="h-1.5 rounded-full transition-all duration-1000 ease-out bg-primary" 
-                style={{ width: `${hero.progress}%` }} 
-              />
-            </div>
-          </div>
+          )}
 
           <div className="pt-4 flex items-center gap-3">
             <Link href={heroCourseUrl}>
               <Button size="lg" className="px-8 text-base shadow-lg transition-transform btn-primary press-scale"
                       style={{ borderRadius: 10 }}>
-                <Play className="mr-2 h-5 w-5 fill-current" /> Resume Video
+                <Play className="mr-2 h-5 w-5 fill-current" /> {hasEnrolledCourse ? "Resume Video" : "Explore Courses"}
               </Button>
             </Link>
             <Link href={heroCourseUrl}>
               <Button size="lg" variant="secondary" className="px-8 text-base backdrop-blur-md transition-transform hidden sm:flex btn-outline press-scale"
                       style={{ borderRadius: 10 }}>
-                Course Overview
+                {hasEnrolledCourse ? "Course Overview" : "View Catalog"}
               </Button>
             </Link>
           </div>
