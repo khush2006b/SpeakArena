@@ -1328,15 +1328,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column(
-            "attendance_id",
+            "session_attendance_id",
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("session_attendance.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "student_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("event_type", sa.String(20), nullable=False),
@@ -1348,9 +1342,9 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
-        "ix_attendance_events_attendance_id",
+        "ix_attendance_events_session_attendance_id",
         "attendance_events",
-        ["attendance_id"],
+        ["session_attendance_id"],
     )
 
     # ── 24. chat_rooms ────────────────────────────────────────────────────────

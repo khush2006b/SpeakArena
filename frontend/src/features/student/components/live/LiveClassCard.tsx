@@ -51,7 +51,7 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
         {/* Status Badge */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
           {currentStatus === "LIVE" && (
-            <span className="bg-red-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
+            <span className="bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
               <span className="h-1.5 w-1.5 bg-white rounded-full" /> Live Now
             </span>
           )}
@@ -104,7 +104,7 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
                 e.stopPropagation();
                 onJoinClick?.(liveClass);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-red-600 hover:bg-red-500 shadow-md shadow-red-600/25 transition-all press-scale"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-600/25 transition-all press-scale"
             >
               <Video className="h-4 w-4" />
               Join Live Class Now

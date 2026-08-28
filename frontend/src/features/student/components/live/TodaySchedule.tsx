@@ -103,7 +103,7 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
         <div className="p-6 md:p-8 relative z-10 flex flex-col h-full">
           <div className="flex items-center gap-2 mb-4">
             {nextClassStatus === "LIVE" ? (
-              <span className="bg-red-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
+              <span className="bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1.5 animate-pulse">
                 <span className="h-1.5 w-1.5 bg-white rounded-full" /> Live Now
               </span>
             ) : (
@@ -144,7 +144,7 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
               size="lg"
               className={`btn-primary press-scale font-semibold shadow-xl ${
                 nextClassStatus === "LIVE"
-                  ? "bg-red-500 hover:bg-red-600 shadow-red-500/20"
+                  ? "bg-blue-600 hover:bg-blue-500 shadow-blue-600/20"
                   : ""
               }`}
               onClick={() => onJoinClick(nextClass)}

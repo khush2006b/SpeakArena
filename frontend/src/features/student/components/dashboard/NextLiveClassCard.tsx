@@ -68,14 +68,14 @@ export function NextLiveClassCard() {
               <div
                 className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold border ${
                   currentStatus === "LIVE"
-                    ? "bg-red-500/20 text-red-400 border-red-500/30"
+                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
                     : "text-primary badge-primary bg-primary/10 border-primary/25"
                 }`}
                 style={{ borderRadius: 100 }}
               >
                 <span className="relative flex h-2 w-2 mr-2">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentStatus === "LIVE" ? "bg-red-500" : "bg-primary"}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus === "LIVE" ? "bg-red-500" : "bg-primary"}`}></span>
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentStatus === "LIVE" ? "bg-blue-500" : "bg-primary"}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus === "LIVE" ? "bg-blue-500" : "bg-primary"}`}></span>
                 </span>
                 {currentStatus === "LIVE" ? "LIVE NOW" : "Next Live Class"}
               </div>
@@ -112,7 +112,7 @@ export function NextLiveClassCard() {
                   else window.location.href = '/student/live';
                 }}
                 className={`flex-1 shadow-md transition-all font-bold press-scale ${
-                  currentStatus === "LIVE" ? "bg-red-500 hover:bg-red-600 text-white" : "btn-primary"
+                  currentStatus === "LIVE" ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30" : "btn-primary"
                 }`}
                 style={{ borderRadius: 10 }}>
                 <Video className="mr-2 h-4 w-4" />
