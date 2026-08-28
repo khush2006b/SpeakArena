@@ -52,11 +52,12 @@ export function ChatUnreadTracker() {
             if (!courseId) continue;
             try {
               const msgRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=1`);
-              const msgs = msgRes.data?.data ?? msgRes.data ?? [];
-              if (Array.isArray(msgs) && msgs.length > 0) {
+              const rawMsgs = msgRes.data?.data?.items ?? msgRes.data?.items ?? msgRes.data?.data ?? msgRes.data ?? [];
+              const msgs = Array.isArray(rawMsgs) ? rawMsgs : [];
+              if (msgs.length > 0) {
                 const latest = msgs[0];
                 const msgMs = new Date(latest.created_at || latest.createdAt).getTime();
-                if (msgMs > lastReadMs) {
+                if (msgMs > lastReadMs || lastReadMs === 0) {
                   setHasUnread(true);
                   return;
                 }

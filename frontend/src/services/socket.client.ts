@@ -67,6 +67,17 @@ class ReconnectingWebSocket {
       return;
     }
 
+    const token = getAccessToken();
+    if (token && this.url) {
+      try {
+        const urlObj = new URL(this.url);
+        urlObj.searchParams.set("token", token);
+        this.url = urlObj.toString();
+      } catch {
+        this.url = this.url.replace(/([?&]token=)[^&]*/, `$1${encodeURIComponent(token)}`);
+      }
+    }
+
     try {
       this.ws = new WebSocket(this.url);
     } catch (err) {
@@ -225,8 +236,10 @@ let notificationSocket: ReconnectingWebSocket | null = null;
 
 export function getNotificationSocket(): ReconnectingWebSocket {
   if (!notificationSocket) {
+    const token = getAccessToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
     notificationSocket = new ReconnectingWebSocket(
-      `${getWsUrlBase()}/api/v1/ws/notifications`
+      `${getWsUrlBase()}/api/v1/ws/notifications${tokenParam}`
     );
   }
   return notificationSocket;
