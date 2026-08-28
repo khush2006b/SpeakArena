@@ -1,13 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Video, FileText, Bookmark, X } from "lucide-react";
+import { Play, Video, FileText, Bookmark, MessageSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStudentLayoutStore } from "@/stores/student-layout.store";
+import { useChatStore } from "@/stores/chat.store";
 
 export function QuickActionBar() {
   const { isQuickActionBarVisible, setQuickActionBarVisible } = useStudentLayoutStore();
+  const { hasUnread } = useChatStore();
 
   return (
     <AnimatePresence>
@@ -30,17 +33,32 @@ export function QuickActionBar() {
           <div className="w-px h-6 mx-1" style={{ background: "rgba(255,255,255,0.1)" }} />
           
           {/* Secondary Actions */}
-          <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }}>
-            <Video className="h-5 w-5" />
-          </Button>
-          
-          <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }}>
-            <FileText className="h-5 w-5" />
-          </Button>
+          <Link href="/student/live">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} title="Live Classes">
+              <Video className="h-5 w-5" />
+            </Button>
+          </Link>
 
-          <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }}>
-            <Bookmark className="h-5 w-5" />
-          </Button>
+          <Link href="/student/messages">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors relative" style={{ color: "#9ca3af" }} title="Class Chat">
+              <MessageSquare className="h-5 w-5" />
+              {hasUnread && (
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
+            </Button>
+          </Link>
+          
+          <Link href="/student/resources">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} title="Resources">
+              <FileText className="h-5 w-5" />
+            </Button>
+          </Link>
+
+          <Link href="/student/bookmarks">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/5 transition-colors" style={{ color: "#9ca3af" }} title="Bookmarks">
+              <Bookmark className="h-5 w-5" />
+            </Button>
+          </Link>
 
           <div className="w-px h-6 mx-1" style={{ background: "rgba(255,255,255,0.1)" }} />
 

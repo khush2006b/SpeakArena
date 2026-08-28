@@ -4,18 +4,20 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Library, Video, ClipboardCheck, User } from "lucide-react";
+import { LayoutDashboard, Library, Video, MessageSquare, User } from "lucide-react";
+import { useChatStore } from "@/stores/chat.store";
 
 const NAV_TABS = [
   { name: "Home",     href: "/student",           icon: LayoutDashboard },
   { name: "Courses",  href: "/student/courses",   icon: Library },
   { name: "Live",     href: "/student/live",      icon: Video },
-  { name: "Tests",    href: "/student/tests",     icon: ClipboardCheck },
+  { name: "Messages", href: "/student/messages",  icon: MessageSquare },
   { name: "Profile",  href: "/student/profile",   icon: User },
 ];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { hasUnread } = useChatStore();
 
   // Hide mobile bottom navbar on full-bleed chat/messaging routes so input section is never obscured
   const isChatPage =
@@ -71,10 +73,15 @@ export function MobileBottomNav() {
                 )}
               </AnimatePresence>
 
-              <Icon
-                className={`h-5 w-5 transition-transform ${isActive ? "scale-110" : "scale-100"}`}
-                aria-hidden="true"
-              />
+              <div className="relative">
+                <Icon
+                  className={`h-5 w-5 transition-transform ${isActive ? "scale-110" : "scale-100"}`}
+                  aria-hidden="true"
+                />
+                {tab.name === "Messages" && hasUnread && (
+                  <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-background animate-pulse" />
+                )}
+              </div>
               <span className="text-[10px] font-medium tracking-wide">
                 {tab.name}
               </span>

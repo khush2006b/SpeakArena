@@ -1,15 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Play, PlayCircle, Clock, Sparkles } from "lucide-react";
+import { Play, PlayCircle, Clock, Sparkles, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
+import { useChatStore } from "@/stores/chat.store";
 
 import { getCourseThumbnailUrl } from "@/lib/utils";
 
 export function DashboardHero() {
+  const { hasUnread } = useChatStore();
   const [imageError, setImageError] = React.useState(false);
   const [studentName, setStudentName] = React.useState("");
   const [hero, setHero] = React.useState({
@@ -115,17 +117,30 @@ export function DashboardHero() {
             </div>
           )}
 
-          <div className="pt-4 flex items-center gap-3">
+          <div className="pt-4 flex flex-wrap items-center gap-3">
             <Link href={heroCourseUrl}>
-              <Button size="lg" className="px-8 text-base shadow-lg transition-transform btn-primary press-scale"
+              <Button size="lg" className="px-6 sm:px-8 text-base shadow-lg transition-transform btn-primary press-scale"
                       style={{ borderRadius: 10 }}>
                 <Play className="mr-2 h-5 w-5 fill-current" /> {hasEnrolledCourse ? "Resume Video" : "Explore Courses"}
               </Button>
             </Link>
-            <Link href={heroCourseUrl}>
-              <Button size="lg" variant="secondary" className="px-8 text-base backdrop-blur-md transition-transform hidden sm:flex btn-outline press-scale"
+            <Link href="/student/messages">
+              <Button size="lg" variant="secondary" className="px-6 text-base backdrop-blur-md transition-transform flex items-center gap-2 btn-outline press-scale relative"
                       style={{ borderRadius: 10 }}>
-                {hasEnrolledCourse ? "Course Overview" : "View Catalog"}
+                <MessageSquare className="h-4 w-4" />
+                <span>Class Chat</span>
+                {hasUnread && (
+                  <span className="flex h-2.5 w-2.5 relative ml-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                  </span>
+                )}
+              </Button>
+            </Link>
+            <Link href={heroCourseUrl}>
+              <Button size="lg" variant="secondary" className="px-6 text-base backdrop-blur-md transition-transform hidden md:flex btn-outline press-scale"
+                      style={{ borderRadius: 10 }}>
+                {hasEnrolledCourse ? "Overview" : "Catalog"}
               </Button>
             </Link>
           </div>

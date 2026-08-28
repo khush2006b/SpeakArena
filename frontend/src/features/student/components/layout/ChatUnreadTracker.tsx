@@ -5,102 +5,103 @@ import { usePathname } from "next/navigation";
 import { useChatStore } from "@/stores/chat.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { apiClient } from "@/services/api/client";
-import { getChatSocket, socketEvents } from "@/services/socket.client";
 
 export function ChatUnreadTracker() {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const { setHasUnread, clearUnread } = useChatStore();
 
-  // 1. If student is currently viewing messages or chat, clear unread state
+  // 1. Clear unread badge when user visits messages or chat
   useEffect(() => {
     if (pathname?.startsWith("/student/messages") || pathname?.startsWith("/student/chat")) {
       clearUnread();
     }
   }, [pathname, clearUnread]);
 
-  // 2. Poll and listen for unread messages / notifications when not on messages page
+  // 2. Periodically check across student courses for any unread messages from teacher
   useEffect(() => {
     const currentUserId = user?.id ? String(user.id) : "";
-    let activeSockets: string[] = [];
 
     const checkUnread = async () => {
-      if (pathname?.startsWith("/student/messages")) return;
+      // Skip check if student is actively viewing the messages/chat screen
+      if (pathname?.startsWith("/student/messages") || pathname?.startsWith("/student/chat")) {
+        return;
+      }
 
       try {
         // Step A: Check unread notifications endpoint
-        const res = await apiClient.get("/api/v1/notifications?unread_only=true&page_size=5");
-        const raw = res.data;
-        const total = raw?.total ?? raw?.data?.total ?? (Array.isArray(raw?.data) ? raw.data.length : 0);
-
-        if (total > 0) {
-          setHasUnread(true);
-          return;
+        try {
+          const notifRes = await apiClient.get("/api/v1/notifications?unread_only=true&page_size=5");
+          const notifRaw = notifRes.data;
+          const total = notifRaw?.total ?? notifRaw?.data?.total ?? (Array.isArray(notifRaw?.data) ? notifRaw.data.length : 0);
+          if (total > 0) {
+            setHasUnread(true);
+            return;
+          }
+        } catch {
+          // continue to course check
         }
 
-        // Step B: Check enrolled courses for unread messages from teachers/others
+        // Step B: Fetch student's enrolled courses
         const coursesRes = await apiClient.get("/api/v1/courses");
-        const rawCourses = coursesRes.data?.items ?? coursesRes.data?.data ?? coursesRes.data ?? [];
-        const courses = Array.isArray(rawCourses) ? rawCourses : [];
+        let courses: any[] = [];
+        const raw = coursesRes.data;
+        if (Array.isArray(raw?.data)) courses = raw.data;
+        else if (Array.isArray(raw?.data?.items)) courses = raw.data.items;
+        else if (Array.isArray(raw?.items)) courses = raw.items;
+        else if (Array.isArray(raw)) courses = raw;
 
         if (courses.length > 0) {
-          for (const course of courses.slice(0, 5)) {
+          let foundUnread = false;
+
+          for (const course of courses.slice(0, 8)) {
             const courseId = course.course_id || course.id;
             if (!courseId) continue;
 
-            // Connect room WebSocket for real-time unread detection if not already connected
-            if (!activeSockets.includes(courseId)) {
-              try {
-                const socket = getChatSocket(courseId);
-                socket.connect();
-                socket.on(socketEvents.chat.MESSAGE_RECEIVED, (payload: any) => {
-                  const senderId = payload?.sender?.id || payload?.sender_id;
-                  if (senderId && String(senderId) !== currentUserId && !pathname?.startsWith("/student/messages")) {
-                    setHasUnread(true);
-                  }
-                });
-                activeSockets.push(courseId);
-              } catch {}
-            }
-
             try {
-              const msgRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5`);
-              const rawMsgs = msgRes.data?.data?.items ?? msgRes.data?.items ?? msgRes.data?.data ?? msgRes.data ?? [];
-              const msgs = Array.isArray(rawMsgs) ? rawMsgs : [];
+              // Fetch latest messages for this course room
+              const msgRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=10`);
+              const msgs: any[] = msgRes.data?.data?.messages ?? msgRes.data?.messages ?? [];
 
-              // Find newest message sent by someone else (e.g. Teacher)
-              const otherMsgs = msgs.filter((m: any) => {
-                const sid = m.sender?.id || m.sender_id;
-                return sid && String(sid) !== currentUserId;
-              });
+              if (msgs.length > 0) {
+                // Find newest message sent by someone else (teacher/classmate)
+                const otherMsgs = msgs.filter((m: any) => {
+                  const sid = m.sender_id || m.sender?.id;
+                  return !currentUserId || String(sid) !== currentUserId;
+                });
 
-              if (otherMsgs.length > 0) {
-                const latestOther = otherMsgs[0];
-                const lastReadMsgId = typeof window !== "undefined"
-                  ? localStorage.getItem(`sa_last_read_msg_${courseId}`)
-                  : null;
+                if (otherMsgs.length > 0) {
+                  const latest = otherMsgs[0];
+                  const lastReadId = typeof window !== "undefined"
+                    ? localStorage.getItem(`sa_last_read_msg_${courseId}`)
+                    : null;
 
-                if (latestOther.id && latestOther.id !== lastReadMsgId) {
-                  setHasUnread(true);
-                  return;
+                  // If user has not read this specific latest message
+                  if (!lastReadId || latest.id !== lastReadId) {
+                    foundUnread = true;
+                    setHasUnread(true);
+                    return;
+                  }
                 }
               }
             } catch {
-              // ignore room fetch error
+              // Continue checking other courses
             }
+          }
+
+          if (!foundUnread) {
+            setHasUnread(false);
           }
         }
       } catch {
-        // ignore
+        // Silently ignore
       }
     };
 
     checkUnread();
-    const interval = setInterval(checkUnread, 10000); // Check every 10 seconds
+    const interval = setInterval(checkUnread, 6000); // Check every 6 seconds
 
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [pathname, user?.id, setHasUnread]);
 
   return null;

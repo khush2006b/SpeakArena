@@ -16,7 +16,7 @@
  *     functions from hooks.
  */
 
-import { getAccessToken, getValidAccessToken } from "@/services/api/interceptors";
+import { getAccessToken, getValidAccessToken, setAccessToken, apiClient } from "@/services/api/interceptors";
 
 function getWsUrlBase(): string {
   const socketUrl = process.env["NEXT_PUBLIC_SOCKET_URL"]?.trim();
@@ -113,8 +113,32 @@ class ReconnectingWebSocket {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event: CloseEvent) => {
       this.cleanup();
+
+      // If closed due to token authentication failure (4001 / 1008)
+      if (event?.code === 4001 || event?.code === 1008) {
+        if (this.reconnectAttempts === 0) {
+          this.reconnectAttempts = 1;
+          apiClient.post("/api/v1/auth/refresh")
+            .then((res) => {
+              const newToken =
+                res.data?.tokens?.accessToken ??
+                res.data?.data?.access_token ??
+                res.data?.access_token;
+              if (newToken) {
+                setAccessToken(newToken);
+                this.reconnectAttempts = 0;
+                this.connect();
+              }
+            })
+            .catch(() => {
+              console.warn("Session expired. WebSocket disconnected.");
+            });
+        }
+        return;
+      }
+
       if (!this.isIntentionalDisconnect) {
         this.attemptReconnect();
       }
