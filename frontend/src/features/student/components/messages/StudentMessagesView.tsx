@@ -381,6 +381,12 @@ export function StudentMessagesView() {
       .then((fetchedMsgs) => {
         if (isMounted) {
           setMessages(fetchedMsgs);
+          if (fetchedMsgs.length > 0 && activeCourse?.id) {
+            const latest = fetchedMsgs[fetchedMsgs.length - 1] || fetchedMsgs[0];
+            if (latest?.id) {
+              localStorage.setItem(`sa_last_read_msg_${activeCourse.id}`, latest.id);
+            }
+          }
         }
       })
       .finally(() => {

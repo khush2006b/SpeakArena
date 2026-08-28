@@ -52,6 +52,43 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+export async function getValidAccessToken(): Promise<string | null> {
+  let token = getAccessToken();
+  if (!token) return null;
+
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payloadBase64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(payloadBase64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const payload = JSON.parse(jsonPayload);
+      const expMs = (payload.exp || 0) * 1000;
+
+      // If token is expired or expires in less than 45 seconds, silently refresh
+      if (Date.now() >= expMs - 45000) {
+        const { data } = await apiClient.post<any>(ENDPOINTS.AUTH.REFRESH);
+        const newAccessToken =
+          data?.tokens?.accessToken ??
+          data?.data?.access_token ??
+          data?.access_token ??
+          data?.data?.accessToken ?? null;
+        if (newAccessToken) {
+          setAccessToken(newAccessToken);
+          return newAccessToken;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Silent token refresh check warning:", err);
+  }
+  return token;
+}
+
 function processQueue(error: unknown, token: string | null): void {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {

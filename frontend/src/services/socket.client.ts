@@ -16,7 +16,7 @@
  *     functions from hooks.
  */
 
-import { getAccessToken } from "@/services/api/interceptors";
+import { getAccessToken, getValidAccessToken } from "@/services/api/interceptors";
 
 function getWsUrlBase(): string {
   const socketUrl = process.env["NEXT_PUBLIC_SOCKET_URL"]?.trim();
@@ -61,13 +61,13 @@ class ReconnectingWebSocket {
     this.url = url;
   }
 
-  public connect() {
+  public async connect() {
     this.isIntentionalDisconnect = false;
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    const token = getAccessToken();
+    const token = await getValidAccessToken();
     if (token && this.url) {
       try {
         const urlObj = new URL(this.url);
