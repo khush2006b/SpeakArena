@@ -14,14 +14,17 @@ export function CourseGrid({ courses }: CourseGridProps) {
 
   if (courses.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-        <div className="h-20 w-20 rounded-full flex items-center justify-center bg-card border border-border">
-          <BookOpenIcon className="h-10 w-10 opacity-50 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 rounded-3xl border border-dashed border-border/60 card-glass p-8">
+        <div className="h-16 w-16 rounded-full flex items-center justify-center bg-primary/10 border border-primary/20 text-primary">
+          <BookOpenIcon className="h-8 w-8 text-primary" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-foreground">No courses found</h3>
-          <p className="max-w-sm mt-2 text-muted-foreground">Try adjusting your filters or search query to find what you're looking for.</p>
+          <h3 className="text-xl font-bold text-foreground">No enrolled courses</h3>
+          <p className="max-w-sm mt-1 text-sm text-muted-foreground">You haven't enrolled in any courses yet. Browse our course catalog to get started!</p>
         </div>
+        <Button onClick={() => router.push("/student/explore")} className="btn-primary press-scale font-semibold mt-2">
+          Explore Courses
+        </Button>
       </div>
     );
   }

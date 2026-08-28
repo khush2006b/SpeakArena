@@ -52,7 +52,7 @@ export function DashboardHero() {
     fetchData();
   }, []);
 
-  const heroCourseUrl = hero.courseId ? `/student/courses/${hero.courseId}` : "/courses";
+  const heroCourseUrl = hero.courseId ? `/student/courses/${hero.courseId}` : "/student/explore";
   const hasEnrolledCourse = Boolean(hero.courseId);
 
   return (

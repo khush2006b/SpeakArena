@@ -98,7 +98,7 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
               Explore our Spoken English, Accent Reduction, and Communication courses to start your learning journey.
             </p>
           </div>
-          <Link href="/courses">
+          <Link href="/student/explore">
             <Button className="btn-primary press-scale font-semibold">
               Explore Courses <Compass className="ml-2 h-4 w-4" />
             </Button>
