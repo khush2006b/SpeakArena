@@ -4,20 +4,37 @@ import * as React from "react";
 import { LiveClassesHeader } from "./LiveClassesHeader";
 import { TodaySchedule } from "./TodaySchedule";
 import { LiveClassCard } from "./LiveClassCard";
-import { PreClassChecklist } from "./PreClassChecklist";
 import { RecordingsList } from "./RecordingsList";
 import { motion } from "framer-motion";
-import { useMeetingList } from "@/hooks/queries/useMeetingQueries";
+import { useMeetingList, useJoinMeeting } from "@/hooks/queries/useMeetingQueries";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { getMeetingStatus } from "@/lib/utils";
 
 export function LiveClassesDashboard() {
-  const [selectedClass, setSelectedClass] = React.useState<any | null>(null);
   const [nowMs, setNowMs] = React.useState<number>(Date.now());
 
   const { data, isLoading } = useMeetingList({ page: 1, pageSize: 50 });
   const meetings = data?.items || [];
+  const joinMutation = useJoinMeeting();
+
+  const handleJoinClass = (liveClass: any) => {
+    if (!liveClass?.id) return;
+    toast.info("Connecting to live class...");
+    joinMutation.mutate(liveClass.id, {
+      onSuccess: () => {
+        toast.success("Joining Google Meet...");
+      },
+      onError: (err: any) => {
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Could not join meeting. Please verify class schedule.";
+        toast.error(msg);
+      },
+    });
+  };
 
   // Real-time 5s ticker interval for status transitions
   React.useEffect(() => {
@@ -64,7 +81,7 @@ export function LiveClassesDashboard() {
     <div className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fade-up pb-20 bg-background min-h-screen">
       <LiveClassesHeader />
 
-      <TodaySchedule onJoinClick={setSelectedClass} meetings={meetings} />
+      <TodaySchedule onJoinClick={handleJoinClass} meetings={meetings} />
 
       <div className="mt-12">
         <h3 className="text-responsive-lg font-bold text-foreground mb-6">
@@ -91,7 +108,7 @@ export function LiveClassesDashboard() {
               <motion.div key={liveClass.id} variants={item}>
                 <LiveClassCard
                   liveClass={liveClass}
-                  onJoinClick={setSelectedClass}
+                  onJoinClick={handleJoinClass}
                 />
               </motion.div>
             ))}
@@ -101,13 +118,6 @@ export function LiveClassesDashboard() {
 
       <RecordingsList
         meetings={meetings.filter((m) => getMeetingStatus(m, nowMs) === "ENDED")}
-      />
-
-      {/* Join Pre-flight Experience Drawer */}
-      <PreClassChecklist
-        liveClass={selectedClass}
-        isOpen={selectedClass !== null}
-        onClose={() => setSelectedClass(null)}
       />
     </div>
   );

@@ -214,6 +214,12 @@ class AttendanceEvent(UUIDPrimaryKeyMixin, Base):
         nullable=False,
         index=True,
     )
+    student_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        default=None,
+    )
     event_type: Mapped[str] = mapped_column(
         String(10), nullable=False,
         comment="join | leave",

@@ -138,9 +138,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) DEFAULT NULL;",
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id UUID DEFAULT NULL;",
         "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS request_id VARCHAR(36) DEFAULT NULL;",
-        # ── Fix attendance_events session_attendance_id column mismatch ───────
+        # ── Fix attendance_events session_attendance_id column mismatch & student_id NOT NULL ───────
         "DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attendance_events' AND column_name='attendance_id') THEN ALTER TABLE attendance_events RENAME COLUMN attendance_id TO session_attendance_id; END IF; END $$;",
         "ALTER TABLE attendance_events ADD COLUMN IF NOT EXISTS session_attendance_id UUID REFERENCES session_attendance(id) ON DELETE CASCADE;",
+        "ALTER TABLE attendance_events ALTER COLUMN student_id DROP NOT NULL;",
         # ── notifications.actor_id missing from production DB ─────────────────
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id UUID DEFAULT NULL;",
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url VARCHAR(512) DEFAULT NULL;",

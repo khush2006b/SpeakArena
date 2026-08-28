@@ -6,12 +6,36 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/services/api/client";
 
+import { useJoinMeeting } from "@/hooks/queries/useMeetingQueries";
+import { toast } from "sonner";
+
 import { getMeetingStatus } from "@/lib/utils";
 
 export function NextLiveClassCard() {
   const [allMeetings, setAllMeetings] = React.useState<any[]>([]);
   const [nowMs, setNowMs] = React.useState<number>(Date.now());
   const [isLoading, setIsLoading] = React.useState(true);
+  const joinMutation = useJoinMeeting();
+
+  const handleJoin = (meeting: any) => {
+    if (!meeting?.id) {
+      window.location.href = '/student/live';
+      return;
+    }
+    toast.info("Connecting to live class...");
+    joinMutation.mutate(meeting.id, {
+      onSuccess: () => {
+        toast.success("Joining Google Meet...");
+      },
+      onError: (err: any) => {
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Could not join meeting.";
+        toast.error(msg);
+      },
+    });
+  };
 
   // 1. Fetch meeting list
   React.useEffect(() => {
@@ -107,11 +131,8 @@ export function NextLiveClassCard() {
             {/* Actions */}
             <div className="pt-6 mt-auto flex items-center gap-3">
               <Button 
-                onClick={() => {
-                  const link = activeMeeting.meet_link || activeMeeting.meetLink;
-                  if (link) window.open(link, '_blank');
-                  else window.location.href = '/student/live';
-                }}
+                onClick={() => handleJoin(activeMeeting)}
+                disabled={joinMutation.isPending}
                 className="flex-1 shadow-lg transition-all font-extrabold press-scale text-white border-none"
                 style={{ 
                   borderRadius: 10,
