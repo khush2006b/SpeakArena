@@ -7,6 +7,7 @@ import { StudentHeader } from "@/features/student/components/layout/StudentHeade
 import { LearningProgressBar } from "@/features/student/components/layout/LearningProgressBar";
 import { QuickActionBar } from "@/features/student/components/layout/QuickActionBar";
 import { MobileBottomNav } from "@/features/student/components/layout/MobileBottomNav";
+import { ChatUnreadTracker } from "@/features/student/components/layout/ChatUnreadTracker";
 import { StudentRoute } from "@/components/guards/StudentRoute";
 
 export default function StudentLayout({
@@ -21,6 +22,7 @@ export default function StudentLayout({
 
   return (
     <StudentRoute>
+      <ChatUnreadTracker />
       <div className="flex h-screen w-full bg-background text-foreground transition-colors duration-200 overflow-hidden">
         
         {/* Top persistent progress tracking */}
