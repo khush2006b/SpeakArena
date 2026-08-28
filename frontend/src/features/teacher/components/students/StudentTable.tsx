@@ -38,6 +38,11 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
 
   const effectiveSearch = search || searchQuery || undefined;
 
+  // Reset to page 1 whenever filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [effectiveSearch, status, courseId]);
+
   const { data, isLoading } = useTeacherStudents(
     { page, pageSize: 20 },
     { search: effectiveSearch, status, courseId } as any,
@@ -336,21 +341,33 @@ export function StudentTable({ search, status, courseId }: StudentTableProps) {
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-white/[0.01]">
           <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
-            {data.total} total students
+            Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, data.total)} of {data.total} students
           </span>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-2">
             <button
-              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 transition-colors"
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}
             >
               Previous
             </button>
-            <span className="flex items-center px-2 text-sm font-bold tracking-widest text-muted-foreground uppercase">
-              {page} / {data.totalPages}
-            </span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-9 h-9 text-sm font-bold rounded-lg transition-colors ${
+                    p === page
+                      ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsla(270,80%,60%,0.4)]"
+                      : "border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
             <button
-              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 transition-colors"
               disabled={!data.hasNext}
               onClick={() => setPage((p) => p + 1)}
             >

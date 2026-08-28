@@ -24,9 +24,10 @@ export function StudentStats() {
   const { data: kpis } = useTeacherKPIs();
 
   const students = studentsData?.items ?? [];
+  // Use the server-reported total (not items.length which is page-limited)
   const totalStudents = studentsData?.total ?? students.length;
-  const activeCount = students.filter((s) => s.status === "ACTIVE").length;
-  const suspendedCount = students.filter((s) => s.status === "SUSPENDED" || s.status === "INACTIVE").length;
+  const activeCount = kpis?.activeCount ?? students.filter((s) => s.status === "ACTIVE").length;
+  const suspendedCount = kpis?.suspendedCount ?? students.filter((s) => s.status === "SUSPENDED" || s.status === "INACTIVE").length;
   const avgProgress = students.length > 0
     ? Math.round(students.reduce((acc, s) => acc + (s.progressPercent || 0), 0) / students.length)
     : 0;

@@ -158,8 +158,17 @@ export function StudentCard({ student }: { student: any }) {
 
 export function StudentGrid() {
   const searchQuery = useStudentStore((state) => state.searchQuery);
-  const { data, isLoading } = useTeacherStudents({ page: 1, pageSize: 100 }, { search: searchQuery || undefined } as any);
+  const [page, setPage] = React.useState(1);
+  const { data, isLoading } = useTeacherStudents(
+    { page, pageSize: 20 },
+    { search: searchQuery || undefined } as any
+  );
   const students = data?.items ?? [];
+
+  // Reset to page 1 when search changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   if (isLoading) {
     return (
@@ -183,11 +192,59 @@ export function StudentGrid() {
     );
   }
 
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? students.length;
+  const start = (page - 1) * 20 + 1;
+  const end = Math.min(page * 20, total);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pb-24">
-      {students.map((student, index) => (
-        <StudentCard key={student.id ? (student.enrollmentId ? `st-card-${student.id}-${student.enrollmentId}` : `st-card-${student.id}-${index}`) : `st-card-idx-${index}`} student={student} />
-      ))}
+    <div className="pb-24">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-6">
+        {students.map((student, index) => (
+          <StudentCard key={student.id ? (student.enrollmentId ? `st-card-${student.id}-${student.enrollmentId}` : `st-card-${student.id}-${index}`) : `st-card-idx-${index}`} student={student} />
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4 border-t border-white/5">
+          <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
+            Showing {start}–{end} of {total} students
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 transition-colors"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-9 h-9 text-sm font-bold rounded-lg transition-colors ${
+                    p === page
+                      ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsla(270,80%,60%,0.4)]"
+                      : "border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <button
+              className="px-4 py-2 text-sm font-semibold rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 transition-colors"
+              disabled={!data?.hasNext}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
