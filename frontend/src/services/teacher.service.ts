@@ -259,16 +259,22 @@ export const teacherService = {
       }
 
       const items = Array.from(studentMap.values());
-      const total = items.length;
+      const serverPagination = rawData?.pagination;
+      const total = serverPagination?.total ?? rawData?.total ?? items.length;
+      const page = pagination?.page ?? serverPagination?.page ?? 1;
+      const pageSize = pagination?.pageSize ?? serverPagination?.page_size ?? 20;
+      const totalPages = serverPagination?.total_pages ?? (Math.ceil(total / pageSize) || 1);
+      const hasNext = serverPagination?.has_next ?? (page * pageSize < total);
+      const hasPrev = serverPagination?.has_prev ?? (page > 1);
 
       return {
         items,
         total,
-        page: pagination?.page ?? 1,
-        pageSize: pagination?.pageSize ?? 20,
-        totalPages: Math.ceil(total / (pagination?.pageSize ?? 20)) || 1,
-        hasNext: (pagination?.page ?? 1) * (pagination?.pageSize ?? 20) < total,
-        hasPrev: (pagination?.page ?? 1) > 1,
+        page,
+        pageSize,
+        totalPages,
+        hasNext,
+        hasPrev,
       };
     } catch (err) {
       console.error("Failed to list students:", err);
