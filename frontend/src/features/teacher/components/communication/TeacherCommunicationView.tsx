@@ -21,6 +21,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Download,
+  Trash2,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -69,6 +70,7 @@ interface BackendMessage {
   content_type: string;
   is_pinned: boolean;
   is_announcement: boolean;
+  is_deleted?: boolean;
   attachments?: any[];
   created_at: string;
   sender?: BackendUser;
@@ -598,14 +600,28 @@ export function TeacherCommunicationView() {
         if (incoming && incoming.content) safeAppendMessage(incoming);
       };
 
+      const onMessageDeleted = (payload: any) => {
+        const messageId = payload?.message_id || payload?.id;
+        if (!messageId) return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, content: "[Message deleted]", is_deleted: true }
+              : m
+          )
+        );
+      };
+
       announcementRooms.forEach((r) => {
         connectChatSocket(r.id);
         getChatSocket(r.id).on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+        getChatSocket(r.id).on("message.deleted", onMessageDeleted);
       });
 
       return () => {
         announcementRooms.forEach((r) => {
           getChatSocket(r.id).off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+          getChatSocket(r.id).off("message.deleted", onMessageDeleted);
           disconnectChatSocket(r.id);
         });
       };
@@ -618,16 +634,31 @@ export function TeacherCommunicationView() {
         if (incoming && incoming.content) safeAppendMessage(incoming);
       };
 
+      const onMessageDeleted = (payload: any) => {
+        const messageId = payload?.message_id || payload?.id;
+        if (!messageId) return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, content: "[Message deleted]", is_deleted: true }
+              : m
+          )
+        );
+      };
+
       connectChatSocket(room.id);
       getChatSocket(room.id).on(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+      getChatSocket(room.id).on("message.deleted", onMessageDeleted);
 
       return () => {
         getChatSocket(room.id).off(socketEvents.chat.MESSAGE_RECEIVED, onMessageNew);
+        getChatSocket(room.id).off("message.deleted", onMessageDeleted);
         disconnectChatSocket(room.id);
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, announcementRooms, safeAppendMessage]);
+
 
   // ── Send Message ─────────────────────────────────────────────────────────────
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -868,6 +899,31 @@ export function TeacherCommunicationView() {
       setSlowMode(slowMode);
     }
   };
+
+  // ── Delete Message (teacher-only) ─────────────────────────────────────────────
+  const handleDeleteMessage = async (messageId: string, courseId: string) => {
+    // Optimistic UI: mark as deleted immediately
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, content: "[Message deleted]", is_deleted: true }
+          : m
+      )
+    );
+    try {
+      await apiClient.delete(`/api/v1/chat/${courseId}/messages/${messageId}`);
+    } catch {
+      // Revert optimistic update on failure
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, is_deleted: false } : m
+        )
+      );
+      toast.error("Failed to delete message.");
+    }
+  };
+
+
 
   // ── Header info per channel ────────────────────────────────────────────────
   const channelTitle =
@@ -1620,16 +1676,39 @@ export function TeacherCommunicationView() {
               const senderName = isMine
                 ? "You"
                 : msg.sender?.full_name || (msg.sender as any)?.name || "Student";
+              const isDeleted = Boolean(msg.is_deleted);
+
+              // Determine which courseId this message belongs to for the delete call
+              const msgCourseId =
+                activeChannel.type === "course"
+                  ? activeChannel.course.id
+                  : activeChannel.type === "dm"
+                  ? (activeChannel.student as any).course_id ||
+                    (activeChannel.student as any).courseId ||
+                    (courses.length > 0 ? courses[0].id : "")
+                  : courses.length > 0
+                  ? courses[0].id
+                  : "";
 
               return (
                 <div
                   key={msg.id || `msg-${idx}`}
+                  className="msg-group"
                   style={{
                     display: "flex",
                     flexDirection: isMine ? "row-reverse" : "row",
                     alignItems: "flex-start",
                     gap: 11,
                     animation: "fadeInUp 0.2s ease",
+                    position: "relative",
+                  }}
+                  onMouseEnter={(e) => {
+                    const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
+                    if (btn) btn.style.opacity = "1";
+                  }}
+                  onMouseLeave={(e) => {
+                    const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
+                    if (btn) btn.style.opacity = "0";
                   }}
                 >
                   <Avatar
@@ -1692,18 +1771,23 @@ export function TeacherCommunicationView() {
                         borderRadius: isMine
                           ? "14px 2px 14px 14px"
                           : "2px 14px 14px 14px",
-                        background: msg.is_announcement
+                        background: isDeleted
+                          ? "rgba(71,85,105,0.12)"
+                          : msg.is_announcement
                           ? "rgba(245,158,11,0.08)"
                           : isMine
                           ? "hsl(var(--primary))"
                           : "hsl(var(--border))",
-                        border: msg.is_announcement
+                        border: isDeleted
+                          ? "1px solid rgba(71,85,105,0.25)"
+                          : msg.is_announcement
                           ? "1px solid rgba(245,158,11,0.2)"
                           : isMine
                           ? "none"
                           : "1px solid hsl(var(--border))",
-                        color: "#f0f4f8",
-                        fontSize: 13,
+                        color: isDeleted ? "#64748b" : "#f0f4f8",
+                        fontSize: isDeleted ? 12 : 13,
+                        fontStyle: isDeleted ? "italic" : "normal",
                         lineHeight: 1.55,
                         wordBreak: "break-word",
                         boxShadow: isMine
@@ -1713,8 +1797,8 @@ export function TeacherCommunicationView() {
                     >
                       {msg.content}
 
-                      {/* Photo attachments */}
-                      {msg.attachments && msg.attachments.length > 0 && (
+                      {/* Photo attachments — hidden for deleted messages */}
+                      {!isDeleted && msg.attachments && msg.attachments.length > 0 && (
                         <div
                           style={{
                             display: "flex",
@@ -1758,6 +1842,36 @@ export function TeacherCommunicationView() {
                       )}
                     </div>
                   </div>
+
+                  {/* Delete button — teacher only, hidden until hover, not shown on already-deleted messages */}
+                  {!isDeleted && !msg.id.startsWith("temp-") && msgCourseId && (
+                    <button
+                      className="msg-delete-btn"
+                      title="Delete message"
+                      onClick={() => handleDeleteMessage(msg.id, msgCourseId)}
+                      style={{
+                        opacity: 0,
+                        transition: "opacity 0.15s",
+                        position: "absolute",
+                        top: 0,
+                        right: isMine ? "auto" : 4,
+                        left: isMine ? 4 : "auto",
+                        width: 28,
+                        height: 28,
+                        borderRadius: 8,
+                        background: "rgba(239,68,68,0.12)",
+                        border: "1px solid rgba(239,68,68,0.25)",
+                        color: "#f87171",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                    </button>
+                  )}
                 </div>
               );
             })

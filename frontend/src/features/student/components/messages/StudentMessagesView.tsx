@@ -1471,9 +1471,11 @@ export function StudentMessagesView() {
               const isTeacher =
                 ["teacher", "TEACHER"].includes(msg.sender?.role || "");
               const isSelf = msg.sender?.id === user?.id;
+              const isDeleted = Boolean(msg.is_deleted);
               const senderName = isSelf
                 ? "You"
                 : msg.sender?.full_name || "User";
+
 
               return (
                 <div
@@ -1544,18 +1546,23 @@ export function StudentMessagesView() {
                         borderRadius: isSelf
                           ? "18px 18px 4px 18px"
                           : "18px 18px 18px 4px",
-                        background: isSelf
+                        background: isDeleted
+                          ? "rgba(71,85,105,0.1)"
+                          : isSelf
                           ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
                           : msg.is_announcement || isTeacher
                           ? "rgba(99,102,241,0.12)"
                           : "rgba(255,255,255,0.06)",
-                        border: isSelf
+                        border: isDeleted
+                          ? "1px solid rgba(71,85,105,0.2)"
+                          : isSelf
                           ? "none"
                           : msg.is_announcement || isTeacher
                           ? "1px solid rgba(99,102,241,0.3)"
                           : "1px solid rgba(255,255,255,0.08)",
-                        color: "#e2e8f0",
-                        fontSize: 14,
+                        color: isDeleted ? "#64748b" : "#e2e8f0",
+                        fontSize: isDeleted ? 13 : 14,
+                        fontStyle: isDeleted ? "italic" : "normal",
                         lineHeight: 1.55,
                         wordBreak: "break-word",
                         boxShadow: isSelf
@@ -1563,7 +1570,7 @@ export function StudentMessagesView() {
                           : "0 2px 8px rgba(0,0,0,0.2)",
                       }}
                     >
-                      {msg.is_announcement && (
+                      {!isDeleted && msg.is_announcement && (
                         <div
                           style={{
                             display: "flex",
@@ -1581,8 +1588,8 @@ export function StudentMessagesView() {
                       )}
                       {msg.content}
 
-                      {/* Photo attachments */}
-                      {msg.attachments && msg.attachments.length > 0 && (
+                      {/* Photo attachments — hidden for deleted messages */}
+                      {!isDeleted && msg.attachments && msg.attachments.length > 0 && (
                         <div
                           style={{
                             display: "flex",
