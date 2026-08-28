@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/services/api/client";
+import { getCourseThumbnailUrl } from "@/lib/utils";
 
 interface CourseDetail {
   id: string;
@@ -78,29 +79,61 @@ export default function StudentCourseDetailPage() {
     setIsLoading(true);
     setError(null);
 
-    // Fetch course details, videos, and pdfs
+    // Fetch course details, videos, and pdfs using student-accessible endpoints
     Promise.all([
-      apiClient.get(`/api/v1/teacher/courses/${courseId}`).catch(() => null),
-      apiClient.get(`/api/v1/teacher/courses/${courseId}/videos`).catch(() => null),
-      apiClient.get(`/api/v1/teacher/courses/${courseId}/pdfs`).catch(() => null),
+      // 1. Course details (try student detail endpoint, fallback to explore catalog)
+      apiClient
+        .get(`/api/v1/courses/${courseId}`)
+        .then((res) => res.data?.data ?? res.data)
+        .catch(async () => {
+          const exploreRes = await apiClient.get("/api/v1/courses/explore?page=1&page_size=100");
+          const items = exploreRes.data?.items ?? exploreRes.data?.data ?? exploreRes.data ?? [];
+          return (
+            items.find(
+              (c: any) =>
+                String(c.id) === String(courseId) || String(c.course_id) === String(courseId)
+            ) || null
+          );
+        }),
+      // 2. Videos (graceful fallback)
+      apiClient
+        .get(`/api/v1/courses/${courseId}/videos`)
+        .then((res) => res.data?.data ?? res.data)
+        .catch(() => []),
+      // 3. PDFs (graceful fallback)
+      apiClient
+        .get(`/api/v1/courses/${courseId}/pdfs`)
+        .then((res) => res.data?.data ?? res.data)
+        .catch(() => []),
     ])
-      .then(([courseRes, videosRes, pdfsRes]) => {
-        const courseData = courseRes?.data?.data ?? courseRes?.data;
+      .then(([courseData, videoList, pdfList]) => {
         if (courseData) {
-          setCourse(courseData);
+          const resolvedThumb = getCourseThumbnailUrl(courseData);
+          setCourse({
+            id: String(courseData.id || courseData.course_id || courseId),
+            title: courseData.title || "Course Details",
+            description: courseData.description || courseData.short_description || "",
+            level: courseData.level || "All Levels",
+            category: courseData.category || "General",
+            thumbnail_r2_key: resolvedThumb,
+            teacher_name:
+              courseData.teacher_name ||
+              courseData.teacherName ||
+              courseData.teacher?.full_name ||
+              "SpeakArena Instructor",
+            total_lectures: courseData.total_lectures || 0,
+            ...courseData,
+          });
         } else {
           setError("Course details not found.");
         }
 
-        const videoList = videosRes?.data?.data ?? videosRes?.data ?? [];
         if (Array.isArray(videoList)) {
           setVideos(videoList);
           if (videoList.length > 0) {
             setActiveVideo(videoList[0]);
           }
         }
-
-        const pdfList = pdfsRes?.data?.data ?? pdfsRes?.data ?? [];
         if (Array.isArray(pdfList)) {
           setPdfs(pdfList);
         }
