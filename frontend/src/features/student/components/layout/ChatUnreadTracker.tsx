@@ -31,6 +31,11 @@ export function ChatUnreadTracker() {
     const currentUserId = String(user.id);
 
     const checkAllChannels = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      if (!useAuthStore.getState().user?.id) return;
+
       try {
         // Step 1: Server-authoritative backend endpoint
         const unreadRes = await apiClient.get("/api/v1/chat/unread");
@@ -123,7 +128,7 @@ export function ChatUnreadTracker() {
     };
 
     checkAllChannels();
-    const interval = setInterval(checkAllChannels, 6000);
+    const interval = setInterval(checkAllChannels, 15000);
 
     return () => clearInterval(interval);
   }, [pathname, user?.id, setChannelUnread]);

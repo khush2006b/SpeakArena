@@ -754,10 +754,10 @@ class RefreshTokenService:
 
             diff_seconds = abs((now - rev_at).total_seconds())
 
-            # If revoked within the last 30 seconds, treat as concurrent client request race condition
-            if diff_seconds < 30:
+            # If revoked within the last 120 seconds, treat as concurrent client request race condition
+            if diff_seconds < 120:
                 logger.info(
-                    "Refresh token reuse within 30s grace period (concurrent request race).",
+                    "Refresh token reuse within 120s grace period (concurrent request race).",
                     extra={"user_id": str(rt_record.user_id), "token_id": str(rt_record.id)},
                 )
                 user = await self._user_repo.get_by_id(rt_record.user_id)
@@ -777,20 +777,13 @@ class RefreshTokenService:
                     )
                 raise InvalidRefreshTokenError()
 
-            # A revoked token was presented long after rotation. Theft signal -> revoke all sessions.
-            await self._rt_repo.revoke_all_for_user(rt_record.user_id, now)
-            await self._session_repo.deactivate_all_for_user(rt_record.user_id)
-            await RedisOps.set_str(
-                redis,
-                RedisKeys.user_revoked_before(str(rt_record.user_id)),
-                now.isoformat(),
-                ex=REFRESH_TOKEN_REMEMBER_ME_TTL_SECONDS,
-            )
-            logger.critical(
-                "Refresh token reuse detected — all sessions revoked.",
+            # Stale token presented outside 120s grace period — return invalid without nuking all other active sessions
+            logger.warning(
+                "Stale refresh token presented outside 120s grace period (diff=%ss).",
+                diff_seconds,
                 extra={"user_id": str(rt_record.user_id), "token_id": str(rt_record.id)},
             )
-            raise RefreshTokenReuseError()
+            raise InvalidRefreshTokenError()
 
         # ── 4. Expiry check ────────────────────────────────────────────────
         if not rt_record.is_active:

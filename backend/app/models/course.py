@@ -27,7 +27,7 @@ from sqlalchemy import (
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 TIMESTAMPTZ = TIMESTAMP(timezone=True)  # noqa: N816
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from app.database import Base
 from app.models.base import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
@@ -251,8 +251,15 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     assignments: Mapped[list[Assignment]] = relationship(
         "Assignment", back_populates="course", lazy="raise"
     )
+    chat_rooms: Mapped[list[ChatRoom]] = relationship(
+        "ChatRoom", back_populates="course", lazy="raise"
+    )
     chat_room: Mapped[Optional[ChatRoom]] = relationship(
-        "ChatRoom", back_populates="course", uselist=False, lazy="selectin", order_by="ChatRoom.created_at.desc()"
+        "ChatRoom",
+        primaryjoin="and_(Course.id == foreign(ChatRoom.course_id), ChatRoom.room_type == 'general')",
+        uselist=False,
+        lazy="selectin",
+        viewonly=True,
     )
 
     def __repr__(self) -> str:

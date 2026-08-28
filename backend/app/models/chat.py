@@ -67,7 +67,7 @@ class ChatRoom(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     # --- Relationships ---
-    course: Mapped[Course] = relationship("Course", back_populates="chat_room")
+    course: Mapped[Course] = relationship("Course", back_populates="chat_rooms")
     messages: Mapped[list[Message]] = relationship(
         "Message",
         back_populates="chat_room",

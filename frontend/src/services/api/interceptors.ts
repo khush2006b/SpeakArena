@@ -24,11 +24,43 @@ if (typeof window !== "undefined") {
     accessToken = localStorage.getItem("sa_at");
   } catch {}
 }
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const { data } = await apiClient.post<any>(ENDPOINTS.AUTH.REFRESH);
+      const newAccessToken =
+        data?.tokens?.accessToken ??
+        data?.data?.access_token ??
+        data?.access_token ??
+        data?.data?.accessToken ??
+        null;
+
+      if (!newAccessToken) {
+        throw new Error("No access token in refresh response");
+      }
+
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    } catch (refreshError: unknown) {
+      setAccessToken(null);
+      useAuthStore.getState().clearUser();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?reason=session_expired";
+      }
+      throw refreshError;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
@@ -69,35 +101,15 @@ export async function getValidAccessToken(): Promise<string | null> {
       const payload = JSON.parse(jsonPayload);
       const expMs = (payload.exp || 0) * 1000;
 
-      // If token is expired or expires in less than 45 seconds, silently refresh
+      // If token is expired or expires in less than 45 seconds, silently refresh via single mutex
       if (Date.now() >= expMs - 45000) {
-        const { data } = await apiClient.post<any>(ENDPOINTS.AUTH.REFRESH);
-        const newAccessToken =
-          data?.tokens?.accessToken ??
-          data?.data?.access_token ??
-          data?.access_token ??
-          data?.data?.accessToken ?? null;
-        if (newAccessToken) {
-          setAccessToken(newAccessToken);
-          return newAccessToken;
-        }
+        return await refreshAccessToken();
       }
     }
   } catch (err) {
     console.warn("Silent token refresh check warning:", err);
   }
   return token;
-}
-
-function processQueue(error: unknown, token: string | null): void {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else if (token) {
-      resolve(token);
-    }
-  });
-  failedQueue = [];
 }
 
 // ---------------------------------------------------------------------------
@@ -133,51 +145,21 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // --- 401: Attempt token refresh ---
+    // --- 401: Attempt token refresh via single mutex promise ---
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
       originalRequest.url !== ENDPOINTS.AUTH.REFRESH
     ) {
-      if (isRefreshing) {
-        // Queue requests while refresh is in progress
-        return new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.set("Authorization", `Bearer ${token}`);
-            return apiClient(originalRequest);
-          })
-          .catch((err: unknown) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
       try {
-        const { data } = await apiClient.post<any>(ENDPOINTS.AUTH.REFRESH);
-        // Backend returns { user, tokens: { accessToken } } — support multiple shapes
-        const newAccessToken =
-          data?.tokens?.accessToken ??
-          data?.data?.access_token ??
-          data?.access_token ??
-          data?.data?.accessToken ?? null;
-        if (!newAccessToken) throw new Error("No access token in refresh response");
-        setAccessToken(newAccessToken);
-        processQueue(null, newAccessToken);
-        originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
-        return apiClient(originalRequest);
-      } catch (refreshError: unknown) {
-        processQueue(refreshError, null);
-        setAccessToken(null);
-        useAuthStore.getState().clearUser();
-        // Redirect to login — handled by AuthProvider on next render
-        if (typeof window !== "undefined") {
-          window.location.href = "/login?reason=session_expired";
+        const newAccessToken = await refreshAccessToken();
+        if (newAccessToken) {
+          originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
+          return apiClient(originalRequest);
         }
+      } catch (refreshError: unknown) {
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 
