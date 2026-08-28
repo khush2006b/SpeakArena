@@ -66,20 +66,21 @@ export function NextLiveClassCard() {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold border ${
-                  currentStatus === "LIVE"
-                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                    : "text-primary badge-primary bg-primary/10 border-primary/25"
-                }`}
-                style={{ borderRadius: 100 }}
+                className="inline-flex items-center px-3 py-1 text-xs font-extrabold border"
+                style={{
+                  borderRadius: 100,
+                  background: "rgba(37, 99, 235, 0.25)",
+                  color: "#60a5fa",
+                  borderColor: "rgba(59, 130, 246, 0.5)",
+                }}
               >
                 <span className="relative flex h-2 w-2 mr-2">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentStatus === "LIVE" ? "bg-blue-500" : "bg-primary"}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus === "LIVE" ? "bg-blue-500" : "bg-primary"}`}></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                 </span>
-                {currentStatus === "LIVE" ? "LIVE NOW" : "Next Live Class"}
+                {currentStatus === "LIVE" ? "LIVE NOW" : "NEXT LIVE CLASS"}
               </div>
-              <span className="text-sm font-bold text-foreground">
+              <span className="text-sm font-bold" style={{ color: "#60a5fa" }}>
                 {currentStatus === "LIVE" ? "Live Now" : "Upcoming"}
               </span>
             </div>
@@ -111,11 +112,14 @@ export function NextLiveClassCard() {
                   if (link) window.open(link, '_blank');
                   else window.location.href = '/student/live';
                 }}
-                className={`flex-1 shadow-md transition-all font-bold press-scale ${
-                  currentStatus === "LIVE" ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30" : "btn-primary"
-                }`}
-                style={{ borderRadius: 10 }}>
-                <Video className="mr-2 h-4 w-4" />
+                className="flex-1 shadow-lg transition-all font-extrabold press-scale text-white border-none"
+                style={{ 
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)",
+                  color: "#ffffff",
+                  boxShadow: "0 4px 16px rgba(37, 99, 235, 0.4)",
+                }}>
+                <Video className="mr-2 h-4 w-4 fill-current text-white" />
                 {currentStatus === "LIVE" ? "Join Class Now" : "Join Class"}
               </Button>
               <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground btn-outline press-scale" title="Add to Calendar"
