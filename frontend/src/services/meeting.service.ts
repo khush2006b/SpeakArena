@@ -210,10 +210,22 @@ export const meetingService = {
    * Server validates enrollment before returning the Meet link.
    */
   join: async (id: string): Promise<JoinMeetingResponse> => {
-    const { data } = await apiClient.post<APIResponse<JoinMeetingResponse>>(
-      ENDPOINTS.MEETINGS.JOIN(id),
-    );
-    return data.data;
+    const res = await apiClient.post<any>(ENDPOINTS.MEETINGS.JOIN(id));
+    const rawData = res.data?.data ?? res.data;
+    const meetLink =
+      rawData?.meetLink ||
+      rawData?.meet_link ||
+      rawData?.provider_data?.join_url ||
+      rawData?.provider_data?.meet_link ||
+      rawData?.join_url ||
+      "";
+
+    return {
+      meetLink,
+      isHost: Boolean(rawData?.isHost || rawData?.is_host),
+      meeting: rawData?.meeting ? normalizeMeeting(rawData.meeting) : (rawData as any),
+      ...rawData,
+    };
   },
 
   /** GET /meetings/:id/attendance */

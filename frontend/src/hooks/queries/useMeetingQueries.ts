@@ -94,9 +94,20 @@ export function useDeleteMeeting() {
 export function useJoinMeeting() {
   return useMutation({
     mutationFn: (id: string) => meetingService.join(id),
-    onSuccess: (data) => {
-      // Open Meet in a new tab — avoids SPA navigation interference
-      window.open(data.meetLink, "_blank", "noopener,noreferrer");
+    onSuccess: (data: any) => {
+      const link =
+        data?.meetLink ||
+        data?.meet_link ||
+        data?.provider_data?.join_url ||
+        data?.provider_data?.meet_link ||
+        data?.join_url;
+
+      if (link && typeof link === "string" && link.startsWith("http")) {
+        window.open(link, "_blank", "noopener,noreferrer");
+      } else {
+        const { toast } = require("sonner");
+        toast.error("Google Meet link not found for this session.");
+      }
     },
   });
 }
