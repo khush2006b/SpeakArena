@@ -28,30 +28,7 @@ export function AppearanceSettings() {
         <p className="text-[15px] font-semibold text-muted-foreground mt-2">Customize how SpeakArena looks and feels on your device.</p>
       </div>
 
-      <div className="card-glass p-6 sm:p-8">
-        <div className="mb-8 border-b border-border/40 pb-6">
-          <h3 className="text-xl font-extrabold tracking-tight flex items-center gap-3 text-foreground">
-            <Sparkles className="h-5 w-5 text-yellow-400" />
-            Theme Preferences
-          </h3>
-          <p className="text-sm font-semibold text-muted-foreground mt-2">Select a theme or sync with your system preferences.</p>
-        </div>
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-1 gap-6 max-w-sm">
 
-            <div
-              className="group flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-violet-500 bg-violet-500/5 cursor-default"
-            >
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg bg-slate-900 border-2 border-violet-500/50">
-                <Moon className="h-8 w-8 text-violet-400" />
-              </div>
-              <span className="text-[15px] font-bold tracking-wide text-violet-400">Dark Mode (Default & Active)</span>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">SpeakArena is exclusively crafted for Dark Mode</p>
-            </div>
-
-          </div>
-        </div>
-      </div>
 
       <div className="card-glass p-6 sm:p-8">
         <div className="mb-8 border-b border-border/40 pb-6">
