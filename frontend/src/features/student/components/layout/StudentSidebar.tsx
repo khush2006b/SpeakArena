@@ -10,6 +10,7 @@ import {
   ChevronRight, ChevronLeft, Mic2, X, ClipboardCheck,
 } from "lucide-react";
 import { useStudentLayoutStore } from "@/stores/student-layout.store";
+import { useChatStore } from "@/stores/chat.store";
 
 const NAV_ITEMS = [
   {
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
 export function StudentSidebar() {
   const pathname = usePathname();
   const { isSidebarExpanded, toggleSidebar } = useStudentLayoutStore();
+  const { hasUnread } = useChatStore();
   const [isHovered, setIsHovered] = React.useState(false);
   const isExpanded = isSidebarExpanded || isHovered;
 
@@ -149,6 +151,12 @@ export function StudentSidebar() {
                         </motion.span>
                       )}
                     </AnimatePresence>
+                    {item.name === "Messages" && hasUnread && (
+                      <span style={{
+                        width: 8, height: 8, borderRadius: "50%", background: "#ef4444",
+                        marginLeft: "auto", flexShrink: 0
+                      }} className="animate-pulse" />
+                    )}
                   </div>
                 </Link>
               );

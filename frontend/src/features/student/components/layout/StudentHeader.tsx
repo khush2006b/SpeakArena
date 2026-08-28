@@ -2,13 +2,15 @@
 
 import React from "react";
 import Link from "next/link";
-import { Bell, Menu } from "lucide-react";
+import { Bell, Menu, MessageSquare } from "lucide-react";
 import { useStudentLayoutStore } from "@/stores/student-layout.store";
+import { useChatStore } from "@/stores/chat.store";
 import { ProfileMenu } from "./ProfileMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function StudentHeader() {
   const { toggleSidebar } = useStudentLayoutStore();
+  const { hasUnread } = useChatStore();
 
   return (
     <header
@@ -39,22 +41,36 @@ export function StudentHeader() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+          {/* Messages / Chat */}
+          <Link
+            href="/student/messages"
+            className="btn-ghost press-scale flex items-center justify-center"
+            style={{ position: "relative", width: 44, height: 44, padding: 0, borderRadius: 10 }}
+            aria-label="Messages & Chat"
+            title="Messages & Chat"
+          >
+            <MessageSquare style={{ width: 17, height: 17 }} />
+            {hasUnread && (
+              <span style={{
+                position: "absolute", top: 9, right: 9, width: 8, height: 8,
+                borderRadius: "50%", background: "#ef4444",
+                border: "2px solid hsl(var(--card))",
+              }} className="animate-pulse" />
+            )}
+          </Link>
+
           {/* Theme Toggle */}
           <ThemeToggle />
 
           {/* Notifications */}
-          <button
-            className="btn-ghost press-scale"
-            style={{ position: "relative", width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10 }}
+          <Link
+            href="/student/notifications"
+            className="btn-ghost press-scale flex items-center justify-center"
+            style={{ position: "relative", width: 44, height: 44, padding: 0, borderRadius: 10 }}
             aria-label="Notifications"
           >
             <Bell style={{ width: 17, height: 17 }} />
-            <span style={{
-              position: "absolute", top: 9, right: 9, width: 7, height: 7,
-              borderRadius: "50%", background: "#ef4444",
-              border: "2px solid hsl(var(--card))",
-            }} />
-          </button>
+          </Link>
 
           {/* Divider */}
           <div className="hidden sm:block" style={{ width: 1, height: 24, background: "hsl(var(--border))" }} />

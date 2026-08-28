@@ -31,6 +31,7 @@ interface ChatState {
   connectionStatus: WSConnectionStatus;
   optimisticMessages: OptimisticMessage[];
   typingUsers: TypingUser[];
+  hasUnread: boolean;
 }
 
 interface ChatActions {
@@ -44,6 +45,8 @@ interface ChatActions {
   setTypingUsers: (users: TypingUser[]) => void;
   addTypingUser: (user: TypingUser) => void;
   removeTypingUser: (userId: string) => void;
+  setHasUnread: (hasUnread: boolean) => void;
+  clearUnread: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -53,10 +56,13 @@ export const useChatStore = create<ChatStore>()((set) => ({
   connectionStatus: "idle",
   optimisticMessages: [],
   typingUsers: [],
+  hasUnread: false,
 
   setActiveRoom: (roomId) => set({ activeRoomId: roomId }),
   clearActiveRoom: () => set({ activeRoomId: null, connectionStatus: "idle", optimisticMessages: [], typingUsers: [] }),
   setConnectionStatus: (status) => set({ connectionStatus: status }),
+  setHasUnread: (hasUnread) => set({ hasUnread }),
+  clearUnread: () => set({ hasUnread: false }),
 
   addOptimisticMessage: (message) =>
     set((s) => ({

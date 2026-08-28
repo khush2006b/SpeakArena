@@ -8,10 +8,14 @@ import { apiClient } from "@/services/api/client";
 
 import { useJoinMeeting } from "@/hooks/queries/useMeetingQueries";
 import { toast } from "sonner";
+import { useChatStore } from "@/stores/chat.store";
+import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 
 import { getMeetingStatus } from "@/lib/utils";
 
 export function NextLiveClassCard() {
+  const { hasUnread } = useChatStore();
   const [allMeetings, setAllMeetings] = React.useState<any[]>([]);
   const [nowMs, setNowMs] = React.useState<number>(Date.now());
   const [isLoading, setIsLoading] = React.useState(true);
@@ -143,7 +147,21 @@ export function NextLiveClassCard() {
                 <Video className="mr-2 h-4 w-4 fill-current text-white" />
                 {currentStatus === "LIVE" ? "Join Class Now" : "Join Class"}
               </Button>
-              <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground btn-outline press-scale" title="Add to Calendar"
+              <Link href={`/student/messages?courseId=${activeMeeting.course_id || activeMeeting.courseId || ""}`}>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="shrink-0 text-muted-foreground btn-outline press-scale relative" 
+                  title="Class Chat"
+                  style={{ borderRadius: 10 }}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {hasUnread && (
+                    <span style={{ position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} className="animate-pulse" />
+                  )}
+                </Button>
+              </Link>
+              <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground btn-outline press-scale" title="Schedule"
                       style={{ borderRadius: 10 }}>
                 <Calendar className="h-4 w-4" />
               </Button>
