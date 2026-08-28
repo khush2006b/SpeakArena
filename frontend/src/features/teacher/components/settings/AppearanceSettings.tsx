@@ -37,49 +37,17 @@ export function AppearanceSettings() {
           <p className="text-sm font-semibold text-muted-foreground mt-2">Select a theme or sync with your system preferences.</p>
         </div>
         <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-1 gap-6 max-w-sm">
 
-            <button
-              onClick={() => setTheme("light")}
-              className={cn("group flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300 hover-lift press-scale",
-                theme === "light" ? "border-violet-500 bg-violet-500/5" : "border-border/40 bg-card/30 hover:bg-card/60 hover:border-border/60"
-              )}
+            <div
+              className="group flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-violet-500 bg-violet-500/5 cursor-default"
             >
-              <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-500 group-hover:scale-110 shadow-lg",
-                theme === "light" ? "bg-white border-2 border-violet-500/20" : "bg-slate-100 border border-slate-200"
-              )}>
-                <Sun className={cn("h-8 w-8", theme === "light" ? "text-violet-500" : "text-slate-500")} />
+              <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg bg-slate-900 border-2 border-violet-500/50">
+                <Moon className="h-8 w-8 text-violet-400" />
               </div>
-              <span className={cn("text-[15px] font-bold tracking-wide", theme === "light" ? "text-violet-400" : "text-muted-foreground group-hover:text-foreground")}>Light</span>
-            </button>
-
-            <button
-              onClick={() => setTheme("dark")}
-              className={cn("group flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300 hover-lift press-scale",
-                theme === "dark" ? "border-violet-500 bg-violet-500/5" : "border-border/40 bg-card/30 hover:bg-card/60 hover:border-border/60"
-              )}
-            >
-              <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-500 group-hover:scale-110 shadow-lg bg-slate-900",
-                theme === "dark" ? "border-2 border-violet-500/50" : "border border-slate-800"
-              )}>
-                <Moon className={cn("h-8 w-8", theme === "dark" ? "text-violet-400" : "text-slate-400")} />
-              </div>
-              <span className={cn("text-[15px] font-bold tracking-wide", theme === "dark" ? "text-violet-400" : "text-muted-foreground group-hover:text-foreground")}>Dark</span>
-            </button>
-
-            <button
-              onClick={() => setTheme("system")}
-              className={cn("group flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300 hover-lift press-scale",
-                theme === "system" ? "border-violet-500 bg-violet-500/5" : "border-border/40 bg-card/30 hover:bg-card/60 hover:border-border/60"
-              )}
-            >
-              <div className={cn("h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-800 flex items-center justify-center mb-4 transition-transform duration-500 group-hover:scale-110 shadow-lg",
-                theme === "system" ? "border-2 border-violet-500/50" : "border border-slate-700"
-              )}>
-                <Monitor className={cn("h-8 w-8", theme === "system" ? "text-foreground" : "text-slate-300")} />
-              </div>
-              <span className={cn("text-[15px] font-bold tracking-wide", theme === "system" ? "text-violet-400" : "text-muted-foreground group-hover:text-foreground")}>System Sync</span>
-            </button>
+              <span className="text-[15px] font-bold tracking-wide text-violet-400">Dark Mode (Default & Active)</span>
+              <p className="text-xs text-muted-foreground mt-1 font-medium">SpeakArena is exclusively crafted for Dark Mode</p>
+            </div>
 
           </div>
         </div>

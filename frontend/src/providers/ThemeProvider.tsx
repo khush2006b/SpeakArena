@@ -22,13 +22,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   return (
     <NextThemeProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
-      value={{
-        light: "light",
-        dark: "dark",
-      }}
-      disableTransitionOnChange={false}
+      defaultTheme="dark"
+      forcedTheme="dark"
+      enableSystem={false}
+      disableTransitionOnChange
     >
       {children}
     </NextThemeProvider>

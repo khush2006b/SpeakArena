@@ -11,50 +11,9 @@
 
 @layer base {
   :root,
-  .light {
-    /* ── DAY MODE (LIGHT) ─────────────────────────────────── */
-    --background: 210 40% 98%;        /* #f8fafc */
-    --foreground: 222 84% 5%;         /* #0f172a */
-
-    --card: 0 0% 100%;                /* #ffffff */
-    --card-foreground: 222 84% 5%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 84% 5%;
-
-    --primary: 244 76% 55%;           /* #4f46e5 */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;  /* #64748b */
-
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214 32% 91%;            /* #e2e8f0 */
-    --input: 214 32% 91%;
-    --ring: 244 76% 55%;
-
-    --radius: 0.75rem;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 84% 5%;
-    --sidebar-primary: 244 76% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 244 76% 55%;
-  }
-
+  .light,
   .dark {
-    /* ── NIGHT MODE (DARK) ────────────────────────────────── */
+    /* ── SPEAKARENA EXCLUSIVE DARK MODE ───────────────────── */
     --background: 220 20% 5%;        /* #080c14 */
     --foreground: 0 0% 97%;
 
@@ -82,6 +41,8 @@
     --border: 222 14% 11%;           /* rgba(255,255,255,0.07) equivalent */
     --input: 222 14% 11%;
     --ring: 244 76% 55%;
+
+    --radius: 0.75rem;
 
     --sidebar-background: 220 20% 5%;
     --sidebar-foreground: 0 0% 97%;
