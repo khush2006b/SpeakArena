@@ -329,13 +329,9 @@ export function CourseResourcesSection({
                           {new Date(video.createdAt).toLocaleDateString()}
                         </span>
                       )}
-                      {video.isCompleted ? (
+                      {video.isCompleted && (
                         <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                           <CheckCircle2 size={12} /> Watched
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground border border-border/50">
-                          Unwatched
                         </span>
                       )}
 
@@ -444,9 +440,6 @@ export function CourseResourcesSection({
 
                     <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-5 text-xs text-muted-foreground shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
                       <span className="flex items-center gap-1 font-medium">
-                        {pdf.pageCount || 0} pages
-                      </span>
-                      <span className="flex items-center gap-1 font-medium">
                         <HardDrive size={12} className="text-muted-foreground/70" />
                         {formatSize(pdf.fileSizeBytes)}
                       </span>
@@ -456,13 +449,9 @@ export function CourseResourcesSection({
                           {new Date(pdf.createdAt).toLocaleDateString()}
                         </span>
                       )}
-                      {pdf.isCompleted ? (
+                      {pdf.isCompleted && (
                         <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                           <CheckCircle2 size={12} /> Read
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground border border-border/50">
-                          Unread
                         </span>
                       )}
 
@@ -509,7 +498,6 @@ export function CourseResourcesSection({
                           {pdf.title}
                         </h4>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground font-medium">
-                          <span>{pdf.pageCount || 0} pages</span>
                           <span className="flex items-center gap-1">
                             <HardDrive size={12} /> {formatSize(pdf.fileSizeBytes)}
                           </span>
