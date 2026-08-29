@@ -257,21 +257,6 @@ export function StudentMessagesView() {
         }
         apiClient.post("/api/v1/chat/read", { channel_key: key }).catch(() => {});
       }
-
-      // If opening general announcements, mark all enrolled courses announcement keys read
-      const currentCourses = coursesRef.current;
-      if (channel.type === "announcements" && currentCourses.length > 0) {
-        currentCourses.forEach((c) => {
-          if (c?.id) {
-            const annKey = `course_announcements:${c.id}`;
-            markChannelRead(annKey);
-            if (typeof window !== "undefined") {
-              localStorage.setItem(`sa_read_ts_${annKey}`, String(Date.now()));
-            }
-            apiClient.post("/api/v1/chat/read", { channel_key: annKey }).catch(() => {});
-          }
-        });
-      }
     },
     [markChannelRead]
   );
@@ -421,7 +406,13 @@ export function StudentMessagesView() {
           if (fetchedMsgs.length > 0 && activeCourse?.id) {
             const latest = fetchedMsgs[fetchedMsgs.length - 1] || fetchedMsgs[0];
             if (latest?.id) {
-              if (activeChannel.type === "course_announcements" || activeChannel.type === "announcements") {
+              if (activeChannel.type === "announcements") {
+                const k = "announcements";
+                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
+                localStorage.setItem(k, latest.id);
+                markChannelRead(k);
+                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
+              } else if (activeChannel.type === "course_announcements") {
                 const k = `course_announcements:${activeCourse.id}`;
                 localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
                 localStorage.setItem(k, latest.id);
@@ -506,18 +497,28 @@ export function StudentMessagesView() {
 
       if (msg.is_announcement) {
         const crsId = msg.course_id || (msg as any).courseId || (currentRoom?.course_id);
-        const isLookingAtThisAnn =
-          ch.type === "announcements" ||
-          (ch.type === "course_announcements" &&
-            (!currentRoom?.id || !msg.chat_room_id || String(msg.chat_room_id).toLowerCase() === String(currentRoom.id).toLowerCase()));
+        const rType = (msg as any).room_type || currentRoom?.room_type;
+        const isGlobal = rType === "global_announcement";
 
-        if (!isLookingAtThisAnn) {
-          if (crsId) {
-            useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
+        if (isGlobal) {
+          const isLookingAtGeneralAnn = ch.type === "announcements";
+          if (!isLookingAtGeneralAnn) {
+            useChatStore.getState().setChannelUnread("announcements", true);
+            toast.info(`New Announcement: ${msg.content.slice(0, 40)}`);
+            return;
           }
-          useChatStore.getState().setChannelUnread("announcements", true);
-          toast.info(`New Announcement: ${msg.content.slice(0, 40)}`);
-          return;
+        } else {
+          const isLookingAtCourseAnn =
+            ch.type === "course_announcements" &&
+            (!currentRoom?.id || !msg.chat_room_id || String(msg.chat_room_id).toLowerCase() === String(currentRoom.id).toLowerCase());
+
+          if (!isLookingAtCourseAnn) {
+            if (crsId) {
+              useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
+            }
+            toast.info(`New Course Announcement: ${msg.content.slice(0, 40)}`);
+            return;
+          }
         }
       } else if (!msg.recipient_id) {
         // General talk message
@@ -893,10 +894,7 @@ export function StudentMessagesView() {
                 }}
               />
               <span style={{ flex: 1 }}>Announcements</span>
-              {(unreadChannelKeys["announcements"] ||
-                Object.keys(unreadChannelKeys).some(
-                  (k) => k.startsWith("course_announcements:") && unreadChannelKeys[k]
-                )) && (
+              {Boolean(unreadChannelKeys["announcements"]) && (
                 <span
                   style={{
                     width: 7,

@@ -93,14 +93,10 @@ export function ChatUnreadTracker() {
             }
           } catch {}
 
-          // Check Announcements
+          // Check Course Announcements
           try {
-            const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&announcements_only=true`);
-            let annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
-            if (annMsgs.length === 0) {
-              const gannRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=global_announcement&announcements_only=true`);
-              annMsgs = gannRes.data?.data?.messages ?? gannRes.data?.messages ?? [];
-            }
+            const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
+            const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
             const otherAnn = annMsgs.filter((m: any) => {
               const sid = m.sender_id || m.sender?.id;
               return String(sid) !== currentUserId;
@@ -108,11 +104,26 @@ export function ChatUnreadTracker() {
             if (otherAnn.length > 0) {
               const latest = otherAnn[0];
               const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_course_announcements:${courseId}`) : null;
-              const isUnread = !lastRead || latest.id !== lastRead;
-              setChannelUnread(`course_announcements:${courseId}`, isUnread);
-              if (isUnread) setChannelUnread("announcements", true);
+              setChannelUnread(`course_announcements:${courseId}`, !lastRead || latest.id !== lastRead);
             } else {
               setChannelUnread(`course_announcements:${courseId}`, false);
+            }
+          } catch {}
+
+          // Check General Announcements
+          try {
+            const gannRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=global_announcement&announcements_only=true`);
+            const gannMsgs: any[] = gannRes.data?.data?.messages ?? gannRes.data?.messages ?? [];
+            const otherGann = gannMsgs.filter((m: any) => {
+              const sid = m.sender_id || m.sender?.id;
+              return String(sid) !== currentUserId;
+            });
+            if (otherGann.length > 0) {
+              const latest = otherGann[0];
+              const lastRead = typeof window !== "undefined" ? localStorage.getItem("sa_read_announcements") : null;
+              setChannelUnread("announcements", !lastRead || latest.id !== lastRead);
+            } else {
+              setChannelUnread("announcements", false);
             }
           } catch {}
 

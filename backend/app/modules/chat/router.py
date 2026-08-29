@@ -207,11 +207,12 @@ async def get_unread_summary(
             rooms = rooms_res.scalars().all()
 
             for room in rooms:
-                ck = (
-                    f"course_announcements:{room.course_id}"
-                    if (room.room_type in ("announcement", "global_announcement") or room.is_announcement_only)
-                    else f"course:{room.course_id}"
-                )
+                if room.room_type == "global_announcement":
+                    ck = "announcements"
+                elif room.room_type == "announcement" or room.is_announcement_only:
+                    ck = f"course_announcements:{room.course_id}"
+                else:
+                    ck = f"course:{room.course_id}"
 
                 msg_stmt = (
                     select(Message.id, Message.created_at)
@@ -263,12 +264,6 @@ async def get_unread_summary(
                     unread_channels[ck] = True
                 elif ck not in unread_channels:
                     unread_channels[ck] = False
-
-        # Add top-level aggregated announcements status
-        has_any_ann_unread = any(
-            v for k, v in unread_channels.items() if k.startswith("course_announcements:")
-        )
-        unread_channels["announcements"] = has_any_ann_unread
 
         # 2. Check Direct Messages (DMs) where actor is recipient
         dm_stmt = (
@@ -414,8 +409,7 @@ async def mark_chat_read(
                     room_stmt = select(ChatRoom.id).where(
                         ChatRoom.course_id.in_(target_cids),
                         ChatRoom.is_active == True,
-                        (ChatRoom.room_type.in_(("announcement", "global_announcement")))
-                        | (ChatRoom.is_announcement_only == True),
+                        ChatRoom.room_type == "global_announcement",
                     )
                     r_res = await db.execute(room_stmt)
                     for rid in r_res.scalars().all():
@@ -435,8 +429,8 @@ async def mark_chat_read(
                     )
                     if is_ann:
                         room_stmt = room_stmt.where(
-                            ChatRoom.room_type.in_(("announcement", "global_announcement"))
-                            | (ChatRoom.is_announcement_only == True)
+                            (ChatRoom.room_type == "announcement")
+                            | ((ChatRoom.is_announcement_only == True) & (ChatRoom.room_type != "global_announcement"))
                         )
                     else:
                         room_stmt = room_stmt.where(ChatRoom.room_type == "general")

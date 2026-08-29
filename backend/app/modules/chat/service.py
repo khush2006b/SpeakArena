@@ -547,6 +547,8 @@ class MessageService:
         return {
             "id": str(message.id),
             "chat_room_id": str(message.chat_room_id),
+            "room_type": room.room_type,
+            "course_id": str(room.course_id),
             "sender_id": str(self._actor.id),
             "recipient_id": str(message.recipient_id) if message.recipient_id else None,
             "sender": {
@@ -795,6 +797,8 @@ class MessageService:
         return {
             "id": message.id,
             "chat_room_id": message.chat_room_id,
+            "room_type": room.room_type,
+            "course_id": str(course_id),
             "sender": {
                 "id": self._actor.id,
                 "full_name": self._actor.full_name,
