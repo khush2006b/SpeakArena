@@ -617,11 +617,13 @@ export function TeacherCommunicationView() {
       setMessages(fetchedMsgs);
 
       // Determine first unread message
-      const lastReadTs = Number(typeof window !== "undefined" && key ? localStorage.getItem(`sa_read_ts_${key}`) || "0" : "0");
+      const rawTs = typeof window !== "undefined" && key ? localStorage.getItem(`sa_read_ts_${key}`) : null;
+      const lastReadTs = rawTs ? Number(rawTs) : 0;
+      const isValidTs = lastReadTs > 1577836800000;
       const myId = String((user as any)?.id || "").toLowerCase();
 
       let firstUnread: BackendMessage | null = null;
-      if (lastReadTs > 0 && fetchedMsgs.length > 0) {
+      if (isValidTs && fetchedMsgs.length > 0) {
         for (let i = 0; i < fetchedMsgs.length; i++) {
           const m = fetchedMsgs[i];
           const senderId = String(m.sender?.id || m.sender_id || "").toLowerCase();
@@ -639,6 +641,7 @@ export function TeacherCommunicationView() {
       setFirstUnreadMessageId(targetUnreadId);
 
       const scrollToTarget = () => {
+        const container = chatContainerRef.current;
         if (targetUnreadId) {
           const el = document.getElementById(`unread-marker-${targetUnreadId}`) || document.getElementById(`msg-${targetUnreadId}`);
           if (el) {
@@ -646,13 +649,16 @@ export function TeacherCommunicationView() {
             return;
           }
         }
-        chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+        chatBottomRef.current?.scrollIntoView({ behavior: "auto" });
       };
 
       requestAnimationFrame(scrollToTarget);
-      setTimeout(scrollToTarget, 60);
-      setTimeout(scrollToTarget, 180);
-      setTimeout(scrollToTarget, 400);
+      setTimeout(scrollToTarget, 50);
+      setTimeout(scrollToTarget, 150);
+      setTimeout(scrollToTarget, 350);
 
       // Mark as read in store and storage
       if (key && fetchedMsgs.length > 0) {
@@ -679,6 +685,39 @@ export function TeacherCommunicationView() {
     setMessages([]);
     fetchMessages();
   }, [fetchMessages]);
+
+  // ── Layout Scroll Sync (ensures chat container is never stuck at top) ────────
+  useEffect(() => {
+    if (messagesLoading || messages.length === 0) return;
+
+    const performSync = () => {
+      const container = chatContainerRef.current;
+      if (firstUnreadMessageId) {
+        const el = document.getElementById(`unread-marker-${firstUnreadMessageId}`) || document.getElementById(`msg-${firstUnreadMessageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "auto", block: "start" });
+          return;
+        }
+      }
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+      chatBottomRef.current?.scrollIntoView({ behavior: "auto" });
+    };
+
+    performSync();
+    const f1 = requestAnimationFrame(performSync);
+    const t1 = setTimeout(performSync, 50);
+    const t2 = setTimeout(performSync, 150);
+    const t3 = setTimeout(performSync, 350);
+
+    return () => {
+      cancelAnimationFrame(f1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [messagesLoading, activeChannel, firstUnreadMessageId, messages.length]);
 
   // ── WebSocket connection ──────────────────────────────────────────────────────
   // For course/DM channels: connect to a single room.

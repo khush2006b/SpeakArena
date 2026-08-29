@@ -442,11 +442,13 @@ export function StudentMessagesView() {
           }
 
           // Read previous last-read timestamp & ID before marking this channel read
-          const lastReadTs = Number(typeof window !== "undefined" && k ? localStorage.getItem(`sa_read_ts_${k}`) || "0" : "0");
+          const rawTs = typeof window !== "undefined" && k ? localStorage.getItem(`sa_read_ts_${k}`) : null;
+          const lastReadTs = rawTs ? Number(rawTs) : 0;
+          const isValidTs = lastReadTs > 1577836800000; // valid timestamp after 2020
           const myId = String(userIdRef.current || "").toLowerCase();
 
           let firstUnread: BackendMessage | null = null;
-          if (lastReadTs > 0 && fetchedMsgs.length > 0) {
+          if (isValidTs && fetchedMsgs.length > 0) {
             for (let i = 0; i < fetchedMsgs.length; i++) {
               const m = fetchedMsgs[i];
               const senderId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
@@ -464,6 +466,7 @@ export function StudentMessagesView() {
           setFirstUnreadMessageId(targetUnreadId);
 
           const scrollToTarget = () => {
+            const container = chatContainerRef.current;
             if (targetUnreadId) {
               const el = document.getElementById(`unread-marker-${targetUnreadId}`) || document.getElementById(`msg-${targetUnreadId}`);
               if (el) {
@@ -471,14 +474,17 @@ export function StudentMessagesView() {
                 return;
               }
             }
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+            messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
           };
 
-          // Multi-stage scroll to ensure images & layout render without jumping to random spots
+          // Multi-stage scroll to ensure images & layout render without jumping to top or random spots
           requestAnimationFrame(scrollToTarget);
-          setTimeout(scrollToTarget, 60);
-          setTimeout(scrollToTarget, 180);
-          setTimeout(scrollToTarget, 400);
+          setTimeout(scrollToTarget, 50);
+          setTimeout(scrollToTarget, 150);
+          setTimeout(scrollToTarget, 350);
 
           // Now mark channel as read in store, storage, and server
           if (k && fetchedMsgs.length > 0) {
@@ -676,6 +682,39 @@ export function StudentMessagesView() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, setConnectionStatus, clearActiveRoom]);
+
+  // ── Layout Scroll Sync (ensures chat container is never stuck at top) ────────
+  useEffect(() => {
+    if (messagesLoading || messages.length === 0) return;
+
+    const performSync = () => {
+      const container = chatContainerRef.current;
+      if (firstUnreadMessageId) {
+        const el = document.getElementById(`unread-marker-${firstUnreadMessageId}`) || document.getElementById(`msg-${firstUnreadMessageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "auto", block: "start" });
+          return;
+        }
+      }
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    };
+
+    performSync();
+    const f1 = requestAnimationFrame(performSync);
+    const t1 = setTimeout(performSync, 50);
+    const t2 = setTimeout(performSync, 150);
+    const t3 = setTimeout(performSync, 350);
+
+    return () => {
+      cancelAnimationFrame(f1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [messagesLoading, activeChannel, firstUnreadMessageId, messages.length]);
 
   // ── Typing ────────────────────────────────────────────────────────────────────
   const handleTyping = useCallback(() => {
@@ -1726,7 +1765,7 @@ export function StudentMessagesView() {
           )}
 
           {/* Loading */}
-          {activeChannel && !roomError && (roomLoading || messagesLoading) && (
+          {activeChannel && !roomError && messagesLoading && (
             <div
               style={{
                 display: "flex",
@@ -1749,9 +1788,7 @@ export function StudentMessagesView() {
           )}
 
           {/* Messages */}
-          {!roomLoading &&
-            !messagesLoading &&
-            room &&
+          {!messagesLoading &&
             messages.map((msg, idx) => {
               const isTeacher =
                 ["teacher", "TEACHER"].includes(msg.sender?.role || "");
@@ -1812,15 +1849,14 @@ export function StudentMessagesView() {
                       size={34}
                       gradient={
                         isTeacher
-                          ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
-                          : "linear-gradient(135deg,#0ea5e9,#6366f1)"
+                          ? "linear-gradient(135deg,#7c3aed,#4f46e5)"
+                          : "linear-gradient(135deg,#0284c7,#0ea5e9)"
                       }
                     />
                   )}
                   <div
-                    className="max-w-[85%] sm:max-w-[65%]"
                     style={{
-                      minWidth: 80,
+                      maxWidth: "72%",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: isSelf ? "flex-end" : "flex-start",
@@ -1831,100 +1867,88 @@ export function StudentMessagesView() {
                       <span
                         style={{
                           fontSize: 11,
-                          color: isTeacher ? "#a78bfa" : "#60a5fa",
                           fontWeight: 600,
+                          color: isTeacher ? "#a78bfa" : "#94a3b8",
                           paddingLeft: 4,
                           display: "flex",
                           alignItems: "center",
-                          gap: 5,
+                          gap: 4,
                         }}
                       >
                         {senderName}
                         {isTeacher && (
                           <span
                             style={{
-                              background: "rgba(99,102,241,0.2)",
-                              color: "#818cf8",
                               fontSize: 9,
-                              fontWeight: 700,
-                              padding: "1px 6px",
+                              background: "rgba(124,58,237,0.2)",
+                              color: "#a78bfa",
+                              padding: "1px 5px",
                               borderRadius: 4,
-                              letterSpacing: "0.5px",
-                              textTransform: "uppercase",
+                              fontWeight: 700,
                             }}
                           >
-                            Instructor
+                            INSTRUCTOR
                           </span>
                         )}
                       </span>
                     )}
+
+                    {/* Message Bubble */}
                     <div
                       style={{
                         padding: "10px 14px",
                         borderRadius: isSelf
-                          ? "18px 18px 4px 18px"
-                          : "18px 18px 18px 4px",
+                          ? "16px 16px 2px 16px"
+                          : "16px 16px 16px 2px",
                         background: isDeleted
-                          ? "rgba(71,85,105,0.1)"
+                          ? "rgba(255,255,255,0.03)"
                           : isSelf
-                          ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
-                          : msg.is_announcement || isTeacher
-                          ? "rgba(99,102,241,0.12)"
+                          ? "linear-gradient(135deg,#4f46e5,#6366f1)"
+                          : isTeacher
+                          ? "rgba(124,58,237,0.12)"
                           : "rgba(255,255,255,0.06)",
                         border: isDeleted
-                          ? "1px solid rgba(71,85,105,0.2)"
+                          ? "1px solid rgba(255,255,255,0.06)"
                           : isSelf
                           ? "none"
-                          : msg.is_announcement || isTeacher
-                          ? "1px solid rgba(99,102,241,0.3)"
+                          : isTeacher
+                          ? "1px solid rgba(124,58,237,0.25)"
                           : "1px solid rgba(255,255,255,0.08)",
-                        color: isDeleted ? "#64748b" : "#e2e8f0",
-                        fontSize: isDeleted ? 13 : 14,
+                        color: isDeleted
+                          ? "#475569"
+                          : isSelf
+                          ? "#fff"
+                          : "#e2e8f0",
+                        fontSize: isDeleted ? 12 : 13,
                         fontStyle: isDeleted ? "italic" : "normal",
-                        lineHeight: 1.55,
+                        lineHeight: 1.5,
                         wordBreak: "break-word",
                         boxShadow: isSelf
-                          ? "0 4px 12px rgba(79,70,229,0.25)"
-                          : "0 2px 8px rgba(0,0,0,0.2)",
+                          ? "0 4px 14px rgba(79,70,229,0.3)"
+                          : "none",
                       }}
                     >
-                      {!isDeleted && msg.is_announcement && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                            color: "#a78bfa",
-                            fontWeight: 700,
-                            fontSize: 11,
-                            marginBottom: 4,
-                          }}
-                        >
-                          <Megaphone style={{ width: 13, height: 13 }} />
-                          ANNOUNCEMENT
-                        </div>
-                      )}
                       {msg.content}
 
-                      {/* Photo attachments — hidden for deleted messages */}
+                      {/* Photo attachments */}
                       {!isDeleted && msg.attachments && msg.attachments.length > 0 && (
                         <div
                           style={{
                             display: "flex",
                             flexWrap: "wrap",
-                            gap: 8,
-                            marginTop: msg.content ? 8 : 0,
+                            gap: 6,
+                            marginTop: 8,
                           }}
                         >
-                          {msg.attachments.map((att: any, idx: number) => {
-                            const rawUrl = att.url || att.r2_key || "";
+                          {msg.attachments.map((att: any, attIdx: number) => {
+                            const rawUrl = att.url || att.r2_url || "";
                             const photoSrc =
-                              rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:")
+                              rawUrl.startsWith("http") || rawUrl.startsWith("data:")
                                 ? rawUrl
                                 : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${rawUrl.replace(/^\//, "")}`;
                             return (
                               <div
-                                key={idx}
+                                key={attIdx}
                                 style={{
                                   borderRadius: 8,
                                   overflow: "hidden",
@@ -1933,10 +1957,10 @@ export function StudentMessagesView() {
                               >
                                 <img
                                   src={photoSrc}
-                                  alt={att.file_name || "Announcement photo"}
+                                  alt={att.file_name || "Photo attachment"}
                                   style={{
-                                    maxWidth: 280,
-                                    maxHeight: 220,
+                                    maxWidth: 260,
+                                    maxHeight: 200,
                                     objectFit: "cover",
                                     borderRadius: 8,
                                     cursor: "pointer",
@@ -1950,7 +1974,7 @@ export function StudentMessagesView() {
                         </div>
                       )}
 
-                      {/* Direct image in content if attachments is empty */}
+                      {/* Direct image in content */}
                       {!isDeleted && (!msg.attachments || msg.attachments.length === 0) && (msg.content_type === "image" || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(msg.content.trim()) || msg.content.trim().startsWith("data:image/")) && (
                         <div style={{ marginTop: 8, borderRadius: 8, overflow: "hidden" }}>
                           <img
@@ -1991,10 +2015,7 @@ export function StudentMessagesView() {
           })}
 
           {/* Empty state */}
-          {!roomLoading &&
-            !messagesLoading &&
-            room &&
-            messages.length === 0 && (
+          {!messagesLoading && messages.length === 0 && (
               <div
                 style={{
                   display: "flex",
