@@ -259,12 +259,15 @@ export function TeacherCommunicationView() {
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState<string | null>(null);
 
   // UI
   const [slowMode, setSlowMode] = useState<number>(0);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const firstUnreadRef = useRef<HTMLDivElement>(null);
 
   // Refs for WS handler (avoid stale closures)
   const activeChannelRef = useRef<ActiveChannel>({ type: "announcements" });
@@ -504,9 +507,18 @@ export function TeacherCommunicationView() {
         }
         return [...prev, msg];
       });
-      scrollToBottom();
+
+      const container = chatContainerRef.current;
+      const isNearBottom = container
+        ? container.scrollHeight - container.scrollTop - container.clientHeight < 180
+        : true;
+      if (isNearBottom || isMine) {
+        requestAnimationFrame(() => {
+          chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        });
+      }
     },
-    [scrollToBottom]
+    []
   );
 
   // ── Fetch Message History ────────────────────────────────────────────────────
@@ -519,8 +531,21 @@ export function TeacherCommunicationView() {
 
     setMessagesLoading(true);
 
+    let key = "";
+    if (activeChannel.type === "announcements") {
+      key = "announcements";
+    } else if (activeChannel.type === "course") {
+      key = activeChannel.subType === "announcements"
+        ? `course_announcements:${activeChannel.course.id}`
+        : `course:${activeChannel.course.id}`;
+    } else if (activeChannel.type === "dm") {
+      const studentId = getStudentUserId(activeChannel.student);
+      key = studentId ? `teacher_dm:${studentId}` : "";
+    }
+
     try {
       const validCourses = courses.filter((c) => Boolean(c?.id));
+      let fetchedMsgs: BackendMessage[] = [];
 
       if (activeChannel.type === "course") {
         if (!activeChannel.course?.id) {
@@ -534,7 +559,7 @@ export function TeacherCommunicationView() {
           : `/api/v1/chat/${activeChannel.course.id}/messages?limit=50&room_type=general&public_only=true`;
         const res = await apiClient.get(url);
         let msgs: BackendMessage[] = res.data?.data?.messages ?? [];
-        setMessages([...msgs].reverse());
+        fetchedMsgs = [...msgs].reverse();
 
       } else if (activeChannel.type === "announcements") {
         // Collect announcements across ALL teacher courses
@@ -560,7 +585,7 @@ export function TeacherCommunicationView() {
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setMessages(unique);
+        fetchedMsgs = unique;
 
       } else if (activeChannel.type === "dm") {
         // Collect DM threads across ALL teacher courses for this student
@@ -586,16 +611,69 @@ export function TeacherCommunicationView() {
           return true;
         });
         unique.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setMessages(unique);
+        fetchedMsgs = unique;
       }
 
-      scrollToBottom();
+      setMessages(fetchedMsgs);
+
+      // Determine first unread message
+      const lastReadTs = Number(typeof window !== "undefined" && key ? localStorage.getItem(`sa_read_ts_${key}`) || "0" : "0");
+      const myId = String((user as any)?.id || "").toLowerCase();
+
+      let firstUnread: BackendMessage | null = null;
+      if (lastReadTs > 0 && fetchedMsgs.length > 0) {
+        for (let i = 0; i < fetchedMsgs.length; i++) {
+          const m = fetchedMsgs[i];
+          const senderId = String(m.sender?.id || m.sender_id || "").toLowerCase();
+          if (senderId && senderId !== myId) {
+            const msgTs = new Date(m.created_at).getTime();
+            if (msgTs > lastReadTs) {
+              firstUnread = m;
+              break;
+            }
+          }
+        }
+      }
+
+      const targetUnreadId = firstUnread ? firstUnread.id : null;
+      setFirstUnreadMessageId(targetUnreadId);
+
+      const scrollToTarget = () => {
+        if (targetUnreadId) {
+          const el = document.getElementById(`unread-marker-${targetUnreadId}`) || document.getElementById(`msg-${targetUnreadId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+        }
+        chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      };
+
+      requestAnimationFrame(scrollToTarget);
+      setTimeout(scrollToTarget, 60);
+      setTimeout(scrollToTarget, 180);
+      setTimeout(scrollToTarget, 400);
+
+      // Mark as read in store and storage
+      if (key && fetchedMsgs.length > 0) {
+        const latest = fetchedMsgs[fetchedMsgs.length - 1];
+        useChatStore.getState().markChannelRead(key);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`sa_read_ts_${key}`, String(Date.now()));
+          if (latest?.id) localStorage.setItem(key, latest.id);
+        }
+        apiClient.post("/api/v1/chat/read", { 
+          channel_key: key, 
+          message_id: latest?.id,
+          dm_user_id: activeChannel.type === "dm" ? getStudentUserId(activeChannel.student) : undefined
+        }).catch(() => {});
+      }
     } catch {
       // keep empty
     } finally {
       setMessagesLoading(false);
     }
-  }, [activeChannel, courses, scrollToBottom]);
+  }, [activeChannel, courses, user]);
 
   useEffect(() => {
     setMessages([]);
@@ -1639,6 +1717,7 @@ export function TeacherCommunicationView() {
 
         {/* Message Feed */}
         <div
+          ref={chatContainerRef}
           style={{
             flex: 1,
             overflowY: "auto",
@@ -1710,6 +1789,7 @@ export function TeacherCommunicationView() {
                 ? "You"
                 : msg.sender?.full_name || (msg.sender as any)?.name || "Student";
               const isDeleted = Boolean(msg.is_deleted);
+              const isFirstUnread = firstUnreadMessageId === msg.id;
 
               // Determine which courseId this message belongs to for the delete call
               const msgCourseId =
@@ -1724,26 +1804,59 @@ export function TeacherCommunicationView() {
                   : "";
 
               return (
-                <div
-                  key={msg.id || `msg-${idx}`}
-                  className="msg-group"
-                  style={{
-                    display: "flex",
-                    flexDirection: isMine ? "row-reverse" : "row",
-                    alignItems: "flex-start",
-                    gap: 11,
-                    animation: "fadeInUp 0.2s ease",
-                    position: "relative",
-                  }}
-                  onMouseEnter={(e) => {
-                    const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
-                    if (btn) btn.style.opacity = "1";
-                  }}
-                  onMouseLeave={(e) => {
-                    const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
-                    if (btn) btn.style.opacity = "0";
-                  }}
-                >
+                <React.Fragment key={msg.id || `msg-${idx}`}>
+                  {isFirstUnread && (
+                    <div
+                      id={`unread-marker-${msg.id}`}
+                      ref={firstUnreadRef}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        margin: "12px 0 8px",
+                        width: "100%",
+                      }}
+                    >
+                      <div style={{ flex: 1, height: 1, background: "rgba(124,58,237,0.35)" }} />
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          padding: "3px 12px",
+                          borderRadius: 20,
+                          background: "rgba(124,58,237,0.18)",
+                          color: "#c4b5fd",
+                          border: "1px solid rgba(124,58,237,0.35)",
+                          boxShadow: "0 2px 8px rgba(124,58,237,0.2)",
+                        }}
+                      >
+                        Unread Messages
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "rgba(124,58,237,0.35)" }} />
+                    </div>
+                  )}
+                  <div
+                    id={`msg-${msg.id}`}
+                    className="msg-group"
+                    style={{
+                      display: "flex",
+                      flexDirection: isMine ? "row-reverse" : "row",
+                      alignItems: "flex-start",
+                      gap: 11,
+                      animation: "fadeInUp 0.2s ease",
+                      position: "relative",
+                    }}
+                    onMouseEnter={(e) => {
+                      const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
+                      if (btn) btn.style.opacity = "1";
+                    }}
+                    onMouseLeave={(e) => {
+                      const btn = (e.currentTarget as HTMLElement).querySelector(".msg-delete-btn") as HTMLElement | null;
+                      if (btn) btn.style.opacity = "0";
+                    }}
+                  >
                   <Avatar
                     name={senderName}
                     size={32}
@@ -1924,7 +2037,8 @@ export function TeacherCommunicationView() {
                       <Trash2 style={{ width: 13, height: 13 }} />
                     </button>
                   )}
-                </div>
+                  </div>
+                </React.Fragment>
               );
             })
           )}

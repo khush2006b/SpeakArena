@@ -18,6 +18,7 @@ export interface CourseVideo {
   isCompleted: boolean;
   watchPositionSeconds?: number;
   processingStatus?: string;
+  createdAt?: string;
 }
 
 export interface CoursePDF {
@@ -28,6 +29,7 @@ export interface CoursePDF {
   pageCount?: number;
   isCompleted: boolean;
   isDownloadable?: boolean;
+  createdAt?: string;
 }
 
 export interface CourseResources {
@@ -114,6 +116,7 @@ export function useStudentResources() {
                     isCompleted: v.is_completed ?? false,
                     watchPositionSeconds: v.watch_position_seconds ?? 0,
                     processingStatus: v.processing_status,
+                    createdAt: v.created_at || v.createdAt,
                   })),
                   pdfs: pdfs.map((p: any) => ({
                     id: p.id,
@@ -123,6 +126,7 @@ export function useStudentResources() {
                     pageCount: p.page_count,
                     isCompleted: p.is_completed ?? false,
                     isDownloadable: p.is_downloadable,
+                    createdAt: p.created_at || p.createdAt,
                   })),
                 };
               } else {

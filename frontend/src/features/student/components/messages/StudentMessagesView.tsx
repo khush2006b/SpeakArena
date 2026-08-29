@@ -203,6 +203,7 @@ export function StudentMessagesView() {
 
   const [messages, setMessages] = useState<BackendMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState<string | null>(null);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -255,6 +256,8 @@ export function StudentMessagesView() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const firstUnreadRef = useRef<HTMLDivElement>(null);
   const activeChannelRef = useRef<ActiveChannel | null>(null);
   const roomRef = useRef<ChatRoom | null>(null);
   const userIdRef = useRef<string>("");
@@ -276,29 +279,11 @@ export function StudentMessagesView() {
 
   const openChannel = useCallback(
     (channel: ActiveChannel) => {
+      setFirstUnreadMessageId(null);
       setActiveChannel(channel);
       setMobileShowChat(true);
-
-      let key = "";
-      if (channel.type === "course_announcements") {
-        key = `course_announcements:${channel.course.id}`;
-      } else if (channel.type === "announcements") {
-        key = "announcements";
-      } else if (channel.type === "teacher_dm") {
-        const tid = getCourseTeacherId(channel.course);
-        key = `teacher_dm:${tid}`;
-      } else {
-        key = `course:${channel.course.id}`;
-      }
-      if (key) {
-        markChannelRead(key);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(`sa_read_ts_${key}`, String(Date.now()));
-        }
-        apiClient.post("/api/v1/chat/read", { channel_key: key }).catch(() => {});
-      }
     },
-    [markChannelRead]
+    []
   );
 
   // ── Fetch enrolled courses ────────────────────────────────────────────────────
@@ -443,38 +428,71 @@ export function StudentMessagesView() {
       .then((fetchedMsgs) => {
         if (isMounted) {
           setMessages(fetchedMsgs);
-          if (fetchedMsgs.length > 0 && activeCourse?.id) {
-            const latest = fetchedMsgs[fetchedMsgs.length - 1] || fetchedMsgs[0];
-            if (latest?.id) {
-              if (activeChannel.type === "announcements") {
-                const k = "announcements";
-                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
-                localStorage.setItem(k, latest.id);
-                markChannelRead(k);
-                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
-              } else if (activeChannel.type === "course_announcements") {
-                const k = `course_announcements:${activeCourse.id}`;
-                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
-                localStorage.setItem(k, latest.id);
-                markChannelRead(k);
-                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
-              } else if (activeChannel.type === "teacher_dm") {
-                const tid = getCourseTeacherId(activeCourse);
-                if (tid) {
-                  const k = `teacher_dm:${tid}`;
-                  localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
-                  localStorage.setItem(k, latest.id);
-                  markChannelRead(k);
-                  apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id, dm_user_id: tid }).catch(() => {});
+
+          let k = "";
+          if (activeChannel.type === "announcements") {
+            k = "announcements";
+          } else if (activeChannel.type === "course_announcements") {
+            k = `course_announcements:${activeCourse.id}`;
+          } else if (activeChannel.type === "teacher_dm") {
+            const tid = getCourseTeacherId(activeCourse);
+            k = tid ? `teacher_dm:${tid}` : "";
+          } else {
+            k = `course:${activeCourse.id}`;
+          }
+
+          // Read previous last-read timestamp & ID before marking this channel read
+          const lastReadTs = Number(typeof window !== "undefined" && k ? localStorage.getItem(`sa_read_ts_${k}`) || "0" : "0");
+          const myId = String(userIdRef.current || "").toLowerCase();
+
+          let firstUnread: BackendMessage | null = null;
+          if (lastReadTs > 0 && fetchedMsgs.length > 0) {
+            for (let i = 0; i < fetchedMsgs.length; i++) {
+              const m = fetchedMsgs[i];
+              const senderId = String(m.sender?.id || (m as any).sender_id || "").toLowerCase();
+              if (senderId && senderId !== myId) {
+                const msgTs = new Date(m.created_at).getTime();
+                if (msgTs > lastReadTs) {
+                  firstUnread = m;
+                  break;
                 }
-              } else {
-                const k = `course:${activeCourse.id}`;
-                localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
-                localStorage.setItem(k, latest.id);
-                markChannelRead(k);
-                apiClient.post("/api/v1/chat/read", { channel_key: k, message_id: latest.id }).catch(() => {});
               }
             }
+          }
+
+          const targetUnreadId = firstUnread ? firstUnread.id : null;
+          setFirstUnreadMessageId(targetUnreadId);
+
+          const scrollToTarget = () => {
+            if (targetUnreadId) {
+              const el = document.getElementById(`unread-marker-${targetUnreadId}`) || document.getElementById(`msg-${targetUnreadId}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+              }
+            }
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          };
+
+          // Multi-stage scroll to ensure images & layout render without jumping to random spots
+          requestAnimationFrame(scrollToTarget);
+          setTimeout(scrollToTarget, 60);
+          setTimeout(scrollToTarget, 180);
+          setTimeout(scrollToTarget, 400);
+
+          // Now mark channel as read in store, storage, and server
+          if (k && fetchedMsgs.length > 0) {
+            const latest = fetchedMsgs[fetchedMsgs.length - 1];
+            markChannelRead(k);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(`sa_read_ts_${k}`, String(Date.now()));
+              if (latest?.id) localStorage.setItem(k, latest.id);
+            }
+            apiClient.post("/api/v1/chat/read", { 
+              channel_key: k, 
+              message_id: latest?.id,
+              dm_user_id: activeChannel.type === "teacher_dm" ? getCourseTeacherId(activeCourse) : undefined
+            }).catch(() => {});
           }
         }
       })
@@ -608,6 +626,17 @@ export function StudentMessagesView() {
         }
         return [...prev, msg];
       });
+
+      // Auto-scroll down if user is already near bottom or sent this message
+      const container = chatContainerRef.current;
+      const isNearBottom = container
+        ? container.scrollHeight - container.scrollTop - container.clientHeight < 180
+        : true;
+      if (isNearBottom || senderId === myId) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        });
+      }
     };
 
     const onMessageEdited = (payload: any) => {
@@ -647,11 +676,6 @@ export function StudentMessagesView() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, setConnectionStatus, clearActiveRoom]);
-
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // ── Typing ────────────────────────────────────────────────────────────────────
   const handleTyping = useCallback(() => {
@@ -786,6 +810,9 @@ export function StudentMessagesView() {
       };
 
       setMessages((prev) => [...prev, tempMsg]);
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
 
       try {
         const payload: any = {
@@ -820,6 +847,9 @@ export function StudentMessagesView() {
             )
               return prev;
             return [...prev, realMsg];
+          });
+          requestAnimationFrame(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
           });
         }
       } catch {
@@ -1625,6 +1655,7 @@ export function StudentMessagesView() {
 
         {/* Message Feed */}
         <div
+          ref={chatContainerRef}
           style={{
             flex: 1,
             minHeight: 0,
@@ -1729,19 +1760,52 @@ export function StudentMessagesView() {
               const senderName = isSelf
                 ? "You"
                 : msg.sender?.full_name || "User";
-
+              const isFirstUnread = firstUnreadMessageId === msg.id;
 
               return (
-                <div
-                  key={msg.id || `msg-${idx}`}
-                  style={{
-                    display: "flex",
-                    flexDirection: isSelf ? "row-reverse" : "row",
-                    alignItems: "flex-end",
-                    gap: 10,
-                    animation: "fadeInUp 0.2s ease",
-                  }}
-                >
+                <React.Fragment key={msg.id || `msg-${idx}`}>
+                  {isFirstUnread && (
+                    <div
+                      id={`unread-marker-${msg.id}`}
+                      ref={firstUnreadRef}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        margin: "12px 0 8px",
+                        width: "100%",
+                      }}
+                    >
+                      <div style={{ flex: 1, height: 1, background: "rgba(99,102,241,0.35)" }} />
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          padding: "3px 12px",
+                          borderRadius: 20,
+                          background: "rgba(99,102,241,0.18)",
+                          color: "#a5b4fc",
+                          border: "1px solid rgba(99,102,241,0.35)",
+                          boxShadow: "0 2px 8px rgba(99,102,241,0.2)",
+                        }}
+                      >
+                        Unread Messages
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "rgba(99,102,241,0.35)" }} />
+                    </div>
+                  )}
+                  <div
+                    id={`msg-${msg.id}`}
+                    style={{
+                      display: "flex",
+                      flexDirection: isSelf ? "row-reverse" : "row",
+                      alignItems: "flex-end",
+                      gap: 10,
+                      animation: "fadeInUp 0.2s ease",
+                    }}
+                  >
                   {!isSelf && (
                     <Avatar
                       name={senderName}
@@ -1922,8 +1986,9 @@ export function StudentMessagesView() {
                     </span>
                   </div>
                 </div>
-              );
-            })}
+              </React.Fragment>
+            );
+          })}
 
           {/* Empty state */}
           {!roomLoading &&
