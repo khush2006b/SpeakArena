@@ -807,25 +807,46 @@ async def get_attachment_upload_url(
     """Return a presigned URL for chat attachment upload."""
     from app.core.storage import r2
     import re
+    from datetime import datetime, timezone
+
+    # Sanitize file name to avoid S3/R2 signature mismatches caused by spaces or non-ASCII chars
+    raw_name = body.file_name or "image.png"
+    clean_file_name = re.sub(r"[^a-zA-Z0-9._-]", "_", raw_name).strip("._")
+    if not clean_file_name:
+        clean_file_name = "attachment.png"
+
+    norm_type = body.content_type.lower().strip() if body.content_type else "image/png"
+    if clean_file_name.lower().endswith(".png"):
+        norm_type = "image/png"
+    elif clean_file_name.lower().endswith((".jpg", ".jpeg")):
+        norm_type = "image/jpeg"
+    elif clean_file_name.lower().endswith(".webp"):
+        norm_type = "image/webp"
+    elif clean_file_name.lower().endswith(".gif"):
+        norm_type = "image/gif"
+    elif clean_file_name.lower().endswith(".pdf"):
+        norm_type = "application/pdf"
 
     # Validate MIME type
     allowed_prefixes = ("image/", "application/pdf", "audio/", "video/")
-    if not any(body.content_type.startswith(p) for p in allowed_prefixes):
+    if not any(norm_type.startswith(p) for p in allowed_prefixes):
         from app.core.exceptions.errors import AppError
         raise AppError(
             message="Unsupported file type for chat attachments.",
             error_code="UnsupportedMimeType",
         )
 
-    r2_key = f"chat/{course_id}/attachments/{actor.id}/{body.file_name}"
+    ts = int(datetime.now(timezone.utc).timestamp())
+    r2_key = f"chat/{course_id}/attachments/{actor.id}/{ts}_{clean_file_name}"
     upload_url = await r2.generate_presigned_upload_url(
         r2_key,
-        content_type=body.content_type,
+        content_type=norm_type,
         expiry_seconds=900,
     )
     return success_response({
         "upload_url": upload_url,
         "r2_key": r2_key,
+        "content_type": norm_type,
         "expires_in_seconds": 900,
     })
 

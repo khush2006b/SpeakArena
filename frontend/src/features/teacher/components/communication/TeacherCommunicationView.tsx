@@ -236,6 +236,24 @@ export function TeacherCommunicationView() {
     setPhotoPreviews(updatedPreviews);
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items || []);
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      const newPhotos = [...selectedPhotos, ...imageFiles].slice(0, 5);
+      setSelectedPhotos(newPhotos);
+      const newPreviews = newPhotos.map((f) => URL.createObjectURL(f));
+      setPhotoPreviews(newPreviews);
+      toast.info(`Pasted ${imageFiles.length} photo(s)`);
+    }
+  };
+
   // Loading
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -700,39 +718,54 @@ export function TeacherCommunicationView() {
     let uploadedAttachments: any[] = [];
     if (photosToUpload.length > 0) {
       for (const photo of photosToUpload) {
+        const lowerName = photo.name.toLowerCase();
+        const mimeType =
+          photo.type ||
+          (lowerName.endsWith(".png")
+            ? "image/png"
+            : lowerName.endsWith(".webp")
+            ? "image/webp"
+            : lowerName.endsWith(".gif")
+            ? "image/gif"
+            : lowerName.endsWith(".svg")
+            ? "image/svg+xml"
+            : "image/jpeg");
+
         try {
           const presignRes = await apiClient.post(
             `/api/v1/chat/${targetCourseId}/attachments/presign`,
             {
               file_name: photo.name,
-              content_type: photo.type || "image/jpeg",
+              content_type: mimeType,
               size_bytes: photo.size,
             }
           );
-          const { upload_url, r2_key } = presignRes.data?.data || {};
+          const { upload_url, r2_key, content_type: confirmedType } = presignRes.data?.data || {};
 
           if (upload_url) {
-            await fetch(upload_url, {
+            const uploadRes = await fetch(upload_url, {
               method: "PUT",
-              headers: { "Content-Type": photo.type || "image/jpeg" },
+              headers: { "Content-Type": confirmedType || mimeType },
               body: photo,
             });
+            if (!uploadRes.ok) {
+              throw new Error(`R2 upload failed: ${uploadRes.status}`);
+            }
           }
 
-          const localUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(photo);
-          });
+          const publicUrl = r2_key
+            ? `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${r2_key.replace(/^\//, "")}`
+            : "";
 
           uploadedAttachments.push({
             r2_key: r2_key || `chat/photos/${Date.now()}_${photo.name}`,
             file_name: photo.name,
-            mime_type: photo.type || "image/jpeg",
+            mime_type: confirmedType || mimeType,
             size_bytes: photo.size,
-            url: localUrl,
+            url: publicUrl,
           });
-        } catch {
+        } catch (err) {
+          console.warn("Upload to R2 failed, fallback to local data URL:", err);
           const localUrl = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
@@ -741,7 +774,7 @@ export function TeacherCommunicationView() {
           uploadedAttachments.push({
             r2_key: `chat/photos/${Date.now()}_${photo.name}`,
             file_name: photo.name,
-            mime_type: photo.type || "image/jpeg",
+            mime_type: mimeType,
             size_bytes: photo.size,
             url: localUrl,
           });
@@ -1840,6 +1873,25 @@ export function TeacherCommunicationView() {
                           })}
                         </div>
                       )}
+
+                      {/* Direct image in content if attachments is empty */}
+                      {!isDeleted && (!msg.attachments || msg.attachments.length === 0) && (msg.content_type === "image" || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(msg.content.trim()) || msg.content.trim().startsWith("data:image/")) && (
+                        <div style={{ marginTop: 8, borderRadius: 8, overflow: "hidden" }}>
+                          <img
+                            src={msg.content.trim().startsWith("http") || msg.content.trim().startsWith("data:") ? msg.content.trim() : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${msg.content.trim().replace(/^\//, "")}`}
+                            alt="Photo"
+                            style={{
+                              maxWidth: 280,
+                              maxHeight: 220,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              cursor: "pointer",
+                              display: "block",
+                            }}
+                            onClick={() => setLightboxPhoto(msg.content.trim().startsWith("http") || msg.content.trim().startsWith("data:") ? msg.content.trim() : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${msg.content.trim().replace(/^\//, "")}`)}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1963,7 +2015,7 @@ export function TeacherCommunicationView() {
             <input
               ref={photoInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/png,image/jpeg,image/webp,image/gif"
               multiple
               style={{ display: "none" }}
               onChange={handlePhotoSelect}
@@ -1997,6 +2049,7 @@ export function TeacherCommunicationView() {
               className="msg-input"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

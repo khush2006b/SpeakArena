@@ -27,6 +27,7 @@ import {
   X,
   ExternalLink,
   Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
@@ -210,6 +211,45 @@ export function StudentMessagesView() {
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+
+  // ── Photo Attachments ────────────────────────────────────────────────────────
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const newPhotos = [...selectedPhotos, ...files].slice(0, 5);
+    setSelectedPhotos(newPhotos);
+    const newPreviews = newPhotos.map((f) => URL.createObjectURL(f));
+    setPhotoPreviews(newPreviews);
+  };
+
+  const removePhoto = (index: number) => {
+    const updatedPhotos = selectedPhotos.filter((_, i) => i !== index);
+    setSelectedPhotos(updatedPhotos);
+    const updatedPreviews = photoPreviews.filter((_, i) => i !== index);
+    setPhotoPreviews(updatedPreviews);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items || []);
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      const newPhotos = [...selectedPhotos, ...imageFiles].slice(0, 5);
+      setSelectedPhotos(newPhotos);
+      const newPreviews = newPhotos.map((f) => URL.createObjectURL(f));
+      setPhotoPreviews(newPreviews);
+      toast.info(`Pasted ${imageFiles.length} photo(s)`);
+    }
+  };
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -632,7 +672,8 @@ export function StudentMessagesView() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       const content = draft.trim();
-      if (!content || !room || !activeCourse || !activeChannel || sending) return;
+      const photosToUpload = [...selectedPhotos];
+      if ((!content && photosToUpload.length === 0) || !room || !activeCourse || !activeChannel || sending) return;
       // Students cannot send announcements
       if (activeChannel.type === "announcements") return;
 
@@ -641,6 +682,79 @@ export function StudentMessagesView() {
       if (activeChannel.type === "course") sendTypingStop(room.id);
       setSending(true);
       setDraft("");
+      setSelectedPhotos([]);
+      setPhotoPreviews([]);
+
+      // Upload photos if any
+      let uploadedAttachments: any[] = [];
+      if (photosToUpload.length > 0) {
+        for (const photo of photosToUpload) {
+          const lowerName = photo.name.toLowerCase();
+          const mimeType =
+            photo.type ||
+            (lowerName.endsWith(".png")
+              ? "image/png"
+              : lowerName.endsWith(".webp")
+              ? "image/webp"
+              : lowerName.endsWith(".gif")
+              ? "image/gif"
+              : lowerName.endsWith(".svg")
+              ? "image/svg+xml"
+              : "image/jpeg");
+
+          try {
+            const presignRes = await apiClient.post(
+              `/api/v1/chat/${activeCourse.id}/attachments/presign`,
+              {
+                file_name: photo.name,
+                content_type: mimeType,
+                size_bytes: photo.size,
+              }
+            );
+            const { upload_url, r2_key, content_type: confirmedType } = presignRes.data?.data || {};
+
+            if (upload_url) {
+              const uploadRes = await fetch(upload_url, {
+                method: "PUT",
+                headers: { "Content-Type": confirmedType || mimeType },
+                body: photo,
+              });
+              if (!uploadRes.ok) {
+                throw new Error(`R2 upload failed: ${uploadRes.status}`);
+              }
+            }
+
+            const publicUrl = r2_key
+              ? `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${r2_key.replace(/^\//, "")}`
+              : "";
+
+            uploadedAttachments.push({
+              r2_key: r2_key || `chat/photos/${Date.now()}_${photo.name}`,
+              file_name: photo.name,
+              mime_type: confirmedType || mimeType,
+              size_bytes: photo.size,
+              url: publicUrl,
+            });
+          } catch (err) {
+            console.warn("Upload to R2 failed, fallback to local data URL:", err);
+            const localUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(photo);
+            });
+            uploadedAttachments.push({
+              r2_key: `chat/photos/${Date.now()}_${photo.name}`,
+              file_name: photo.name,
+              mime_type: mimeType,
+              size_bytes: photo.size,
+              url: localUrl,
+            });
+          }
+        }
+      }
+
+      const contentType = uploadedAttachments.length > 0 ? "image" : "text";
+      const finalContent = content || (uploadedAttachments.length > 0 ? "📷 [Photo]" : "");
 
       const tempId = `temp-${Date.now()}-${Math.random()}`;
       const teacherId =
@@ -659,8 +773,9 @@ export function StudentMessagesView() {
         },
         recipient_id:
           activeChannel.type === "teacher_dm" ? teacherId : undefined,
-        content,
-        content_type: "text",
+        content: finalContent,
+        content_type: contentType,
+        attachments: uploadedAttachments,
         reply_to: null,
         is_pinned: false,
         is_announcement: false,
@@ -673,7 +788,11 @@ export function StudentMessagesView() {
       setMessages((prev) => [...prev, tempMsg]);
 
       try {
-        const payload: any = { content, content_type: "text" };
+        const payload: any = {
+          content: finalContent,
+          content_type: contentType,
+          attachments: uploadedAttachments,
+        };
         if (activeChannel.type === "teacher_dm" && teacherId) {
           payload.recipient_id = teacherId;
         }
@@ -710,7 +829,7 @@ export function StudentMessagesView() {
         setSending(false);
       }
     },
-    [draft, room, sending, user, activeCourse, activeChannel]
+    [draft, selectedPhotos, room, sending, user, activeCourse, activeChannel]
   );
 
   // ── Typing label ──────────────────────────────────────────────────────────────
@@ -1766,6 +1885,25 @@ export function StudentMessagesView() {
                           })}
                         </div>
                       )}
+
+                      {/* Direct image in content if attachments is empty */}
+                      {!isDeleted && (!msg.attachments || msg.attachments.length === 0) && (msg.content_type === "image" || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(msg.content.trim()) || msg.content.trim().startsWith("data:image/")) && (
+                        <div style={{ marginTop: 8, borderRadius: 8, overflow: "hidden" }}>
+                          <img
+                            src={msg.content.trim().startsWith("http") || msg.content.trim().startsWith("data:") ? msg.content.trim() : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${msg.content.trim().replace(/^\//, "")}`}
+                            alt="Chat photo"
+                            style={{
+                              maxWidth: 280,
+                              maxHeight: 220,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              cursor: "pointer",
+                              display: "block",
+                            }}
+                            onClick={() => setLightboxPhoto(msg.content.trim().startsWith("http") || msg.content.trim().startsWith("data:") ? msg.content.trim() : `https://pub-24a225d578474f4fb5b75f2a90813a11.r2.dev/${msg.content.trim().replace(/^\//, "")}`)}
+                          />
+                        </div>
+                      )}
                     </div>
                     <span
                       style={{
@@ -1881,101 +2019,199 @@ export function StudentMessagesView() {
 
         {/* Input Bar — hidden for read-only channels */}
         {activeChannel && !isReadOnly && (
-          <form
-            onSubmit={handleSend}
+          <div
             style={{
-              padding: "14px 18px",
-              paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
               borderTop: "1px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexShrink: 0,
               background: "rgba(11,15,26,0.8)",
               backdropFilter: "blur(10px)",
+              flexShrink: 0,
             }}
           >
-            <div className="hidden sm:flex">
-              <Avatar
-                name={(user as any)?.full_name || user?.fullName || "You"}
-                size={34}
-                gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
-              />
-            </div>
-            <input
-              id="chat-message-input"
-              className="msg-input"
-              type="text"
-              placeholder={
-                !room
-                  ? "Connecting to room..."
-                  : isTeacherDm
-                  ? `Message ${
-                      (activeChannel?.course as any)?.teacherName ||
-                      "Instructor"
-                    }...`
-                  : connectionStatus === "connected"
-                  ? "Type a message..."
-                  : "Connecting..."
-              }
-              value={draft}
-              disabled={!room || sending}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                handleTyping();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend(e as any);
-                }
-              }}
+            {/* Photo Previews above input */}
+            {photoPreviews.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  padding: "8px 14px",
+                  background: "rgba(15,23,42,0.8)",
+                  borderBottom: "1px solid rgba(255,255,255,0.08)",
+                  overflowX: "auto",
+                }}
+              >
+                {photoPreviews.map((src, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "relative",
+                      width: 52,
+                      height: 52,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={src}
+                      alt="Preview"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        background: "rgba(0,0,0,0.75)",
+                        color: "#fff",
+                        border: "none",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <X style={{ width: 10, height: 10 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSend}
               style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.05)",
-                padding: "10px 14px",
-                fontSize: 14,
-                color: "#f1f5f9",
-                transition: "border-color 0.2s, box-shadow 0.2s",
-              }}
-            />
-            <button
-              id="chat-send-btn"
-              type="submit"
-              className="send-btn"
-              disabled={!draft.trim() || !room || sending}
-              style={{
-                display: "inline-flex",
+                padding: "14px 18px",
+                paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
+                display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                borderRadius: 12,
-                background: isTeacherDm
-                  ? "linear-gradient(135deg,#0284c7,#0369a1)"
-                  : "linear-gradient(135deg,#4f46e5,#7c3aed)",
-                padding: "10px 16px",
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                flexShrink: 0,
-                transition: "filter 0.15s, transform 0.15s",
+                gap: 10,
               }}
             >
-              {sending ? (
-                <Loader2
-                  style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+              <div className="hidden sm:flex">
+                <Avatar
+                  name={(user as any)?.full_name || user?.fullName || "You"}
+                  size={34}
+                  gradient="linear-gradient(135deg,#0ea5e9,#6366f1)"
                 />
-              ) : (
-                <Send style={{ width: 16, height: 16 }} />
-              )}
-              <span className="hidden sm:inline">Send</span>
-            </button>
-          </form>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*,image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                style={{ display: "none" }}
+                onChange={handlePhotoSelect}
+              />
+
+              {/* Photo Attachment Button */}
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                title="Attach photos (PNG, JPG, WEBP)"
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: selectedPhotos.length > 0 ? "#38bdf8" : "#94a3b8",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  transition: "all 0.15s",
+                }}
+              >
+                <ImageIcon style={{ width: 18, height: 18 }} />
+              </button>
+
+              <input
+                id="chat-message-input"
+                className="msg-input"
+                type="text"
+                placeholder={
+                  selectedPhotos.length > 0
+                    ? `Add a caption for ${selectedPhotos.length} photo(s)...`
+                    : !room
+                    ? "Connecting to room..."
+                    : isTeacherDm
+                    ? `Message ${
+                        (activeChannel?.course as any)?.teacherName ||
+                        "Instructor"
+                      }...`
+                    : connectionStatus === "connected"
+                    ? "Type a message..."
+                    : "Connecting..."
+                }
+                value={draft}
+                disabled={!room || sending}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  handleTyping();
+                }}
+                onPaste={handlePaste}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend(e as any);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)",
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  color: "#f1f5f9",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+              />
+              <button
+                id="chat-send-btn"
+                type="submit"
+                className="send-btn"
+                disabled={(!draft.trim() && selectedPhotos.length === 0) || !room || sending}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  borderRadius: 12,
+                  background: isTeacherDm
+                    ? "linear-gradient(135deg,#0284c7,#0369a1)"
+                    : "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                  padding: "10px 16px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  transition: "filter 0.15s, transform 0.15s",
+                }}
+              >
+                {sending ? (
+                  <Loader2
+                    style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <Send style={{ width: 16, height: 16 }} />
+                )}
+                <span className="hidden sm:inline">Send</span>
+              </button>
+            </form>
+          </div>
         )}
       </div>
 
