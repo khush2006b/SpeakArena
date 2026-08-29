@@ -240,8 +240,10 @@ export function StudentMessagesView() {
       setMobileShowChat(true);
 
       let key = "";
-      if (channel.type === "course_announcements" || channel.type === "announcements") {
+      if (channel.type === "course_announcements") {
         key = `course_announcements:${channel.course.id}`;
+      } else if (channel.type === "announcements") {
+        key = "announcements";
       } else if (channel.type === "teacher_dm") {
         const tid = getCourseTeacherId(channel.course);
         key = `teacher_dm:${tid}`;
@@ -501,35 +503,34 @@ export function StudentMessagesView() {
 
       // Room guard and channel filter for course channels / announcements.
       if (!ch) return;
-      if (ch.type === "announcements") {
-        if (!msg.is_announcement) return;
-      } else if (ch.type === "course_announcements") {
-        if (!msg.is_announcement) return;
-        if (currentRoom?.id && msg.chat_room_id) {
-          if (
-            String(msg.chat_room_id).toLowerCase() !==
-            String(currentRoom.id).toLowerCase()
-          ) {
-            const crsId = msg.course_id || (msg as any).courseId;
-            if (crsId) {
-              useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
-            }
-            return;
+
+      if (msg.is_announcement) {
+        const crsId = msg.course_id || (msg as any).courseId || (currentRoom?.course_id);
+        const isLookingAtThisAnn =
+          ch.type === "announcements" ||
+          (ch.type === "course_announcements" &&
+            (!currentRoom?.id || !msg.chat_room_id || String(msg.chat_room_id).toLowerCase() === String(currentRoom.id).toLowerCase()));
+
+        if (!isLookingAtThisAnn) {
+          if (crsId) {
+            useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
           }
+          useChatStore.getState().setChannelUnread("announcements", true);
+          toast.info(`New Announcement: ${msg.content.slice(0, 40)}`);
+          return;
         }
-      } else if (ch.type === "course") {
-        if (msg.is_announcement || msg.recipient_id) return;
-        if (currentRoom?.id && msg.chat_room_id) {
-          if (
-            String(msg.chat_room_id).toLowerCase() !==
-            String(currentRoom.id).toLowerCase()
-          ) {
-            const crsId = msg.course_id || (msg as any).courseId;
-            if (crsId) {
-              useChatStore.getState().setChannelUnread(`course:${crsId}`, true);
-            }
-            return;
+      } else if (!msg.recipient_id) {
+        // General talk message
+        const crsId = msg.course_id || (msg as any).courseId || (currentRoom?.course_id);
+        const isLookingAtThisGen =
+          ch.type === "course" &&
+          (!currentRoom?.id || !msg.chat_room_id || String(msg.chat_room_id).toLowerCase() === String(currentRoom.id).toLowerCase());
+
+        if (!isLookingAtThisGen) {
+          if (crsId && senderId !== myId) {
+            useChatStore.getState().setChannelUnread(`course:${crsId}`, true);
           }
+          return;
         }
       }
 
@@ -892,7 +893,10 @@ export function StudentMessagesView() {
                 }}
               />
               <span style={{ flex: 1 }}>Announcements</span>
-              {courses[0] && unreadChannelKeys[`course_announcements:${courses[0].id}`] && (
+              {(unreadChannelKeys["announcements"] ||
+                Object.keys(unreadChannelKeys).some(
+                  (k) => k.startsWith("course_announcements:") && unreadChannelKeys[k]
+                )) && (
                 <span
                   style={{
                     width: 7,
