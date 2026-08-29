@@ -69,7 +69,7 @@ export function StudentHeader() {
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* Notifications */}
+          {/* Notifications Link */}
           <Link
             href="/student/notifications"
             className="btn-ghost press-scale flex items-center justify-center"
