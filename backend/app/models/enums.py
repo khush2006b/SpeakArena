@@ -191,6 +191,7 @@ class NotificationType(str, enum.Enum):
     PAYMENT_FAILED = "payment_failed"
     REFUND_PROCESSED = "refund_processed"
     ANNOUNCEMENT = "announcement"
+    RESOURCE_UPLOADED = "resource_uploaded"
     ACCOUNT_WARNING = "account_warning"
     SYSTEM = "system"
 

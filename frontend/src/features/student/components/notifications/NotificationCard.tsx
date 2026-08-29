@@ -4,7 +4,7 @@ import * as React from "react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { useStudentNotificationsStore } from "@/stores/student-notifications.store";
 import {
-  Bell, Video, BookOpen, CreditCard, Settings, CheckCircle2, Archive, MessageSquare,
+  Bell, Video, BookOpen, CreditCard, Settings, CheckCircle2, Archive, MessageSquare, FileText,
 } from "lucide-react";
 import { useMarkNotificationRead } from "@/hooks/queries/useNotificationQueries";
 
@@ -18,6 +18,9 @@ const CATEGORY_ICONS: Record<string, any> = {
   COURSE: BookOpen,
   PAYMENT: CreditCard,
   CHAT: MessageSquare,
+  RESOURCES: FileText,
+  RESOURCE_UPLOADED: FileText,
+  COURSE_PUBLISHED: BookOpen,
 };
 
 export function NotificationCard({ notification }: NotificationCardProps) {
@@ -26,7 +29,8 @@ export function NotificationCard({ notification }: NotificationCardProps) {
   const markAsReadMutation = useMarkNotificationRead();
 
   const isSelected = selectedNotificationId === notification.id;
-  const Icon = CATEGORY_ICONS[notification.type] || Bell;
+  const notifType = (notification.type || "").toUpperCase();
+  const Icon = CATEGORY_ICONS[notifType] || CATEGORY_ICONS[(notification.category || "").toUpperCase()] || Bell;
   const isUnread = !notification.isRead;
 
   const handleClick = () => {

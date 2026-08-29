@@ -5,12 +5,19 @@ import Link from "next/link";
 import { Bell, Menu, MessageSquare } from "lucide-react";
 import { useStudentLayoutStore } from "@/stores/student-layout.store";
 import { useChatStore } from "@/stores/chat.store";
+import { useUnreadNotificationCount } from "@/hooks/queries/useNotificationQueries";
 import { ProfileMenu } from "./ProfileMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function StudentHeader() {
   const { toggleSidebar } = useStudentLayoutStore();
   const { hasUnread } = useChatStore();
+  const { data: unreadNotifData } = useUnreadNotificationCount();
+  const unreadNotifCount =
+    typeof unreadNotifData === "number"
+      ? unreadNotifData
+      : (unreadNotifData as any)?.unread_count ?? (unreadNotifData as any)?.count ?? 0;
+  const hasUnreadNotifs = unreadNotifCount > 0;
 
   return (
     <header
@@ -68,8 +75,16 @@ export function StudentHeader() {
             className="btn-ghost press-scale flex items-center justify-center"
             style={{ position: "relative", width: 44, height: 44, padding: 0, borderRadius: 10 }}
             aria-label="Notifications"
+            title={hasUnreadNotifs ? `${unreadNotifCount} unread notification(s)` : "Notifications"}
           >
             <Bell style={{ width: 17, height: 17 }} />
+            {hasUnreadNotifs && (
+              <span style={{
+                position: "absolute", top: 9, right: 9, width: 8, height: 8,
+                borderRadius: "50%", background: "#6366f1",
+                border: "2px solid hsl(var(--card))",
+              }} className="animate-pulse" />
+            )}
           </Link>
 
           {/* Divider */}

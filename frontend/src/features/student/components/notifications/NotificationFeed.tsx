@@ -21,9 +21,16 @@ export function NotificationFeed() {
     if (activeCategory === "unread") {
       result = result.filter((n) => !n.isRead);
     } else if (activeCategory !== "all") {
-      result = result.filter(
-        (n) => n.type?.toLowerCase() === activeCategory.toLowerCase()
-      );
+      result = result.filter((n) => {
+        const cat = (n.category || "").toLowerCase();
+        const typ = (n.type || "").toLowerCase();
+        const act = activeCategory.toLowerCase();
+        if (cat === act || typ === act) return true;
+        if (act === "resources" && (typ === "resource_uploaded" || n.entity_type === "video" || n.entity_type === "pdf")) return true;
+        if (act === "courses" && typ === "course_published") return true;
+        if (act === "announcements" && typ === "announcement") return true;
+        return false;
+      });
     }
 
     // Sort by timestamp desc

@@ -1022,7 +1022,17 @@ class ResourceService:
         if duration_seconds is not None:
             updates["duration_seconds"] = duration_seconds
 
-        return await self._video_repo.update(video, **updates)
+        updated_video = await self._video_repo.update(video, **updates)
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=course_id,
+            resource_title=video.title,
+            resource_type="video",
+            resource_id=video.id,
+            teacher=self._teacher,
+        )
+        return updated_video
 
     async def update_video(
         self, course_id: uuid.UUID, video_id: uuid.UUID, data: UpdateVideoRequest
@@ -1185,7 +1195,17 @@ class ResourceService:
         if page_count is not None:
             updates["page_count"] = page_count
 
-        return await self._pdf_repo.update(pdf, **updates)
+        updated_pdf = await self._pdf_repo.update(pdf, **updates)
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=course_id,
+            resource_title=pdf.title,
+            resource_type="pdf",
+            resource_id=pdf.id,
+            teacher=self._teacher,
+        )
+        return updated_pdf
 
     async def update_pdf(
         self, course_id: uuid.UUID, pdf_id: uuid.UUID, data: UpdatePDFRequest

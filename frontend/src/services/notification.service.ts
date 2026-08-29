@@ -27,10 +27,11 @@ export const notificationService = {
 
   /** GET /notifications/unread-count */
   getUnreadCount: async (): Promise<number> => {
-    const { data } = await apiClient.get<APIResponse<{ count: number }>>(
+    const { data } = await apiClient.get<any>(
       ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT,
     );
-    return data.data.count;
+    const result = data?.data;
+    return result?.unread_count ?? result?.count ?? 0;
   },
 
   /** PATCH /notifications/:id/read */

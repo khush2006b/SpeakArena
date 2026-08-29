@@ -372,6 +372,16 @@ class UploadService:
             file_size_bytes=file_size_bytes,
         )
 
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=video.course_id,
+            resource_title=video.title,
+            resource_type="video",
+            resource_id=video.id,
+            teacher=self._teacher,
+        )
+
         background_tasks.add_task(
             _background_video_post_upload,
             video_id=video.id,
@@ -464,6 +474,16 @@ class UploadService:
             upload_status=UploadStatus.COMPLETED,
             processing_status=VideoProcessingStatus.READY,
             file_size_bytes=body.file_size_bytes or video.file_size_bytes,
+        )
+
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=video.course_id,
+            resource_title=video.title,
+            resource_type="video",
+            resource_id=video.id,
+            teacher=self._teacher,
         )
 
         # Enqueue background tasks (lightweight; Celery-ready interface)
@@ -577,6 +597,16 @@ class UploadService:
             upload_status=UploadStatus.COMPLETED,
             file_size_bytes=body.file_size_bytes or pdf.file_size_bytes,
             page_count=body.page_count,
+        )
+
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=pdf.course_id,
+            resource_title=pdf.title,
+            resource_type="pdf",
+            resource_id=pdf.id,
+            teacher=self._teacher,
         )
 
         background_tasks.add_task(
@@ -790,6 +820,16 @@ class VideoService:
         await self._video_repo.mark_published(video.id)
         video.processing_status = VideoProcessingStatus.PUBLISHED
         video.published_at = datetime.now(timezone.utc)
+
+        from app.modules.resource.notifications import notify_enrolled_students_of_resource
+        await notify_enrolled_students_of_resource(
+            self._db,
+            course_id=video.course_id,
+            resource_title=video.title,
+            resource_type="video",
+            resource_id=video.id,
+            teacher=self._actor,
+        )
 
         _audit(
             self._db,

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { useStudentNotificationsStore } from "@/stores/student-notifications.store";
 import { Button } from "@/components/ui/button";
@@ -63,12 +64,16 @@ export function NotificationDetails() {
             <p className="text-base whitespace-pre-wrap">{notification.body}</p>
           </div>
 
-          {notification.resourceId && (
+          {(notification.action_url || notification.actionUrl || notification.resourceId || notification.entity_id) && (
             <div className="mt-8 pt-8 border-t border-border/50">
-              <Button className="btn-primary press-scale" size="lg">
-                View Related Resource
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <Link href={notification.action_url || notification.actionUrl || "/student/resources"}>
+                <Button className="btn-primary press-scale" size="lg">
+                  {notification.entity_type === "video" || notification.entity_type === "pdf" || notification.type === "resource_uploaded"
+                    ? "Open Resource"
+                    : "View Details"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           )}
         </motion.div>

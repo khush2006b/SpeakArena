@@ -30,9 +30,18 @@ export function NotificationSidebar() {
     useStudentNotificationsStore();
 
   const getUnreadCount = (catId: string) => {
-    if (catId === "all") return notifications.filter((n) => !n.isRead).length;
-    if (catId === "unread") return notifications.filter((n) => !n.isRead).length;
-    return notifications.filter((n) => !n.isRead && n.category === catId).length;
+    if (catId === "all" || catId === "unread") return notifications.filter((n) => !n.isRead).length;
+    const act = catId.toLowerCase();
+    return notifications.filter((n) => {
+      if (n.isRead) return false;
+      const cat = (n.category || "").toLowerCase();
+      const typ = (n.type || "").toLowerCase();
+      if (cat === act || typ === act) return true;
+      if (act === "resources" && (typ === "resource_uploaded" || n.entity_type === "video" || n.entity_type === "pdf")) return true;
+      if (act === "courses" && typ === "course_published") return true;
+      if (act === "announcements" && typ === "announcement") return true;
+      return false;
+    }).length;
   };
 
   return (
