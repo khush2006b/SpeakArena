@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Link from "next/link";
+import { getCourseThumbnailUrl } from "@/lib/utils";
 
 export function CourseList({ search, status }: { search?: string; status?: string }) {
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set());
@@ -168,10 +169,10 @@ export function CourseList({ search, status }: { search?: string; status?: strin
                     <td style={{ padding: '16px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ position: 'relative', height: '48px', width: '80px', flexShrink: 0, overflow: 'hidden', borderRadius: '8px', background: 'hsl(var(--border))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid hsl(var(--border))' }} className="hidden sm:flex">
-                          {course.thumbnailUrl ? (
+                          {getCourseThumbnailUrl(course) ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={course.thumbnailUrl}
+                              src={getCourseThumbnailUrl(course)}
                               alt={course.title}
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";

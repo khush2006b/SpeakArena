@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Users, PlayCircle, MoreHorizontal, Loader2, Trash2, Archive, FileEdit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getCourseThumbnailUrl } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -72,10 +72,10 @@ function CourseCard({ course }: { course: Course }) {
       <div className="group elevation-1 rounded-2xl overflow-hidden transition-all duration-300 hover:elevation-2 flex flex-col h-full relative">
         {/* Thumbnail */}
         <div className="relative aspect-video w-full overflow-hidden bg-white/5">
-          {course.thumbnailUrl ? (
+          {getCourseThumbnailUrl(course) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={course.thumbnailUrl}
+              src={getCourseThumbnailUrl(course)}
               alt={course.title}
               onError={(e) => {
                 e.currentTarget.style.display = "none";

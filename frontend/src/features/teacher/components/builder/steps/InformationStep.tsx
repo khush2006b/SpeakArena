@@ -7,12 +7,14 @@ import { useBuilderStore } from "@/stores/builder.store";
 
 export function InformationStep() {
   const {
+    courseId,
     courseTitle, setCourseTitle,
     subtitle, setSubtitle,
     description, setDescription,
     thumbnailUrl, setThumbnailUrl,
     setThumbnailFile,
     createCourse, isCreating, error, clearError,
+    uploadThumbnail, isUploadingThumbnail,
   } = useBuilderStore();
 
   const [thumbnailPreview, setThumbnailPreview] = React.useState<string | null>(thumbnailUrl);
@@ -22,16 +24,20 @@ export function InformationStep() {
     setThumbnailPreview(thumbnailUrl);
   }, [thumbnailUrl]);
 
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
     setThumbnailPreview(objectUrl);
     setThumbnailUrl(objectUrl);
     setThumbnailFile(file);
+
+    if (courseId) {
+      await uploadThumbnail(file, courseId);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     const file = e.dataTransfer.files?.[0];
@@ -40,6 +46,10 @@ export function InformationStep() {
     setThumbnailPreview(objectUrl);
     setThumbnailUrl(objectUrl);
     setThumbnailFile(file);
+
+    if (courseId) {
+      await uploadThumbnail(file, courseId);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -109,7 +119,14 @@ export function InformationStep() {
 
         {/* Thumbnail Upload */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">Course Thumbnail</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-foreground">Course Thumbnail</label>
+            {isUploadingThumbnail && (
+              <span className="text-xs text-primary font-medium flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" /> Uploading thumbnail...
+              </span>
+            )}
+          </div>
           <input
             ref={thumbnailInputRef}
             type="file"
@@ -121,7 +138,7 @@ export function InformationStep() {
             onClick={() => thumbnailInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="w-full rounded-xl border-2 border-dashed border-border/60 bg-secondary/20 overflow-hidden transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+            className="w-full rounded-xl border-2 border-dashed border-border/60 bg-secondary/20 overflow-hidden transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer relative"
           >
             {thumbnailPreview ? (
               <div className="relative">
@@ -130,9 +147,16 @@ export function InformationStep() {
                   alt="Thumbnail preview"
                   className="w-full h-48 object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <p className="text-white text-sm font-semibold">Click to change</p>
-                </div>
+                {isUploadingThumbnail ? (
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                    <p className="text-white text-xs font-semibold">Uploading & Saving...</p>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <p className="text-white text-sm font-semibold">Click to change</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-10 flex flex-col items-center justify-center text-center">
@@ -150,13 +174,13 @@ export function InformationStep() {
       <div className="pt-6 border-t border-border flex justify-end">
         <Button
           onClick={handleContinue}
-          disabled={isCreating || !courseTitle.trim()}
+          disabled={isCreating || !courseTitle.trim() || isUploadingThumbnail}
           className="shadow-sm shadow-primary/20 px-8 press-scale min-w-[180px]"
         >
           {isCreating ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Creating Course...
+              {courseId ? "Saving..." : "Creating Course..."}
             </>
           ) : (
             "Continue to Curriculum →"

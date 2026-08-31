@@ -47,6 +47,7 @@ export interface BuilderState {
   isSaving: boolean;
   isPublishing: boolean;
   isCreating: boolean;
+  isUploadingThumbnail: boolean;
   error: string | null;
 
   // ── Step navigation ───────────────────────────────────────────────
@@ -72,6 +73,7 @@ export interface BuilderState {
 
   // ── API actions ───────────────────────────────────────────────────
   loadCourse: (id: string) => Promise<void>;
+  uploadThumbnail: (file?: File | null, overrideCourseId?: string) => Promise<string | null>;
   createCourse: () => Promise<string | null>;
   saveDraft: () => Promise<void>;
   publishCourse: () => Promise<boolean>;
@@ -97,6 +99,7 @@ const DEFAULT_STATE = {
   isSaving: false,
   isPublishing: false,
   isCreating: false,
+  isUploadingThumbnail: false,
   error: null,
 };
 
@@ -160,27 +163,111 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
   },
 
-  // ── createCourse (Client-only step transition, no draft DB save) ─
+  // ── uploadThumbnail (Directly uploads thumbnail to backend) ───────
+  uploadThumbnail: async (fileOverride?: File | null, overrideCourseId?: string) => {
+    const { courseId, thumbnailFile } = get();
+    const file = fileOverride || thumbnailFile;
+    const targetId = overrideCourseId || courseId;
+
+    if (!file || !targetId) return null;
+
+    set({ isUploadingThumbnail: true });
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await apiClient.post<any>(
+        `/api/v1/teacher/courses/${targetId}/thumbnail/upload`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = res.data?.data || res.data;
+      const uploadedUrl = data?.thumbnail_url
+        ? `${data.thumbnail_url}${data.thumbnail_url.includes("?") ? "&" : "?"}t=${Date.now()}`
+        : `/api/v1/teacher/courses/${targetId}/thumbnail?t=${Date.now()}`;
+
+      set({
+        thumbnailUrl: uploadedUrl,
+        thumbnailFile: null,
+        isUploadingThumbnail: false,
+      });
+
+      return uploadedUrl;
+    } catch (err: any) {
+      console.error("[Builder] Failed to upload thumbnail:", err);
+      set({ isUploadingThumbnail: false });
+      return null;
+    }
+  },
+
+  // ── createCourse (Step 1 transition + updates metadata if course exists) ─
   createCourse: async () => {
-    const { courseTitle } = get();
+    const { courseId, courseTitle, description, thumbnailFile, uploadThumbnail } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before continuing." });
       return null;
     }
 
+    if (courseId) {
+      set({ isCreating: true });
+      try {
+        // 1. Save metadata
+        await apiClient.patch(`/api/v1/teacher/courses/${courseId}/update`, {
+          title: courseTitle.trim(),
+          description: description.trim() || undefined,
+        }).catch(() => {});
+
+        // 2. Upload thumbnail if new file selected
+        if (thumbnailFile) {
+          await uploadThumbnail(thumbnailFile, courseId);
+        }
+      } catch (err) {
+        console.warn("[Builder] Warning while updating course details in Step 1:", err);
+      } finally {
+        set({ isCreating: false });
+      }
+    }
+
     set({ error: null, currentStep: 2 });
-    return "client-only-draft";
+    return courseId || "client-only-draft";
   },
 
-  // ── saveDraft (No DB save requested by user) ──────────────────────
+  // ── saveDraft (Updates course in DB if existing) ──────────────────
   saveDraft: async () => {
-    set({ isDirty: false });
+    const { courseId, courseTitle, description, price, accessType, maxStudents, thumbnailFile, uploadThumbnail } = get();
+    if (courseId) {
+      set({ isSaving: true });
+      try {
+        await apiClient.patch(`/api/v1/teacher/courses/${courseId}/update`, {
+          title: courseTitle.trim(),
+          description: description.trim() || undefined,
+          price: typeof price === "number" ? price : 0,
+          visibility: accessType === "private" ? "private" : "public",
+          max_students: maxStudents || 50,
+        });
+        if (thumbnailFile) {
+          await uploadThumbnail(thumbnailFile, courseId);
+        }
+        set({ isDirty: false, lastSaved: new Date().toLocaleTimeString() });
+      } catch {
+        // ignore
+      } finally {
+        set({ isSaving: false });
+      }
+    } else {
+      set({ isDirty: false });
+    }
   },
 
   // ── publishCourse (Creates/Updates course in DB and uploads thumbnail) ─
   publishCourse: async () => {
-    const { courseId, courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile } = get();
+    const { courseId, courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile, uploadThumbnail } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before publishing." });
@@ -220,20 +307,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         });
       }
 
-      // 2. Upload thumbnail via backend direct upload endpoint
-      const thumbnailFileAtPublish = get().thumbnailFile;
+      // 2. Upload thumbnail via backend direct upload endpoint with multipart/form-data
+      const thumbnailFileAtPublish = get().thumbnailFile || thumbnailFile;
       if (thumbnailFileAtPublish) {
-        try {
-          const formData = new FormData();
-          formData.append("file", thumbnailFileAtPublish);
-
-          await apiClient.post(
-            `/api/v1/teacher/courses/${targetCourseId}/thumbnail/upload`,
-            formData
-          );
-        } catch (thumbErr) {
-          console.error("[Builder] Failed to upload thumbnail via backend:", thumbErr);
-        }
+        await uploadThumbnail(thumbnailFileAtPublish, targetCourseId);
       }
 
       // 3. If new course creation (was draft), trigger publish

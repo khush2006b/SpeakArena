@@ -84,11 +84,19 @@ router = APIRouter(prefix="/teacher", tags=["Teacher"])
 
 
 def resolve_course_thumbnail_url(c) -> str | None:
+    ts_param = ""
+    updated_at = getattr(c, "updated_at", None)
+    if updated_at:
+        try:
+            ts_param = f"?v={int(updated_at.timestamp())}"
+        except Exception:
+            pass
     if getattr(c, "thumbnail_data", None) is not None:
-        return f"https://speakarena.onrender.com/api/v1/teacher/courses/{c.id}/thumbnail"
+        return f"https://speakarena.onrender.com/api/v1/teacher/courses/{c.id}/thumbnail{ts_param}"
     r2_key = getattr(c, "thumbnail_r2_key", None)
     if r2_key:
-        return r2.get_public_url(r2_key)
+        base_url = r2.get_public_url(r2_key)
+        return f"{base_url}{ts_param}" if base_url else None
     return None
 
 
@@ -633,7 +641,7 @@ async def get_course_thumbnail_media(
         content=bytes(course.thumbnail_data),
         media_type=course.thumbnail_mime or "image/jpeg",
         headers={
-            "Cache-Control": "public, max-age=31536000, immutable",
+            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
             "Access-Control-Allow-Origin": "*",
         },
     )
