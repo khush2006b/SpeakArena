@@ -46,43 +46,12 @@ export interface RegisterResponse {
 
 export const authService = {
   /**
-   * POST /auth/login
-   * Exchanges credentials for an access token + sets cookie for refresh.
+   * Redirect browser to backend Google OAuth login endpoint.
+   * Backend will redirect to Google consent screen.
    */
-  login: async (payload: LoginPayload): Promise<AuthResponse> => {
-    const { data } = await apiClient.post<APIResponse<any>>(
-      ENDPOINTS.AUTH.LOGIN,
-      {
-        email: payload.email,
-        password: payload.password,
-        remember_me: payload.rememberMe ?? false,
-      },
-    );
-    const authData = data.data;
-    const mapped: AuthResponse = {
-      user: authData.user,
-      tokens: { accessToken: authData.access_token, tokenType: 'Bearer' },
-    };
-    setAccessToken(mapped.tokens.accessToken);
-    return mapped;
-  },
-
-  /**
-   * POST /auth/register
-   * Creates a new account. Backend sends verification email.
-   */
-  register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
-    const { data } = await apiClient.post<APIResponse<any>>(
-      ENDPOINTS.AUTH.REGISTER,
-      {
-        full_name: payload.fullName,
-        fullName: payload.fullName,
-        email: payload.email,
-        password: payload.password,
-      },
-    );
-    // Registration does not return tokens or auto-login
-    return data.data;
+  googleRedirect: () => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://speakarena.onrender.com";
+    window.location.href = `${apiBase}/api/v1/auth/google/login`;
   },
 
   /**
@@ -116,28 +85,5 @@ export const authService = {
     const { data } = await apiClient.get<APIResponse<User>>(ENDPOINTS.AUTH.ME);
     return data.data;
   },
-
-  /**
-   * POST /auth/forgot-password
-   * Triggers a password-reset email to the given address.
-   */
-  forgotPassword: async (email: string): Promise<void> => {
-    await apiClient.post(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
-  },
-
-  /**
-   * POST /auth/reset-password
-   * Validates the reset token and updates the password.
-   */
-  resetPassword: async (payload: ResetPasswordPayload): Promise<void> => {
-    await apiClient.post(ENDPOINTS.AUTH.RESET_PASSWORD, payload);
-  },
-
-  /**
-   * POST /auth/verify-email
-   * Verifies email using the token sent to the user's inbox.
-   */
-  verifyEmail: async (token: string): Promise<void> => {
-    await apiClient.post(ENDPOINTS.AUTH.VERIFY_EMAIL, { token });
-  },
 };
+
