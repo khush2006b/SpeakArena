@@ -1649,10 +1649,7 @@ export function StudentMessagesView() {
             )}
             <button
               onClick={() => setShowInfoPanel((v) => !v)}
-              className={cn(
-                "p-1.5 sm:p-2 rounded-lg border border-white/10 text-slate-400 hover:text-white transition-colors",
-                showInfoPanel ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" : "bg-white/5"
-              )}
+              className={`p-1.5 sm:p-2 rounded-lg border border-white/10 text-slate-400 hover:text-white transition-colors ${showInfoPanel ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" : "bg-white/5"}`}
               aria-label="Channel Info"
             >
               <Info style={{ width: 16, height: 16 }} />
