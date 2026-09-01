@@ -3,7 +3,7 @@
 import * as React from "react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Video, Calendar, Clock, Loader2 } from "lucide-react";
+import { Video, Calendar, Clock, Loader2, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
 
@@ -29,6 +29,16 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
   });
 
   const nextClassStatus = nextClass ? getMeetingStatus(nextClass, nowMs) : "ENDED";
+
+  const teacherDisplayName = (nextClass?.teacherName && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacherName))
+    ? nextClass.teacherName
+    : (nextClass?.teacher_name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacher_name))
+    ? nextClass.teacher_name
+    : (nextClass?.instructor && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.instructor))
+    ? nextClass.instructor
+    : (nextClass?.teacher?.name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacher.name))
+    ? nextClass.teacher.name
+    : "Paras (Construction)";
 
   const [countdown, setCountdown] = React.useState<string>("");
   const [attendance, setAttendance] = React.useState({ percentage: 0, present: 0, late: 0, absent: 0 });
@@ -126,6 +136,10 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
           </p>
 
           <div className="flex flex-wrap items-center gap-6 mb-8 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>{teacherDisplayName}</span>
+            </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               <span>Today</span>

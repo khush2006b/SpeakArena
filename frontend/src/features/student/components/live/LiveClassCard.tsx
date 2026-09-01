@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { format, parseISO } from "date-fns";
-import { Clock, Calendar, Video, ExternalLink } from "lucide-react";
+import { Clock, Calendar, Video, ExternalLink, User } from "lucide-react";
 
 import { getMeetingStatus } from "@/lib/utils";
 
@@ -32,6 +32,16 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
 
   const durationMins = liveClass.durationMinutes || liveClass.duration_minutes || 60;
   const thumbnail = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='800' height='400' fill='url(%23g)'/></svg>`;
+
+  const teacherDisplayName = (liveClass.teacherName && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(liveClass.teacherName))
+    ? liveClass.teacherName
+    : (liveClass.teacher_name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(liveClass.teacher_name))
+    ? liveClass.teacher_name
+    : (liveClass.instructor && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(liveClass.instructor))
+    ? liveClass.instructor
+    : (liveClass.teacher?.name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(liveClass.teacher.name))
+    ? liveClass.teacher.name
+    : "Paras (Construction)";
 
   return (
     <div
@@ -82,8 +92,12 @@ export function LiveClassCard({ liveClass, onJoinClick }: LiveClassCardProps) {
           {liveClass.title}
         </h3>
 
-        {/* Time Info */}
+        {/* Time Info & Teacher */}
         <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4 shrink-0" />
+            <span className="truncate">{teacherDisplayName}</span>
+          </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4 shrink-0" />
             <span>{format(date, "MMM d, yyyy")}</span>
