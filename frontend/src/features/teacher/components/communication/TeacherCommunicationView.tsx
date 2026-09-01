@@ -1624,29 +1624,19 @@ export function TeacherCommunicationView() {
       >
         {/* Chat Header */}
         <div
-          style={{
-            height: 62,
-            borderBottom: "1px solid hsl(var(--border))",
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "rgba(11,15,26,0.9)",
-            backdropFilter: "blur(10px)",
-            flexShrink: 0,
-          }}
+          className="px-3 sm:px-5 py-2 sm:py-0 min-h-[58px] sm:h-[62px] border-b border-border/60 bg-[#0b0f1a]/95 backdrop-blur-md flex items-center justify-between gap-2 shrink-0 z-10"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={() => setMobileShowChat(false)}
-              className="md:hidden p-2 -ml-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
+              className="md:hidden p-1.5 -ml-1 rounded-lg bg-white/5 text-slate-300 hover:text-white shrink-0"
               aria-label="Back to channels"
             >
               <ArrowLeft style={{ width: 18, height: 18 }} />
             </button>
             <button
               onClick={() => setShowChannelSidebar((v) => !v)}
-              className="hidden md:flex p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white transition-colors"
+              className="hidden md:flex p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white transition-colors shrink-0"
               style={{ border: "1px solid hsl(var(--border))" }}
               title={showChannelSidebar ? "Collapse channels sidebar" : "Expand channels sidebar"}
               aria-label="Toggle channels sidebar"
@@ -1659,44 +1649,37 @@ export function TeacherCommunicationView() {
             </button>
             {/* Channel icon */}
             <div
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0"
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
                 background:
                   activeChannel.type === "announcements"
                     ? "linear-gradient(135deg,#f59e0b,#d97706)"
                     : activeChannel.type === "course"
                     ? "linear-gradient(135deg,#7c3aed,#4f46e5)"
                     : "linear-gradient(135deg,#0284c7,#0ea5e9)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
               }}
             >
               {activeChannel.type === "announcements" && (
-                <Megaphone style={{ width: 20, height: 20, color: "hsl(var(--foreground))" }} />
+                <Megaphone style={{ width: 18, height: 18, color: "hsl(var(--foreground))" }} />
               )}
               {activeChannel.type === "course" && (
-                <Hash style={{ width: 20, height: 20, color: "hsl(var(--foreground))" }} />
+                <Hash style={{ width: 18, height: 18, color: "hsl(var(--foreground))" }} />
               )}
               {activeChannel.type === "dm" && (
-                <MessageSquare style={{ width: 20, height: 20, color: "hsl(var(--foreground))" }} />
+                <MessageSquare style={{ width: 18, height: 18, color: "hsl(var(--foreground))" }} />
               )}
             </div>
-            <div>
+            <div className="min-w-0 flex-1 overflow-hidden">
               <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 800,
-                  color: "#f1f5f9",
-                  letterSpacing: "-0.3px",
-                }}
+                className="text-sm sm:text-[15px] font-extrabold text-slate-100 truncate tracking-tight"
+                title={channelTitle}
               >
                 {channelTitle}
               </div>
-              <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
+              <div
+                className="text-[10px] sm:text-xs text-slate-400 truncate mt-0.5"
+                title={channelSubtitle}
+              >
                 {channelSubtitle}
               </div>
             </div>

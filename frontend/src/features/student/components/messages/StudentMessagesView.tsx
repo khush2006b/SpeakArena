@@ -1576,31 +1576,19 @@ export function StudentMessagesView() {
       >
         {/* Chat Header */}
         <div
-          style={{
-            height: 62,
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "rgba(11,15,26,0.9)",
-            backdropFilter: "blur(10px)",
-            flexShrink: 0,
-          }}
+          className="px-3 sm:px-5 py-2 sm:py-0 min-h-[58px] sm:h-[62px] border-b border-white/5 bg-[#0b0f1a]/95 backdrop-blur-md flex items-center justify-between gap-2 shrink-0 z-10"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={() => setMobileShowChat(false)}
-              className="md:hidden p-2 -ml-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
+              className="md:hidden p-1.5 -ml-1 rounded-lg bg-white/5 text-slate-300 hover:text-white shrink-0"
               aria-label="Back to channels"
             >
               <ArrowLeft style={{ width: 18, height: 18 }} />
             </button>
             <div
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0"
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
                 background: !activeChannel
                   ? "linear-gradient(135deg,#334155,#475569)"
                   : activeChannel.type === "announcements"
@@ -1608,55 +1596,40 @@ export function StudentMessagesView() {
                   : activeChannel.type === "course"
                   ? "linear-gradient(135deg,#4f46e5,#7c3aed)"
                   : "linear-gradient(135deg,#0284c7,#0ea5e9)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
               }}
             >
               {(!activeChannel || activeChannel.type === "course") && (
-                <Hash style={{ width: 20, height: 20, color: "#fff" }} />
+                <Hash style={{ width: 18, height: 18, color: "#fff" }} />
               )}
               {activeChannel?.type === "announcements" && (
-                <Megaphone style={{ width: 20, height: 20, color: "#fff" }} />
+                <Megaphone style={{ width: 18, height: 18, color: "#fff" }} />
               )}
               {activeChannel?.type === "teacher_dm" && (
-                <UserCheck style={{ width: 20, height: 20, color: "#fff" }} />
+                <UserCheck style={{ width: 18, height: 18, color: "#fff" }} />
               )}
             </div>
-            <div>
+            <div className="min-w-0 flex-1 overflow-hidden">
               <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 800,
-                  color: "#f1f5f9",
-                  letterSpacing: "-0.3px",
-                }}
+                className="text-sm sm:text-[15px] font-extrabold text-slate-100 truncate tracking-tight"
+                title={channelTitle}
               >
                 {channelTitle}
               </div>
-              <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
+              <div
+                className="text-[10px] sm:text-xs text-slate-400 truncate mt-0.5"
+                title={channelSubtitle}
+              >
                 {channelSubtitle}
               </div>
             </div>
           </div>
 
           {/* Right side actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {room && (
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 20,
-                  padding: "5px 12px",
-                  fontSize: 11,
-                  color: statusDot?.color,
-                  fontWeight: 600,
-                }}
+                className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold"
+                style={{ color: statusDot?.color }}
               >
                 <Circle
                   style={{
@@ -1671,21 +1644,16 @@ export function StudentMessagesView() {
                         : undefined,
                   }}
                 />
-                {statusDot?.label}
+                <span className="hidden xs:inline">{statusDot?.label}</span>
               </div>
             )}
             <button
               onClick={() => setShowInfoPanel((v) => !v)}
-              style={{
-                padding: 8,
-                borderRadius: 8,
-                background: showInfoPanel
-                  ? "rgba(99,102,241,0.15)"
-                  : "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: showInfoPanel ? "#818cf8" : "#94a3b8",
-                cursor: "pointer",
-              }}
+              className={cn(
+                "p-1.5 sm:p-2 rounded-lg border border-white/10 text-slate-400 hover:text-white transition-colors",
+                showInfoPanel ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" : "bg-white/5"
+              )}
+              aria-label="Channel Info"
             >
               <Info style={{ width: 16, height: 16 }} />
             </button>
