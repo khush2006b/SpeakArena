@@ -50,10 +50,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         unique=True,
         comment="Stored as-is. Unique index is on LOWER(email).",
     )
-    hashed_password: Mapped[str] = mapped_column(
+    hashed_password: Mapped[Optional[str]] = mapped_column(
         String(255),
-        nullable=False,
-        comment="Argon2id hash. Never bcrypt.",
+        nullable=True,
+        comment="Argon2id hash. None for Google OAuth users.",
     )
     role: Mapped[str] = mapped_column(
         String(20),
@@ -88,6 +88,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     )
     locked_until: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMPTZ, nullable=True, default=None
+    )
+    google_id: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=True,
+        default=None,
+        index=True,
+        comment="Google OAuth subject (sub) identifier. Populated on first Google sign-in.",
     )
 
     # --- Relationships ---

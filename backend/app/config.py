@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "SpeakArena"
 
+    # --- Google OAuth ---
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "https://speakarena.onrender.com/api/v1/auth/google/callback"
+    FRONTEND_URL: str = "https://speakarena.com"
+    TEACHER_GOOGLE_EMAIL: str = "speakarena8@gmail.com"
+
     # --- Sentry ---
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

@@ -39,7 +39,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,6 +63,7 @@ from app.core.utils.timezone import seconds_until
 from app.core.utils.uuid_helpers import is_valid_uuid
 from app.database import get_db_session
 from app.models.user import User
+from app.modules.auth import google_oauth
 from app.modules.auth.dependencies import (
     get_client_ip,
     get_current_student,
@@ -108,6 +109,7 @@ from app.modules.auth.service import (
     RegistrationService,
     SessionService,
 )
+from app.core.security.jwt import create_access_token
 from app.core.security.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -1176,3 +1178,134 @@ async def get_student_profile(
             total_courses_completed=getattr(profile, "total_courses_completed", 0),
         ).model_dump(mode="json"),
     )
+
+
+# ===========================================================================
+# Google OAuth 2.0
+# ===========================================================================
+
+
+@router.get("/google/login", tags=["Authentication"])
+async def google_login(
+    redis: Redis = Depends(get_redis),
+) -> RedirectResponse:
+    """Redirect browser to Google OAuth consent screen.
+
+    Generates a CSRF state nonce stored in Redis for 10 minutes,
+    then redirects the browser to Google's authorization endpoint.
+    """
+    state = await google_oauth.generate_state_and_store(redis)
+    auth_url = google_oauth.build_auth_url(state)
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@router.get("/google/callback", tags=["Authentication"])
+async def google_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> RedirectResponse:
+    """Handle Google OAuth callback.
+
+    Exchanges the authorization code, verifies the ID token, upserts the user,
+    issues a JWT access token + refresh token cookie, and redirects to the
+    frontend /auth/callback page.
+    """
+    frontend_error_url = f"{settings.FRONTEND_URL}/auth/callback?error=oauth_failed"
+
+    # Handle Google-side errors (e.g. user denied consent)
+    if error:
+        logger.warning("Google OAuth error returned: %s", error)
+        return RedirectResponse(url=frontend_error_url, status_code=302)
+
+    if not code or not state:
+        return RedirectResponse(url=frontend_error_url, status_code=302)
+
+    try:
+        # Verify CSRF state nonce
+        await google_oauth.verify_state(redis, state)
+
+        # Exchange authorization code for Google tokens
+        google_tokens = await google_oauth.exchange_code_for_tokens(code)
+        id_token = google_tokens.get("id_token")
+        if not id_token:
+            raise ValueError("No id_token in Google token response")
+
+        # Verify ID token and extract user info
+        user_info = await google_oauth.get_google_user_info(id_token)
+
+        # Upsert user in our database
+        user = await google_oauth.upsert_google_user(db, user_info)
+
+        # Issue our own JWT + refresh token (reuse login token creation logic)
+        ip_address = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "")
+
+        rt_repo = RefreshTokenRepository(db)
+        session_repo = UserSessionRepository(db)
+
+        from app.core.security.tokens import generate_raw_token, hash_token
+        from app.core.utils.timezone import add_seconds, utcnow
+
+        now = utcnow()
+        rt_ttl = REFRESH_TOKEN_REMEMBER_ME_TTL_SECONDS
+        raw_rt = generate_raw_token()
+        rt_hash = hash_token(raw_rt)
+        rt_expires_at = add_seconds(now, rt_ttl)
+
+        rt_record = await rt_repo.create(
+            user_id=user.id,
+            token_hash=rt_hash,
+            expires_at=rt_expires_at,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_fingerprint="google_oauth",
+        )
+
+        session_record = await session_repo.create(
+            user_id=user.id,
+            refresh_token_id=rt_record.id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_type="google_oauth",
+        )
+
+        at_string, _ = create_access_token(
+            user_id=str(user.id),
+            role=user.role,
+            session_id=str(session_record.id),
+        )
+
+        await db.commit()
+
+        logger.info(
+            "Google OAuth login successful.",
+            extra={"user_id": str(user.id), "role": user.role, "email": user_info.email},
+        )
+
+        # Redirect to frontend callback page with access token + role
+        frontend_callback_url = (
+            f"{settings.FRONTEND_URL}/auth/callback"
+            f"?at={at_string}&role={user.role}"
+        )
+
+        response = RedirectResponse(url=frontend_callback_url, status_code=302)
+
+        # Set refresh token as HttpOnly cookie (same as normal login)
+        response.set_cookie(
+            key=COOKIE_REFRESH_TOKEN,
+            value=raw_rt,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=rt_ttl,
+            path=COOKIE_REFRESH_TOKEN_PATH,
+        )
+        return response
+
+    except Exception as exc:
+        logger.error("Google OAuth callback error: %s", exc, exc_info=True)
+        return RedirectResponse(url=frontend_error_url, status_code=302)
