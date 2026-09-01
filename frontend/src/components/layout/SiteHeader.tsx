@@ -61,7 +61,7 @@ export function SiteHeader() {
           </div>
 
           {/* RIGHT: Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <ThemeToggle />
 
             {isFullyAuth ? (
@@ -71,17 +71,17 @@ export function SiteHeader() {
                 <ProfileMenu />
               </>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
                   href={ROUTES.LOGIN}
-                  className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-accent"
+                  className="inline-flex text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg hover:bg-accent"
                 >
                   Log in
                 </Link>
                 <Link
                   href={ROUTES.REGISTER}
-                  className="btn-primary press-scale hidden sm:inline-flex"
-                  style={{ padding: "7px 16px", fontSize: 13, borderRadius: 9 }}
+                  className="btn-primary press-scale inline-flex items-center justify-center font-semibold text-xs sm:text-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg"
+                  style={{ fontSize: "inherit" }}
                 >
                   Sign up
                 </Link>
