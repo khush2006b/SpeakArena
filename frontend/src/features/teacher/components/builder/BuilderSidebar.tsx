@@ -13,7 +13,12 @@ const STEPS = [
   { id: 6, title: "SEO & Preview", description: "Review & publish" },
 ];
 
-export function BuilderSidebar() {
+interface BuilderSidebarProps {
+  /** Called on mobile after a step is selected so the layout can reveal the form panel. */
+  onStepSelect?: () => void;
+}
+
+export function BuilderSidebar({ onStepSelect }: BuilderSidebarProps) {
   const currentStep = useBuilderStore((state) => state.currentStep);
   const setStep = useBuilderStore((state) => state.setStep);
 
@@ -56,7 +61,10 @@ export function BuilderSidebar() {
           return (
             <button
               key={step.id}
-              onClick={() => setStep(step.id)}
+              onClick={() => {
+                setStep(step.id);
+                onStepSelect?.();
+              }}
               style={{
                 width: "100%",
                 display: "flex",

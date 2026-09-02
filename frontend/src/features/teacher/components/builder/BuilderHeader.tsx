@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBuilderStore } from "@/stores/builder.store";
 
-export function BuilderHeader() {
+export function BuilderHeader({ mobileStepsButton }: { mobileStepsButton?: React.ReactNode }) {
   const router = useRouter();
   const {
     courseId,
@@ -99,6 +99,7 @@ export function BuilderHeader() {
 
       {/* Right: Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        {mobileStepsButton}
         <Button
           onClick={handlePublish}
           disabled={!courseTitle.trim() || isPublishing}
