@@ -193,6 +193,15 @@ export function StudentMessagesView() {
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
 
+  // Global channel — available to all students regardless of enrollment
+  const [globalChannel, setGlobalChannel] = useState<{
+    course_id: string;
+    course_title: string;
+    room_id: string;
+    teacher_id: string | null;
+    teacher_name: string;
+  } | null>(null);
+
   const [activeChannel, setActiveChannel] = useState<ActiveChannel | null>(null);
   const [coursesSectionOpen, setCoursesSectionOpen] = useState(true);
   const [dmsSectionOpen, setDmsSectionOpen] = useState(true);
@@ -321,6 +330,21 @@ export function StudentMessagesView() {
       })
       .catch(() => setCoursesError("Failed to load courses."))
       .finally(() => setCoursesLoading(false));
+  }, []);
+
+  // ── Fetch global channel (accessible to ALL students, even unenrolled) ────────
+  useEffect(() => {
+    apiClient
+      .get("/api/v1/chat/global")
+      .then((res) => {
+        const data = res.data?.data;
+        if (data?.course_id) {
+          setGlobalChannel(data);
+        }
+      })
+      .catch(() => {
+        // Silently fail — global channel just won't show if no courses exist yet
+      });
   }, []);
 
   // ── Fetch Chat Room & Message History in Parallel ────────────────────────────
@@ -1037,85 +1061,54 @@ export function StudentMessagesView() {
             General
           </div>
 
-          {/* Show announcements for the first enrolled course (global broadcast) */}
-          {courses.length > 0 ? (
-            <button
-              className="ch-item"
-              onClick={() => {
-                openChannel({ type: "announcements", course: courses[0] });
-              }}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "11px 10px",
-                borderRadius: 8,
-                background:
-                  activeChannel?.type === "announcements"
-                    ? "rgba(245,158,11,0.1)"
-                    : "transparent",
-                border:
-                  activeChannel?.type === "announcements"
-                    ? "1px solid rgba(245,158,11,0.2)"
-                    : "1px solid transparent",
-                color:
-                  activeChannel?.type === "announcements"
-                    ? "#f59e0b"
-                    : "#94a3b8",
-                fontWeight:
-                  activeChannel?.type === "announcements" ? 700 : 400,
-                cursor: "pointer",
-                fontSize: 13,
-                textAlign: "left",
-              }}
-            >
-              <Megaphone
+          {/* Show announcements — uses enrolled course or global channel fallback */}
+          {(() => {
+            const announcementCourse = courses.length > 0 ? courses[0] : (globalChannel ? {
+              ...globalChannel,
+              id: globalChannel.course_id,
+              teacherName: globalChannel.teacher_name,
+              teacher_id: globalChannel.teacher_id,
+            } as any : null);
+
+            if (!announcementCourse && coursesLoading) {
+              return (
+                <div style={{ padding: "8px 10px", fontSize: 12, color: "#475569", fontStyle: "italic" }}>
+                  Loading...
+                </div>
+              );
+            }
+
+            if (!announcementCourse) return null;
+
+            return (
+              <button
+                className="ch-item"
+                onClick={() => openChannel({ type: "announcements", course: announcementCourse })}
                 style={{
-                  width: 16,
-                  height: 16,
-                  color:
-                    activeChannel?.type === "announcements"
-                      ? "#f59e0b"
-                      : "#64748b",
-                  flexShrink: 0,
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "11px 10px",
+                  borderRadius: 8,
+                  background: activeChannel?.type === "announcements" ? "rgba(245,158,11,0.1)" : "transparent",
+                  border: activeChannel?.type === "announcements" ? "1px solid rgba(245,158,11,0.2)" : "1px solid transparent",
+                  color: activeChannel?.type === "announcements" ? "#f59e0b" : "#94a3b8",
+                  fontWeight: activeChannel?.type === "announcements" ? 700 : 400,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  textAlign: "left",
                 }}
-              />
-              <span style={{ flex: 1 }}>Announcements</span>
-              {Boolean(unreadChannelKeys["announcements"]) && (
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#ef4444",
-                    flexShrink: 0,
-                    marginRight: 6,
-                  }}
-                  className="animate-pulse"
-                />
-              )}
-              <Lock
-                style={{
-                  width: 11,
-                  height: 11,
-                  color: "#64748b",
-                  flexShrink: 0,
-                }}
-              />
-            </button>
-          ) : (
-            <div
-              style={{
-                padding: "8px 10px",
-                fontSize: 12,
-                color: "#475569",
-                fontStyle: "italic",
-              }}
-            >
-              {coursesLoading ? "Loading..." : "Enroll in a course first."}
-            </div>
-          )}
+              >
+                <Megaphone style={{ width: 16, height: 16, color: activeChannel?.type === "announcements" ? "#f59e0b" : "#64748b", flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>Announcements</span>
+                {Boolean(unreadChannelKeys["announcements"]) && (
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444", flexShrink: 0, marginRight: 6 }} className="animate-pulse" />
+                )}
+                <Lock style={{ width: 11, height: 11, color: "#64748b", flexShrink: 0 }} />
+              </button>
+            );
+          })()}
         </div>
 
         {/* ── SECTION 2: Courses ────────────────────────────────────────────── */}
@@ -1365,20 +1358,8 @@ export function StudentMessagesView() {
 
           {dmsSectionOpen && (
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {!coursesLoading && courses.length === 0 && (
-                <div
-                  style={{
-                    padding: "8px 10px",
-                    fontSize: 12,
-                    color: "#475569",
-                    fontStyle: "italic",
-                  }}
-                >
-                  Enroll in a course to message instructors.
-                </div>
-              )}
               {(() => {
-                // Deduplicate: one DM entry per unique teacher
+                // Build teacher list from enrolled courses, falling back to globalChannel
                 const seen = new Set<string>();
                 const uniqueTeachers: { teacherName: string; teacherId: string; course: typeof courses[0] }[] = [];
                 for (const course of courses) {
@@ -1386,12 +1367,22 @@ export function StudentMessagesView() {
                   if (tid && !seen.has(tid)) {
                     seen.add(tid);
                     uniqueTeachers.push({
-                      teacherName: (course as any).teacherName || (course as any).teacher_name || "Instructor",
+                      teacherName: (course as any).teacherName || (course as any).teacher_name || "Paras (Construction)",
                       teacherId: tid,
-                      course, // first course for this teacher
+                      course,
                     });
                   }
                 }
+                // If no enrolled courses but globalChannel exists, show Paras
+                if (uniqueTeachers.length === 0 && globalChannel?.teacher_id) {
+                  const gc = globalChannel;
+                  uniqueTeachers.push({
+                    teacherName: gc.teacher_name || "Paras (Construction)",
+                    teacherId: gc.teacher_id!,
+                    course: { ...gc, id: gc.course_id, teacherName: gc.teacher_name, teacher_id: gc.teacher_id } as any,
+                  });
+                }
+
                 return uniqueTeachers.map(({ teacherName, teacherId, course }) => {
                   const isActive =
                     activeChannel?.type === "teacher_dm" &&

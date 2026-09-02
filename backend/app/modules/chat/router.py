@@ -144,6 +144,84 @@ async def get_all_rooms(
 
 
 @router.get(
+    "/global",
+    summary="Get global announcement room + teacher info (any authenticated user)",
+    description=(
+        "Returns the first available global_announcement chat room and the teacher's "
+        "user ID. No course enrollment required — accessible to all authenticated users."
+    ),
+)
+async def get_global_channel(
+    actor: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return global announcement room metadata for any authenticated user.
+
+    Used by the frontend to show the General Announcements and Teacher DM
+    channels to all students, even those not enrolled in any course.
+    """
+    # Find any active course to attach the global announcement to
+    stmt = (
+        select(ChatRoom, Course)
+        .join(Course, ChatRoom.course_id == Course.id)
+        .where(
+            ChatRoom.room_type == "global_announcement",
+            ChatRoom.is_active == True,
+            Course.is_published == True,
+        )
+        .limit(1)
+    )
+    res = await db.execute(stmt)
+    row = res.first()
+
+    if row is None:
+        # Try any course even if no room exists yet
+        course_stmt = select(Course).where(Course.is_published == True).limit(1)
+        course_res = await db.execute(course_stmt)
+        course = course_res.scalar_one_or_none()
+        if course is None:
+            return success_response(data=None)
+
+        # Ensure rooms are created
+        svc = ChatRoomService(db, None, actor)
+        await svc.ensure_course_rooms(course.id)
+        await db.commit()
+
+        # Re-query
+        res2 = await db.execute(
+            select(ChatRoom, Course)
+            .join(Course, ChatRoom.course_id == Course.id)
+            .where(
+                ChatRoom.room_type == "global_announcement",
+                ChatRoom.course_id == course.id,
+            )
+            .limit(1)
+        )
+        row = res2.first()
+        if row is None:
+            return success_response(data=None)
+
+    room, course = row
+
+    # Get the teacher's user info
+    teacher_stmt = select(User).where(User.id == course.teacher_id)
+    teacher_res = await db.execute(teacher_stmt)
+    teacher_user = teacher_res.scalar_one_or_none()
+
+    return success_response(
+        data={
+            "course_id": str(course.id),
+            "course_title": course.title,
+            "room_id": str(room.id),
+            "teacher_id": str(course.teacher_id) if course.teacher_id else None,
+            "teacher_name": (
+                teacher_user.full_name if teacher_user else "Paras (Construction)"
+            ),
+        }
+    )
+
+
+@router.get(
     "/courses/{course_id}/rooms",
     summary="Get all chat rooms for a course",
     description="Returns both Announcement and General chat rooms for a course.",

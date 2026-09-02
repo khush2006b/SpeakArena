@@ -238,9 +238,12 @@ class ChatRoomService:
         rooms = await self.ensure_course_rooms(course_id)
 
         if self._actor.role == UserRole.STUDENT:
-            enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
-            if not enrolled:
-                raise NotEnrolledError()
+            # global_announcement rooms are accessible to ALL authenticated students
+            # regardless of enrollment — this is the platform-wide broadcast channel.
+            if room_type != "global_announcement":
+                enrolled = await self._mod_repo.is_enrolled(self._actor.id, course_id)
+                if not enrolled:
+                    raise NotEnrolledError()
 
         target_type = room_type or "general"
         room = next((r for r in rooms if r.room_type == target_type), rooms[0])
@@ -465,9 +468,11 @@ class MessageService:
             room = next((r for r in rooms if r.room_type == target_type), rooms[0])
 
         if self._actor.role == UserRole.STUDENT:
-            enrolled = await self._mod_repo.is_enrolled(self._actor.id, room.course_id)
-            if not enrolled:
-                raise NotEnrolledError()
+            # global_announcement is readable by all authenticated students
+            if room.room_type != "global_announcement":
+                enrolled = await self._mod_repo.is_enrolled(self._actor.id, room.course_id)
+                if not enrolled:
+                    raise NotEnrolledError()
 
         include_muted = self._actor.role == UserRole.TEACHER
         is_announcement_room = (
