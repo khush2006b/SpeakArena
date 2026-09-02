@@ -1286,10 +1286,14 @@ async def google_callback(
             extra={"user_id": str(user.id), "role": user.role, "email": user_info.email},
         )
 
-        # Redirect to frontend callback page with access token + role
+        # Redirect to frontend callback page with access token + role + raw RT
+        # The frontend will call /api/auth/set-cookie to store the RT as a
+        # first-party cookie on speakarena.com so the Vercel rewrite proxy
+        # can forward it to the backend on subsequent /auth/refresh calls.
+        import urllib.parse as _urlparse
         frontend_callback_url = (
             f"{settings.FRONTEND_URL}/auth/callback"
-            f"?at={at_string}&role={user.role}"
+            f"?at={at_string}&role={user.role}&rt={_urlparse.quote(raw_rt, safe='')}"
         )
 
         response = RedirectResponse(url=frontend_callback_url, status_code=302)

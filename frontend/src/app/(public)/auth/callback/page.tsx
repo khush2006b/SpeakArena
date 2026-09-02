@@ -15,6 +15,7 @@ function AuthCallbackInner() {
   useEffect(() => {
     const at = searchParams.get("at");
     const role = searchParams.get("role");
+    const rt = searchParams.get("rt");   // raw refresh token from OAuth redirect
     const err = searchParams.get("error");
 
     if (err || !at) {
@@ -38,6 +39,22 @@ function AuthCallbackInner() {
         const maxAge = 60 * 60 * 24 * 30; // 30 days
         document.cookie = `sa_auth=1; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `sa_role=${user.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
+
+        // Store the refresh token as a first-party HttpOnly cookie on speakarena.com
+        // via a Next.js API route. This is needed because the backend sets the RT
+        // cookie on speakarena.onrender.com, but our Vercel proxy sends /auth/refresh
+        // from speakarena.com — so the browser never sends the backend-domain cookie.
+        if (rt) {
+          try {
+            await fetch("/api/auth/set-cookie", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ rt }),
+            });
+          } catch {
+            // Non-fatal — user can still use the app with the in-memory AT
+          }
+        }
 
         // Redirect to correct dashboard
         if (user.role === "teacher") {
