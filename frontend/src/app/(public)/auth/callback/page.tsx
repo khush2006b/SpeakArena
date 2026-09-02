@@ -41,7 +41,7 @@ function AuthCallbackInner() {
 
         // Redirect to correct dashboard
         if (user.role === "teacher") {
-          router.replace("/teacher/dashboard");
+          router.replace("/teacher");
         } else {
           router.replace("/student/dashboard");
         }
