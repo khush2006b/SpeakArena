@@ -43,7 +43,7 @@ function AuthCallbackInner() {
         if (user.role === "teacher") {
           router.replace("/teacher");
         } else {
-          router.replace("/student/dashboard");
+          router.replace("/student");
         }
       } catch (e) {
         console.error("Auth callback error:", e);
