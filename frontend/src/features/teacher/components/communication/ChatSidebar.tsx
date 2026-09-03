@@ -79,7 +79,7 @@ export function ChatSidebar() {
       {/* Sidebar Header */}
       <div className="p-4 border-b border-white/5">
         <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2 m-0">
-          SpeakArena
+          Speak Arena
           <Badge
             variant="outline"
             className="text-[10px] uppercase bg-primary/15 text-primary border-primary/25 rounded-full px-1.5 py-0.5"

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PricingSection } from "@/features/marketing/components/PricingSection";
 
 export const metadata: Metadata = {
-  title: "Pricing | SpeakArena",
-  description: "Transparent pricing for all SpeakArena English learning plans.",
+  title: "Pricing | Speak Arena",
+  description: "Transparent pricing for all Speak Arena English learning plans.",
 };
 
 export default function PricingPage() {

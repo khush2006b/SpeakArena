@@ -45,7 +45,7 @@ export function TeacherSection() {
               <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.06em" }}>Founder & Teacher</span>
             </div>
             <h3 style={{ fontSize: 24, fontWeight: 800, color: "#fff", margin: "0 0 4px 0", lineHeight: 1.2 }}>Paras (Construction)</h3>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Mentor · SpeakArena</p>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>Founder & Lead Mentor · Speak Arena</p>
           </div>
         </div>
 

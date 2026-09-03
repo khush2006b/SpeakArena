@@ -78,7 +78,7 @@ export function MobileNav() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                     <span className="text-sm font-bold text-primary-foreground">S</span>
                   </div>
-                  <span className="text-base font-semibold tracking-tight">SpeakArena</span>
+                  <span className="text-base font-semibold tracking-tight">Speak Arena</span>
                 </Link>
                 <Button
                   variant="ghost"

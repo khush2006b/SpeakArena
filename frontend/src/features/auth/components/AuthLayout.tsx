@@ -47,7 +47,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
               <Mic2 style={{ width: 18, height: 18, color: "#fff" }} />
             </div>
             <span className="text-lg font-bold text-foreground tracking-tight">
-              SpeakArena
+              Speak Arena
             </span>
           </Link>
           <ThemeToggle />
@@ -62,7 +62,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
 
         {/* ── Footer ── */}
         <div className="text-xs text-muted-foreground text-center flex-shrink-0">
-          © {new Date().getFullYear()} SpeakArena Inc.
+          © {new Date().getFullYear()} Speak Arena Inc.
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
           RIGHT COLUMN — Showcase (matches SoftQA right panel)
           flex-col + justify-between so content is at top
           and partner logos are pinned to bottom
-         ══════════════════════════════════════════════════ */}
+          ══════════════════════════════════════════════════ */}
       <div
         className="hidden lg:flex flex-col flex-1 bg-card/60 border-l border-border/60 transition-colors duration-200"
         style={{
@@ -100,7 +100,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
 
           {/* Quote text */}
           <p className="text-lg text-muted-foreground leading-relaxed mb-7">
-            {quote || "SpeakArena has completely transformed my speaking confidence. It's reliable, structured, and ensures my fluency improves every single day."}
+            {quote || "Speak Arena has completely transformed my speaking confidence. It's reliable, structured, and ensures my fluency improves every single day."}
           </p>
 
           {/* Author row */}

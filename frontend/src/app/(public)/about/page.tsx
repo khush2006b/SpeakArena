@@ -3,8 +3,8 @@ import { Users, Target, Zap, Award, Mic2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "About Us | SpeakArena",
-  description: "The mission and story behind SpeakArena — where English fluency meets cutting-edge live learning.",
+  title: "About Us | Speak Arena",
+  description: "The mission and story behind Speak Arena — where English fluency meets cutting-edge live learning.",
 };
 
 const STATS = [
@@ -46,7 +46,7 @@ export default function AboutPage() {
             <span className="text-primary">mean it.</span>
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-12">
-            SpeakArena was founded on one belief: that language fluency is a life-changing skill that deserves the same rigor and interactivity as any elite professional program.
+            Speak Arena was founded on one belief: that language fluency is a life-changing skill that deserves the same rigor and interactivity as any elite professional program.
           </p>
 
           {/* Stats row */}
@@ -75,14 +75,14 @@ export default function AboutPage() {
               </h2>
               <div className="flex flex-col gap-4">
                 <p className="text-base text-muted-foreground leading-relaxed">
-                  We believe that premium language education should be accessible, interactive, and beautifully designed. SpeakArena bridges the gap between passive self-study and expensive private tutors.
+                  We believe that premium language education should be accessible, interactive, and beautifully designed. Speak Arena bridges the gap between passive self-study and expensive private tutors.
                 </p>
                 <p className="text-base text-muted-foreground leading-relaxed">
                   Through real-time Google Meet sessions, structured cohort programs, and expert certified coaches, we create a classroom experience that transcends physical limits.
                 </p>
               </div>
               <Link href="/register" className="btn-primary mt-8 inline-flex press-scale">
-                Join SpeakArena <ArrowRight className="w-4 h-4 ml-2" />
+                Join Speak Arena <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </div>
 

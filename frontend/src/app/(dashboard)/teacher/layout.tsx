@@ -12,7 +12,7 @@ import { TeacherRoute } from "@/components/guards/TeacherRoute";
 export const metadata: Metadata = {
   title: {
     default: "Teacher Dashboard",
-    template: "%s | SpeakArena",
+    template: "%s | Speak Arena",
   },
 };
 

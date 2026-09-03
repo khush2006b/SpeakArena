@@ -52,7 +52,7 @@ export function SiteHeader() {
                 <span className="text-sm font-bold text-primary-foreground">S</span>
               </div>
               <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">
-                SpeakArena
+                Speak Arena
               </span>
             </Link>
 

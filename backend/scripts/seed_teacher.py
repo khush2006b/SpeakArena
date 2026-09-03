@@ -32,7 +32,7 @@ TEACHER_EMAIL = "teacher@speakarena.com"
 TEACHER_PASSWORD = "Teacher@2024"
 TEACHER_FULL_NAME = "Paras (Construction)"
 TEACHER_BIO = "Professional English speaking coach with 10+ years of experience."
-TEACHER_HEADLINE = "English Speaking Expert | SpeakArena"
+TEACHER_HEADLINE = "English Speaking Expert | Speak Arena"
 # ──────────────────────────────────────────────────────────────────────────
 
 

@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { ResourcesDashboard } from "@/features/student/components/resources/ResourcesDashboard";
 
 export const metadata: Metadata = {
-  title: "Resources - SpeakArena",
+  title: "Resources - Speak Arena",
   description: "Access course materials, code snippets, and PDFs.",
 };
 

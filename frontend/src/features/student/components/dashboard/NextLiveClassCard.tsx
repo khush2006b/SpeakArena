@@ -128,11 +128,11 @@ export function NextLiveClassCard() {
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
                   <User className="h-4 w-4" />
                   <span>
-                    {(activeMeeting.teacherName && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(activeMeeting.teacherName))
+                    {(activeMeeting.teacherName && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(activeMeeting.teacherName))
                       ? activeMeeting.teacherName
-                      : (activeMeeting.instructor && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(activeMeeting.instructor))
+                      : (activeMeeting.instructor && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(activeMeeting.instructor))
                       ? activeMeeting.instructor
-                      : (activeMeeting.teacher_name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(activeMeeting.teacher_name))
+                      : (activeMeeting.teacher_name && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(activeMeeting.teacher_name))
                       ? activeMeeting.teacher_name
                       : "Paras (Construction)"}
                   </span>

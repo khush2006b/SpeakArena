@@ -1034,7 +1034,7 @@ export function StudentMessagesView() {
               <div
                 style={{ fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}
               >
-                SpeakArena
+                Speak Arena
               </div>
               <div
                 style={{ fontSize: 11, color: "#4f46e5", fontWeight: 600 }}

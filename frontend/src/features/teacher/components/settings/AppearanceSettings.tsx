@@ -25,7 +25,7 @@ export function AppearanceSettings() {
     <div className="space-y-8 animate-fade-up relative pb-24">
       <div>
         <h2 className="text-responsive-lg font-extrabold tracking-tight text-foreground">Appearance</h2>
-        <p className="text-[15px] font-semibold text-muted-foreground mt-2">Customize how SpeakArena looks and feels on your device.</p>
+        <p className="text-[15px] font-semibold text-muted-foreground mt-2">Customize how Speak Arena looks and feels on your device.</p>
       </div>
 
 

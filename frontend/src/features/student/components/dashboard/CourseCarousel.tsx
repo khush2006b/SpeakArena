@@ -157,9 +157,9 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
             const isImageFailed = failedImages[courseId];
             const thumbUrl = getCourseThumbnailUrl(item, idx);
             const defaultGradient = item.gradient || "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 100%)";
-            const teacherName = (item.teacherName && !["Teacher", "Instructor", "SpeakArena Team"].includes(item.teacherName))
+            const teacherName = (item.teacherName && !["Teacher", "Instructor", "Speak Arena Team", "SpeakArena Team"].includes(item.teacherName))
               ? item.teacherName
-              : (item.teacher_name && !["Teacher", "Instructor", "SpeakArena Team"].includes(item.teacher_name))
+              : (item.teacher_name && !["Teacher", "Instructor", "Speak Arena Team", "SpeakArena Team"].includes(item.teacher_name))
               ? item.teacher_name
               : "Paras (Construction)";
             const rating = item.rating || item.average_rating || 4.9;

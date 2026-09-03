@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { SettingsLayout } from "@/features/student/components/settings/SettingsLayout";
 
 export const metadata: Metadata = {
-  title: "Settings & Preferences - SpeakArena",
+  title: "Settings & Preferences - Speak Arena",
   description: "Manage your account configurations and learning preferences.",
 };
 

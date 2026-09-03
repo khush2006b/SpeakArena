@@ -3,8 +3,8 @@ import { AuthLayout } from "@/features/auth/components/AuthLayout";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Login - SpeakArena",
-  description: "Sign in to your SpeakArena account.",
+  title: "Login - Speak Arena",
+  description: "Sign in to your Speak Arena account.",
 };
 
 export default function LoginPage() {

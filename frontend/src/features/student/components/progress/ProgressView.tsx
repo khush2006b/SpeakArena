@@ -72,7 +72,7 @@ export function ProgressView() {
               </span>
             </div>
             <p className="text-sm mt-1 text-muted-foreground page-subtitle" style={{ lineHeight: 1.7 }}>
-              Track your course completions, earned badges, and official SpeakArena certificates.
+              Track your course completions, earned badges, and official Speak Arena certificates.
             </p>
           </div>
         </div>

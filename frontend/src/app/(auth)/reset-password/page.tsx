@@ -3,8 +3,8 @@ import { AuthLayout } from "@/features/auth/components/AuthLayout";
 import { ResetPasswordClientPage } from "@/features/auth/components/ResetPasswordClientPage";
 
 export const metadata: Metadata = {
-  title: "Reset Password - SpeakArena",
-  description: "Set a new password for your SpeakArena account.",
+  title: "Reset Password - Speak Arena",
+  description: "Set a new password for your Speak Arena account.",
 };
 
 /**

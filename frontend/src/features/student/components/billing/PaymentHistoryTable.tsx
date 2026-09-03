@@ -108,7 +108,7 @@ export function PaymentHistoryTable() {
                   <td className="p-4 sm:p-5">
                     <div className="flex flex-col gap-0.5">
                       <span className="font-semibold text-foreground truncate max-w-[280px]">
-                        {(t as any).course_title || (t as any).courseTitle || t.courseId || "SpeakArena Course"}
+                        {(t as any).course_title || (t as any).courseTitle || t.courseId || "Speak Arena Course"}
                       </span>
                       <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">ID: {t.id}</span>
                     </div>

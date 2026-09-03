@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { TeacherCommunicationView } from "@/features/teacher/components/communication/TeacherCommunicationView";
 
 export const metadata: Metadata = {
-  title: "Communication Center | SpeakArena",
+  title: "Communication Center | Speak Arena",
   description: "Enterprise classroom communication and moderation.",
 };
 

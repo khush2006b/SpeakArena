@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     )
 
     # --- Application ---
-    APP_NAME: str = "SpeakArena"
+    APP_NAME: str = "Speak Arena"
     APP_ENV: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     SECRET_KEY: str = Field(..., min_length=32)
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = ""
-    SMTP_FROM_NAME: str = "SpeakArena"
+    SMTP_FROM_NAME: str = "Speak Arena"
 
     # --- Google OAuth ---
     GOOGLE_CLIENT_ID: str = ""

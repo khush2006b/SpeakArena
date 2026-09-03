@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { StudentProfileDashboard } from "@/features/student/components/profile/StudentProfileDashboard";
 
 export const metadata: Metadata = {
-  title: "Student Profile - SpeakArena",
+  title: "Student Profile - Speak Arena",
   description: "Your learning identity and achievements.",
 };
 

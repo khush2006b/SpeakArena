@@ -90,7 +90,7 @@ export function DashboardHero() {
           <div className="inline-flex items-center px-3 py-1 text-xs font-semibold backdrop-blur-md bg-primary/15 border border-primary/30 text-primary badge-primary"
                style={{ borderRadius: 100 }}>
             <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" />
-            {studentName ? `Welcome back, ${studentName}!` : "Welcome to SpeakArena!"}
+            {studentName ? `Welcome back, ${studentName}!` : "Welcome to Speak Arena!"}
           </div>
           
           <h1 className="drop-shadow-md text-foreground font-extrabold tracking-tighter text-responsive-xl" style={{ fontSize: "clamp(24px, 2.5vw, 36px)" }}>

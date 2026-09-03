@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { LiveClassesDashboard } from "@/features/student/components/live/LiveClassesDashboard";
 
 export const metadata: Metadata = {
-  title: "Live Classes - SpeakArena",
+  title: "Live Classes - Speak Arena",
   description: "Manage your live class schedule and recordings.",
 };
 

@@ -5,7 +5,7 @@ import { WorkspaceRightSidebar } from "@/features/student/components/workspace/W
 export const metadata: Metadata = {
   title: {
     default: "Learning Workspace",
-    template: "%s | SpeakArena",
+    template: "%s | Speak Arena",
   },
 };
 

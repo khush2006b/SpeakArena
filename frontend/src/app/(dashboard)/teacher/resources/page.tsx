@@ -1,7 +1,7 @@
 import { TeacherResourcesDashboard } from "@/features/teacher/components/resources/TeacherResourcesDashboard";
 
 export const metadata = {
-  title: "Resources | Teacher — SpeakArena",
+  title: "Resources | Teacher — Speak Arena",
   description: "Manage your course videos and PDF resources.",
 };
 

@@ -112,7 +112,7 @@ export function PdfViewerCore() {
                 
                 {/* Header */}
                 <div className="flex justify-between border-b border-black/10 pb-4 mb-8">
-                  <span className="text-black/40 font-mono text-xs">SpeakArena Enterprise</span>
+                  <span className="text-black/40 font-mono text-xs">Speak Arena Enterprise</span>
                   <span className="text-black/40 font-mono text-xs">Page {pageNum}</span>
                 </div>
                 

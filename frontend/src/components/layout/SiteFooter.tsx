@@ -79,7 +79,7 @@ export function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-white/[0.06] text-xs text-zinc-500 text-center">
-          © {new Date().getFullYear()} SpeakArena Inc. All rights reserved.
+          © {new Date().getFullYear()} Speak Arena Inc. All rights reserved.
         </div>
       </div>
     </footer>

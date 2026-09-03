@@ -15,7 +15,7 @@ export function ProfileSidebar() {
       <div className="card-glass p-5 hover-lift">
         <h3 className="text-sm font-bold mb-4 text-foreground">About Me</h3>
         <p className="text-sm leading-relaxed mb-6 text-muted-foreground">
-          &ldquo;I am a lifelong learner focusing on improving my skills through SpeakArena.&rdquo;
+          &ldquo;I am a lifelong learner focusing on improving my skills through Speak Arena.&rdquo;
         </p>
 
         <div className="space-y-4">

@@ -40,7 +40,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: "notif-4",
     title: "System Update Complete",
-    description: "SpeakArena platform has been updated to v2.4.0. All systems operational.",
+    description: "Speak Arena platform has been updated to v2.4.0. All systems operational.",
     type: "system",
     priority: "low",
     timestamp: "2026-08-05T02:00:00Z",

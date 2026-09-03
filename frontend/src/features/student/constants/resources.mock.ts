@@ -98,7 +98,7 @@ export const MOCK_RESOURCES: Resource[] = [
   {
     id: "res-6",
     title: "Figma Design System",
-    description: "Link to the official SpeakArena UI Kit in Figma Community.",
+    description: "Link to the official Speak Arena UI Kit in Figma Community.",
     type: "link",
     course: "UI/UX Design",
     module: "Design Systems",

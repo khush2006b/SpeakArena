@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { NotificationsDashboard } from "@/features/student/components/notifications/NotificationsDashboard";
 
 export const metadata: Metadata = {
-  title: "Notifications & Activity - SpeakArena",
+  title: "Notifications & Activity - Speak Arena",
   description: "Your personal learning inbox.",
 };
 

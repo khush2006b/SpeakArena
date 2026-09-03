@@ -6,7 +6,7 @@ import { CourseViewContainer } from "@/features/teacher/components/courses/Cours
 
 export const metadata: Metadata = {
   title: "Course Management",
-  description: "Manage your SpeakArena enterprise courses.",
+  description: "Manage your Speak Arena enterprise courses.",
 };
 
 export default function CoursesPage() {

@@ -3,8 +3,8 @@ import { AuthLayout } from "@/features/auth/components/AuthLayout";
 import { ForgotPasswordForm } from "@/features/auth/components/ForgotPasswordForm";
 
 export const metadata: Metadata = {
-  title: "Forgot Password - SpeakArena",
-  description: "Reset your SpeakArena password.",
+  title: "Forgot Password - Speak Arena",
+  description: "Reset your Speak Arena password.",
 };
 
 export default function ForgotPasswordPage() {

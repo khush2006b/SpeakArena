@@ -33,7 +33,7 @@ export function RegisterForm() {
         Create an Account
       </h1>
       <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", margin: "0 0 36px 0", lineHeight: 1.6 }}>
-        Join SpeakArena and start your English fluency journey today.
+        Join Speak Arena and start your English fluency journey today.
       </p>
 
       {/* ── Google Sign Up Button ── */}

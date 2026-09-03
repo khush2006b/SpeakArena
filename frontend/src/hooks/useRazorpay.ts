@@ -74,7 +74,7 @@ export function useRazorpay() {
           amount: orderData.amount,
           currency: orderData.currency,
           order_id: orderData.orderId,
-          name: "SpeakArena",
+          name: "Speak Arena",
           description: orderData.courseName,
           prefill: {
             name: orderData.studentName,

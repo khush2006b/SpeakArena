@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { BillingDashboard } from "@/features/student/components/billing/BillingDashboard";
 
 export const metadata: Metadata = {
-  title: "Billing & Purchases - SpeakArena",
+  title: "Billing & Purchases - Speak Arena",
   description: "Manage your course purchases, receipts, and invoices.",
 };
 

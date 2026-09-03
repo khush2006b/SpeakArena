@@ -48,7 +48,7 @@ export function NotificationSettings() {
     { id: "payments", label: "Payments & Invoices", desc: "Successful payments and payout reports." },
     { id: "refunds", label: "Refund Requests", desc: "When a student requests or is issued a refund." },
     { id: "chat", label: "Direct Messages", desc: "When a student sends you a private message." },
-    { id: "announcements", label: "Platform Announcements", desc: "Updates from the SpeakArena team." },
+    { id: "announcements", label: "Platform Announcements", desc: "Updates from the Speak Arena team." },
   ];
 
   return (

@@ -120,7 +120,7 @@ export default function StudentCourseDetailPage() {
               courseData.teacher_name ||
               courseData.teacherName ||
               courseData.teacher?.full_name ||
-              "SpeakArena Instructor",
+              "Speak Arena Instructor",
             total_lectures: courseData.total_lectures || 0,
             ...courseData,
           });

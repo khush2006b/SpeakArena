@@ -3,14 +3,14 @@ export const MOCK_PROFILE = {
     fullName: "Paras (Construction)",
     professionalTitle: "Founder & Peer English Mentor",
     shortBio: "Empowering students and young professionals to speak English fluently, overcome stage fear, and crack interviews with real practice.",
-    detailedAbout: "As a student founder, I built SpeakArena because textbooks don't build real-world fluency. I help peers practice natural spoken English, master pronunciation rhythm, and build unshakeable confidence in live interactive sessions.",
+    detailedAbout: "As a student founder, I built Speak Arena because textbooks don't build real-world fluency. I help peers practice natural spoken English, master pronunciation rhythm, and build unshakeable confidence in live interactive sessions.",
     languages: ["English", "Hindi"],
     timezone: "Asia/Kolkata",
     location: "India"
   },
   professionalInfo: {
     teachingExperience: "2+ Years Peer Coaching",
-    qualifications: "Founder @ SpeakArena & Public Speaking Circle Lead",
+    qualifications: "Founder @ Speak Arena & Public Speaking Circle Lead",
     specializations: ["Spoken English & Phonetics", "Accent Reduction", "Executive Communication", "IELTS Band 8+ Prep"],
     teachingStyle: "Interactive Live Practice, Speech Drills, Immediate Pronunciation Feedback",
   },

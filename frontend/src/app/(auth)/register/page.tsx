@@ -3,8 +3,8 @@ import { AuthLayout } from "@/features/auth/components/AuthLayout";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
 
 export const metadata: Metadata = {
-  title: "Create Account - SpeakArena",
-  description: "Join SpeakArena and start your English fluency journey.",
+  title: "Create Account - Speak Arena",
+  description: "Join Speak Arena and start your English fluency journey.",
 };
 
 export default function RegisterPage() {

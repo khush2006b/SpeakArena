@@ -25,7 +25,7 @@ const TESTIMONIALS = [
     name: "David Kim",
     role: "CS Student at Waterloo",
     country: "🇨🇦 Canada",
-    content: "SpeakArena's live Google Meet format makes every session feel like a real conversation — not a class. The pronunciation drills actually work. Highly recommend.",
+    content: "Speak Arena's live Google Meet format makes every session feel like a real conversation — not a class. The pronunciation drills actually work. Highly recommend.",
     rating: 5,
     initials: "DK",
     color: "#0891b2",
@@ -88,7 +88,7 @@ export function TestimonialsSection() {
             Loved by learners worldwide
           </h2>
           <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
-            Join 50,000+ students who have transformed their spoken English with SpeakArena.
+            Join 50,000+ students who have transformed their spoken English with Speak Arena.
           </p>
         </div>
       </div>

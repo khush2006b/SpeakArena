@@ -26,11 +26,11 @@ export const metadata: Metadata = {
     process.env["NEXT_PUBLIC_APP_URL"] ?? "https://speakarena.com",
   ),
   title: {
-    default: "SpeakArena — Master Spoken English & Accent Reduction Online",
-    template: "%s | SpeakArena",
+    default: "Speak Arena — Master Spoken English & Accent Reduction Online",
+    template: "%s | Speak Arena",
   },
   description:
-    "Master Spoken English, Accent Reduction, Business Communication, and IELTS Exam Prep with SpeakArena. Expert-led live Google Meet classes and interactive learning.",
+    "Master Spoken English, Accent Reduction, Business Communication, and IELTS Exam Prep with Speak Arena. Expert-led live Google Meet classes and interactive learning.",
   keywords: [
     "spoken english",
     "accent reduction",
@@ -39,20 +39,20 @@ export const metadata: Metadata = {
     "public speaking",
     "online english class",
   ],
-  authors: [{ name: "SpeakArena" }],
-  creator: "SpeakArena",
+  authors: [{ name: "Speak Arena" }],
+  creator: "Speak Arena",
   openGraph: {
     type: "website",
     locale: "en_IN",
     url: process.env["NEXT_PUBLIC_APP_URL"] ?? "https://speakarena.com",
-    siteName: "SpeakArena",
-    title: "SpeakArena — Master Spoken English & Accent Reduction Online",
+    siteName: "Speak Arena",
+    title: "Speak Arena — Master Spoken English & Accent Reduction Online",
     description:
       "Master Spoken English, Accent Reduction, and IELTS preparation with live Google Meet classes.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SpeakArena — Master Spoken English & Accent Reduction Online",
+    title: "Speak Arena — Master Spoken English & Accent Reduction Online",
     description: "Expert-led English courses with live Google Meet practice.",
   },
   robots: {

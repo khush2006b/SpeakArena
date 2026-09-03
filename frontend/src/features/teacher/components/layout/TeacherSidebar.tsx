@@ -143,7 +143,7 @@ export function TeacherSidebar() {
                 transition={{ duration: 0.18 }}
                 style={{ fontSize: 17, fontWeight: 800, color: "hsl(var(--foreground))", letterSpacing: "-0.03em", whiteSpace: "nowrap" }}
               >
-                SpeakArena
+                Speak Arena
               </motion.span>
             )}
           </AnimatePresence>
@@ -220,7 +220,7 @@ export function TeacherSidebar() {
                 <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg, #7c3aed, #a78bfa)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Mic2 style={{ width: 15, height: 15, color: "hsl(var(--foreground))" }} />
                 </div>
-                <span style={{ fontSize: 16, fontWeight: 800, color: "hsl(var(--foreground))", letterSpacing: "-0.03em" }}>SpeakArena</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "hsl(var(--foreground))", letterSpacing: "-0.03em" }}>Speak Arena</span>
               </Link>
               <button className="btn-ghost" style={{ width: 36, height: 36, padding: 0, justifyContent: "center" }} onClick={() => setMobileOpen(false)}>
                 <X style={{ width: 16, height: 16 }} />

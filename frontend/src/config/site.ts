@@ -9,7 +9,7 @@
 import { ROUTES } from "@/constants/routes";
 
 export const siteConfig = {
-  name: "SpeakArena",
+  name: "Speak Arena",
   description:
     "Master programming, DSA, Java, Python, and interview preparation with expert-led courses and live classes.",
   url: process.env["NEXT_PUBLIC_APP_URL"] ?? "https://speakarena.com",

@@ -32,7 +32,7 @@ export const env = {
       : "https://speakarena.onrender.com",
 
   // App
-  appName: getEnvVar("NEXT_PUBLIC_APP_NAME", "SpeakArena"),
+  appName: getEnvVar("NEXT_PUBLIC_APP_NAME", "Speak Arena"),
   appUrl: getEnvVar("NEXT_PUBLIC_APP_URL", "https://speak-arena.vercel.app"),
 
   // Razorpay (public key only — secret NEVER exposed to client)

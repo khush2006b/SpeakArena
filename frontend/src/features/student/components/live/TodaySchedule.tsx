@@ -30,13 +30,13 @@ export function TodaySchedule({ onJoinClick, meetings }: TodayScheduleProps) {
 
   const nextClassStatus = nextClass ? getMeetingStatus(nextClass, nowMs) : "ENDED";
 
-  const teacherDisplayName = (nextClass?.teacherName && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacherName))
+  const teacherDisplayName = (nextClass?.teacherName && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(nextClass.teacherName))
     ? nextClass.teacherName
-    : (nextClass?.teacher_name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacher_name))
+    : (nextClass?.teacher_name && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(nextClass.teacher_name))
     ? nextClass.teacher_name
-    : (nextClass?.instructor && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.instructor))
+    : (nextClass?.instructor && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(nextClass.instructor))
     ? nextClass.instructor
-    : (nextClass?.teacher?.name && !["Teacher", "Instructor", "SpeakArena Instructor", "SpeakArena Team"].includes(nextClass.teacher.name))
+    : (nextClass?.teacher?.name && !["Teacher", "Instructor", "Speak Arena Instructor", "SpeakArena Instructor", "Speak Arena Team", "SpeakArena Team"].includes(nextClass.teacher.name))
     ? nextClass.teacher.name
     : "Paras (Construction)";
 

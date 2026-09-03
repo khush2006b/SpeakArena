@@ -1159,7 +1159,7 @@ export function TeacherCommunicationView() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}>
-                SpeakArena
+                Speak Arena
               </div>
               <div style={{ fontSize: 11, color: "hsl(var(--primary))", fontWeight: 600 }}>
                 Instructor Hub
