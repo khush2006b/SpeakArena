@@ -55,6 +55,14 @@ export const metadata: Metadata = {
     title: "Speak Arena — Master Spoken English & Accent Reduction Online",
     description: "Expert-led English courses with live Google Meet practice.",
   },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   robots: {
     index: true,
     follow: true,

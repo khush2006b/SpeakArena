@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/auth.store";
 import { cn } from "@/lib/utils";
+import { Mic2 } from "lucide-react";
 
 import { DesktopNav } from "./DesktopNav";
 import { MobileNav } from "./MobileNav";
@@ -46,10 +47,16 @@ export function SiteHeader() {
           <div className="flex items-center gap-6 flex-shrink-0">
             <Link
               href="/"
-              className="flex items-center gap-2 transition-opacity hover:opacity-90"
+              className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm" style={{ boxShadow: "0 0 14px hsl(var(--primary) / 0.35)" }}>
-                <span className="text-sm font-bold text-primary-foreground">S</span>
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm" 
+                style={{ 
+                  background: "linear-gradient(135deg, #4f46e5, #9333ea)",
+                  boxShadow: "0 0 14px rgba(99, 102, 241, 0.4)" 
+                }}
+              >
+                <Mic2 style={{ width: 16, height: 16, color: "#fff" }} />
               </div>
               <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">
                 Speak Arena

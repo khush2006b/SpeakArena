@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Mic2 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
@@ -74,9 +74,12 @@ export function MobileNav() {
               className="fixed inset-y-0 right-0 z-50 w-full max-w-sm border-l border-border bg-background p-6 shadow-2xl flex flex-col"
             >
               <div className="flex items-center justify-between mb-8">
-                <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                    <span className="text-sm font-bold text-primary-foreground">S</span>
+                <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsOpen(false)}>
+                  <div 
+                    className="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm"
+                    style={{ background: "linear-gradient(135deg, #4f46e5, #9333ea)" }}
+                  >
+                    <Mic2 style={{ width: 16, height: 16, color: "#fff" }} />
                   </div>
                   <span className="text-base font-semibold tracking-tight">Speak Arena</span>
                 </Link>
