@@ -5,11 +5,9 @@
       <stop offset="100%" stop-color="#9333ea"/>
     </linearGradient>
   </defs>
-  <!-- Rounded rectangle matching exact logo shape (rx=18) -->
-  <rect width="64" height="64" rx="18" fill="url(#speakArenaGrad)"/>
-  <!-- Exact Lucide Mic2 centered with stroke-width="2.3" -->
-  <g transform="translate(14, 14) scale(1.5)" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+  <rect width="64" height="64" rx="16" fill="url(#speakArenaGrad)"/>
+  <svg x="14" y="14" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/>
     <circle cx="17" cy="7" r="5"/>
-  </g>
+  </svg>
 </svg>

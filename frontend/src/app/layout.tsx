@@ -57,14 +57,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.svg?v=4", type: "image/svg+xml" },
-      { url: "/icon-32.png?v=4", sizes: "32x32", type: "image/png" },
-      { url: "/icon-16.png?v=4", sizes: "16x16", type: "image/png" },
-      { url: "/favicon.ico?v=4" },
+      { url: "/icon.svg?v=5", type: "image/svg+xml" },
+      { url: "/icon-32.png?v=5", sizes: "32x32", type: "image/png" },
+      { url: "/icon-16.png?v=5", sizes: "16x16", type: "image/png" },
+      { url: "/favicon.ico?v=5" },
     ],
-    shortcut: ["/icon-32.png?v=4", "/icon.svg?v=4"],
+    shortcut: ["/icon-32.png?v=5", "/icon.svg?v=5"],
     apple: [
-      { url: "/apple-touch-icon.png?v=4", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=5", sizes: "180x180", type: "image/png" },
     ],
   },
   robots: {
@@ -92,11 +92,11 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
-        <link rel="icon" href="/icon.svg?v=4" type="image/svg+xml" />
-        <link rel="icon" href="/icon-32.png?v=4" sizes="32x32" type="image/png" />
-        <link rel="icon" href="/icon-16.png?v=4" sizes="16x16" type="image/png" />
-        <link rel="shortcut icon" href="/favicon.ico?v=4" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" sizes="180x180" />
+        <link rel="icon" href="/icon.svg?v=5" type="image/svg+xml" />
+        <link rel="icon" href="/icon-32.png?v=5" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/icon-16.png?v=5" sizes="16x16" type="image/png" />
+        <link rel="shortcut icon" href="/favicon.ico?v=5" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" sizes="180x180" />
       </head>
       <body className="font-sans antialiased bg-background text-foreground transition-colors duration-200" suppressHydrationWarning>
         <NavigationProgressBar />
