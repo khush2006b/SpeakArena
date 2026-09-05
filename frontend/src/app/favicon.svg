@@ -1,18 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="speakArenaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4f46e5"/>
       <stop offset="100%" stop-color="#9333ea"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#grad)"/>
-  <!-- Microphone head (solid white circle with grill shine) -->
-  <circle cx="43" cy="21" r="12" fill="#ffffff"/>
-  <!-- Microphone body / handle (thick, angled) -->
-  <path d="M36 28 L20 44 C18 46 15 46 13 44 C11 42 11 39 13 37 L29 21 Z" fill="#ffffff"/>
-  <!-- Base grip detail -->
-  <circle cx="16" cy="41" r="4.5" fill="#ffffff"/>
-  <circle cx="14" cy="43" r="3.5" fill="#ffffff"/>
-  <!-- Inner ring accent on head -->
-  <circle cx="43" cy="21" r="7.5" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+  <!-- Rounded rectangle matching exact logo shape (rx=18) -->
+  <rect width="64" height="64" rx="18" fill="url(#speakArenaGrad)"/>
+  <!-- Exact Lucide Mic2 centered with stroke-width="2.3" -->
+  <g transform="translate(14, 14) scale(1.5)" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/>
+    <circle cx="17" cy="7" r="5"/>
+  </g>
 </svg>
