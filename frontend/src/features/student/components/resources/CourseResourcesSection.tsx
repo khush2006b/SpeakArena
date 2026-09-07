@@ -324,9 +324,9 @@ export function CourseResourcesSection({
                         {formatSize(video.fileSizeBytes)}
                       </span>
                       {video.createdAt && (
-                        <span className="hidden md:flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
                           <Calendar size={12} className="text-muted-foreground/70" />
-                          {new Date(video.createdAt).toLocaleDateString()}
+                          {new Date(video.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       )}
                       {video.isCompleted && (
@@ -385,6 +385,12 @@ export function CourseResourcesSection({
                             <HardDrive size={12} /> {formatSize(video.fileSizeBytes)}
                           </span>
                         </div>
+                        {video.createdAt && (
+                          <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground/80 font-medium">
+                            <Calendar size={11} />
+                            {new Date(video.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="pt-4 mt-3 border-t border-border/40">
@@ -444,9 +450,9 @@ export function CourseResourcesSection({
                         {formatSize(pdf.fileSizeBytes)}
                       </span>
                       {pdf.createdAt && (
-                        <span className="hidden md:flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
                           <Calendar size={12} className="text-muted-foreground/70" />
-                          {new Date(pdf.createdAt).toLocaleDateString()}
+                          {new Date(pdf.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       )}
                       {pdf.isCompleted && (
@@ -502,6 +508,12 @@ export function CourseResourcesSection({
                             <HardDrive size={12} /> {formatSize(pdf.fileSizeBytes)}
                           </span>
                         </div>
+                        {pdf.createdAt && (
+                          <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground/80 font-medium">
+                            <Calendar size={11} />
+                            {new Date(pdf.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="pt-4 mt-3 border-t border-border/40">
