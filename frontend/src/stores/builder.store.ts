@@ -143,6 +143,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // ── loadCourse (Loads existing course for editing) ─────────────────
   loadCourse: async (id: string) => {
+    // Reset to default state first so no stale data from a previous session bleeds in
+    set({ ...DEFAULT_STATE, currentStep: 1 });
     try {
       const { data } = await apiClient.get<any>(`/api/v1/teacher/courses/${id}`);
       const course = data?.data ?? data;
@@ -150,12 +152,15 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         set({
           courseId: course.id,
           courseTitle: course.title || "",
+          subtitle: course.subtitle || "",
           description: course.description || "",
           price: Number(course.price) || 0,
+          discountedPrice: course.discounted_price != null ? Number(course.discounted_price) : null,
           accessType: course.visibility === "private" ? "private" : "public",
           maxStudents: course.max_students || 50,
           thumbnailUrl: course.thumbnail_url || null,
           thumbnailFile: null,
+          currentStep: 1,
         });
       }
     } catch (e) {
@@ -176,14 +181,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const formData = new FormData();
       formData.append("file", file);
 
+      // NOTE: Do NOT set Content-Type manually — Axios must auto-generate the
+      // multipart boundary. Manually setting it breaks the upload.
       const res = await apiClient.post<any>(
         `/api/v1/teacher/courses/${targetId}/thumbnail/upload`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
       );
 
       const data = res.data?.data || res.data;

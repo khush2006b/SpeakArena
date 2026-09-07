@@ -15,14 +15,19 @@ import { PreviewStep } from "./steps/PreviewStep";
 export function BuilderWizard() {
   const currentStep = useBuilderStore((state) => state.currentStep);
   const loadCourse = useBuilderStore((state) => state.loadCourse);
+  const reset = useBuilderStore((state) => state.reset);
   const searchParams = useSearchParams();
   const courseIdParam = searchParams.get("courseId");
 
   React.useEffect(() => {
     if (courseIdParam) {
+      // loadCourse internally resets state before populating, so no stale data bleeds in
       loadCourse(courseIdParam);
+    } else {
+      // New course — clear any stale state from a previous editing session
+      reset();
     }
-  }, [courseIdParam, loadCourse]);
+  }, [courseIdParam, loadCourse, reset]);
 
   const getStepComponent = () => {
     switch (currentStep) {
