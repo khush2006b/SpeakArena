@@ -11,10 +11,14 @@ import {
   ArrowRight,
   Loader2,
   GraduationCap,
+  CreditCard,
+  AlertCircle,
 } from "lucide-react";
 import { courseService } from "@/services/course.service";
 import { Course } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInitiatePayment, useVerifyPayment } from "@/hooks/queries/usePaymentQueries";
+import { useRazorpay } from "@/hooks/useRazorpay";
 
 const THUMBNAIL_FALLBACKS = [
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g1' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g1)'/></svg>",
@@ -33,6 +37,11 @@ export default function ExploreCoursesPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [enrollingId, setEnrollingId] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [paymentError, setPaymentError] = React.useState<string | null>(null);
+
+  const initiatePayment = useInitiatePayment();
+  const verifyPayment = useVerifyPayment();
+  const { openCheckout } = useRazorpay();
 
   const fetchExploreCourses = React.useCallback(async () => {
     setIsLoading(true);
@@ -55,30 +64,59 @@ export default function ExploreCoursesPage() {
   const handleEnroll = async (courseId: string, courseTitle: string) => {
     setEnrollingId(courseId);
     setSuccessMessage(null);
+    setPaymentError(null);
+
     try {
-      await courseService.enroll(courseId);
+      // Step 1: Create Razorpay order on backend
+      const orderData = await initiatePayment.mutateAsync({ courseId });
+
+      // Step 2: Open Razorpay checkout modal
+      const paymentResult = await openCheckout({
+        keyId: orderData.keyId ?? (process.env["NEXT_PUBLIC_RAZORPAY_KEY_ID"] || ""),
+        orderId: orderData.orderId,
+        amount: orderData.amount,
+        currency: orderData.currency ?? "INR",
+        courseName: orderData.courseName ?? courseTitle,
+        studentName: orderData.studentName ?? "",
+        studentEmail: orderData.studentEmail ?? "",
+      });
+
+      // Step 3: Verify signature on backend → grants enrollment
+      await verifyPayment.mutateAsync({
+        razorpayOrderId: paymentResult.razorpay_order_id,
+        razorpayPaymentId: paymentResult.razorpay_payment_id,
+        razorpaySignature: paymentResult.razorpay_signature,
+      });
+
+      // Update local state to show enrolled
       setCourses((prev) =>
         prev.map((c) =>
           c.id === courseId
-            ? {
-                ...c,
-                isEnrolled: true,
-                enrolledCount: (c.enrolledCount ?? 0) + 1,
-              }
+            ? { ...c, isEnrolled: true, enrolledCount: (c.enrolledCount ?? 0) + 1 }
             : c
         )
       );
-      setSuccessMessage(`Successfully enrolled in "${courseTitle}"!`);
-      setTimeout(() => setSuccessMessage(null), 4000);
+      setSuccessMessage(`Successfully enrolled in "${courseTitle}"! Access valid for 30 days.`);
+      setTimeout(() => setSuccessMessage(null), 6000);
     } catch (err: any) {
-      console.error("Enrollment failed:", err);
-      alert(err?.response?.data?.message || "Failed to enroll. Please try again.");
+      if (err?.message === "Payment cancelled by user.") {
+        // User dismissed modal — no error needed
+        return;
+      }
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Payment failed. Please try again.";
+      setPaymentError(msg);
+      setTimeout(() => setPaymentError(null), 6000);
     } finally {
       setEnrollingId(null);
     }
   };
 
   const filteredCourses = courses;
+
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
@@ -141,6 +179,22 @@ export default function ExploreCoursesPage() {
           </Link>
         </div>
       )}
+
+      {/* Payment Error Notification */}
+      {paymentError && (
+        <div
+          className="flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-top duration-300"
+          style={{
+            background: "rgba(239,68,68,0.12)",
+            border: "1px solid rgba(239,68,68,0.3)",
+            color: "#f87171",
+          }}
+        >
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <span className="text-sm font-semibold">{paymentError}</span>
+        </div>
+      )}
+
 
       {/* Course Grid */}
       <section className="space-y-6">
@@ -310,11 +364,14 @@ export default function ExploreCoursesPage() {
                           >
                             {isEnrollingThis ? (
                               <>
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Enrolling...
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing...
                               </>
                             ) : (
                               <>
-                                Enroll Now <ArrowRight className="h-3.5 w-3.5" />
+                                <CreditCard className="h-3.5 w-3.5" />{" "}
+                                {course.price === 0
+                                  ? "Enroll Free"
+                                  : `₹${course.price.toLocaleString("en-IN")}/mo`}
                               </>
                             )}
                           </button>

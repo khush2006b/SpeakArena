@@ -1017,24 +1017,54 @@ class EnrollmentService:
         Args:
             payment: The captured Payment ORM instance.
         """
-        # Idempotency: skip if already enrolled
-        already_enrolled = await self._enrollment_repo.exists(
-            payment.student_id, payment.course_id
-        )
-        if already_enrolled:
-            logger.info(
-                "Student %s already enrolled in course %s. Skipping.",
-                payment.student_id,
-                payment.course_id,
-            )
-            return
+        # Check for any existing enrollment (active OR expired)
+        from datetime import timedelta
+        from sqlalchemy import select as _select
+        from app.models.course import CourseEnrollment as _CE
+        now = datetime.now(timezone.utc)
 
-        # Create enrollment
-        await self._enrollment_repo.create(
-            student_id=payment.student_id,
-            course_id=payment.course_id,
-            payment_id=payment.id,
+        existing_result = await self._db.execute(
+            _select(_CE).where(
+                _CE.student_id == payment.student_id,
+                _CE.course_id == payment.course_id,
+            ).order_by(_CE.created_at.desc()).limit(1)
         )
+        existing = existing_result.scalar_one_or_none()
+
+        if existing is not None:
+            if existing.status == EnrollmentStatus.ACTIVE and (
+                existing.expires_at is None or existing.expires_at > now
+            ):
+                # Genuinely already enrolled and active — idempotency skip
+                logger.info(
+                    "Student %s already has active enrollment in course %s. Skipping.",
+                    payment.student_id,
+                    payment.course_id,
+                )
+                return
+            else:
+                # Expired enrollment — reactivate for another 30 days
+                existing.status = EnrollmentStatus.ACTIVE
+                existing.payment_id = payment.id
+                existing.enrolled_at = now
+                existing.expires_at = now + timedelta(days=30)
+                existing.progress_percentage = 0.0
+                existing.completed_at = None
+                await self._db.flush()
+                logger.info(
+                    "Re-enrollment granted: student=%s course=%s new_expiry=%s",
+                    payment.student_id,
+                    payment.course_id,
+                    existing.expires_at,
+                )
+                # Still fire notifications + counters for re-enrollment
+        else:
+            # No prior enrollment — create fresh record
+            await self._enrollment_repo.create(
+                student_id=payment.student_id,
+                course_id=payment.course_id,
+                payment_id=payment.id,
+            )
 
         # Update denormalized counters
         await self._enrollment_repo.increment_total_enrollments(payment.course_id)

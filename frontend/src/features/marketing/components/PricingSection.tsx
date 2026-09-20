@@ -6,20 +6,19 @@ import Link from "next/link";
 
 const TIERS = [
   {
-    name: "Free",
-    price: "$0",
+    name: "Free Preview",
+    price: "₹0",
     interval: "forever",
-    description: "Explore the platform and learn the basics at no cost.",
+    description: "Explore the platform and see what SpeakArena has to offer.",
     features: [
-      "Access to 3 introductory courses",
+      "Access to free course previews",
       "Community forum access",
       "Standard video quality",
-      "Public Discord channel",
     ],
     notIncluded: [
-      "Live Google Meet sessions",
-      "Assignment grading",
-      "1-on-1 mentorship",
+      "Live coaching sessions",
+      "Study resources & PDFs",
+      "1-on-1 teacher chat",
       "Certificate of completion",
     ],
     featured: false,
@@ -28,43 +27,24 @@ const TIERS = [
     accentColor: "#6b7280",
   },
   {
-    name: "Premium",
-    price: "$49",
+    name: "Monthly Access",
+    price: "₹199",
     interval: "/month",
-    description: "Everything you need to master advanced English communication.",
+    description: "Full access to live classes, study resources, tests, and chat.",
     badge: "Most Popular",
     features: [
-      "Access to ALL courses & pathways",
-      "Live cohort sessions (Google Meet)",
-      "Priority assignment grading",
-      "Private VIP Discord channel",
-      "1-on-1 mentorship (1 hr/month)",
+      "Live online coaching sessions",
+      "Practice tests & assessments",
+      "Study resources & PDF guides",
+      "Real-time student-teacher chat",
+      "HD video quality",
       "Certificate of completion",
-      "HD & 4K video quality",
     ],
     notIncluded: [],
     featured: true,
-    cta: "Start Premium",
+    cta: "Enroll Now — ₹199",
     ctaStyle: "primary" as const,
     accentColor: "#4f46e5",
-  },
-  {
-    name: "Lifetime Access",
-    price: "$499",
-    interval: "one-time",
-    description: "Pay once. Own all current and future courses forever.",
-    features: [
-      "Everything in Premium",
-      "Lifetime access to all updates",
-      "Downloadable course videos",
-      "Early access to new features",
-      "Exclusive alumni network",
-    ],
-    notIncluded: [],
-    featured: false,
-    cta: "Buy Lifetime",
-    ctaStyle: "outline" as const,
-    accentColor: "#f59e0b",
   },
 ];
 
@@ -183,7 +163,7 @@ export function PricingSection() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 40, marginTop: 48, flexWrap: "wrap" }}>
           {[
             { icon: ShieldCheck, label: "14-Day Money-Back Guarantee", color: "#10b981" },
-            { icon: CreditCard, label: "Secure Payments via Stripe", color: "#6b7280" },
+            { icon: CreditCard, label: "Secure Payments via Razorpay", color: "#6b7280" },
             { icon: Zap, label: "Instant Access", color: "#fbbf24" },
           ].map(({ icon: Icon, label, color }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#6b7280", fontWeight: 500 }}>

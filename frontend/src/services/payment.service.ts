@@ -34,7 +34,6 @@ export interface VerifyPaymentPayload {
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;
-  courseId: string;
 }
 
 export interface VerifyPaymentResponse {
@@ -65,16 +64,27 @@ export const paymentService = {
   },
 
   /**
-   * POST /payments/initiate
+   * POST /payments/create-order
    * Creates a Razorpay order server-side and returns the order metadata
    * needed to open the Razorpay checkout modal on the client.
+   *
+   * Backend returns snake_case; we map to camelCase for the hook.
    */
   initiate: async (payload: InitiatePaymentPayload): Promise<InitiatePaymentResponse> => {
-    const { data } = await apiClient.post<APIResponse<InitiatePaymentResponse>>(
+    const { data } = await apiClient.post<APIResponse<Record<string, any>>>(
       ENDPOINTS.PAYMENTS.INITIATE,
-      payload,
+      { course_id: payload.courseId },
     );
-    return data.data;
+    const raw = data.data;
+    return {
+      orderId: raw.razorpay_order_id,
+      keyId: raw.razorpay_key_id,
+      amount: raw.amount_paise,         // in paise, as Razorpay expects
+      currency: raw.currency ?? "INR",
+      courseName: raw.course_title ?? "",
+      studentName: raw.student_name ?? "",
+      studentEmail: raw.student_email ?? "",
+    };
   },
 
   /**
@@ -85,7 +95,11 @@ export const paymentService = {
   verify: async (payload: VerifyPaymentPayload): Promise<VerifyPaymentResponse> => {
     const { data } = await apiClient.post<APIResponse<VerifyPaymentResponse>>(
       ENDPOINTS.PAYMENTS.VERIFY,
-      payload,
+      {
+        razorpay_order_id: payload.razorpayOrderId,
+        razorpay_payment_id: payload.razorpayPaymentId,
+        razorpay_signature: payload.razorpaySignature,
+      },
     );
     return data.data;
   },

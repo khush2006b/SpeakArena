@@ -497,22 +497,29 @@ class EnrollmentRepository:
         student_id: uuid.UUID,
         course_id: uuid.UUID,
     ) -> bool:
-        """Check if an enrollment record already exists for this student + course.
+        """Check if an *active, non-expired* enrollment exists for this student + course.
 
-        Used for duplicate enrollment prevention.
+        An enrollment that has passed its expires_at date is treated as expired
+        and returns False, allowing the student to re-enroll (re-pay for another month).
 
         Args:
             student_id: The student UUID.
             course_id: The course UUID.
 
         Returns:
-            bool: True if an enrollment exists.
+            bool: True if an active, non-expired enrollment exists.
         """
+        now = datetime.now(timezone.utc)
         count = (
             await self._db.execute(
                 select(func.count(CourseEnrollment.id)).where(
                     CourseEnrollment.student_id == student_id,
                     CourseEnrollment.course_id == course_id,
+                    CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 )
             )
         ).scalar_one()
@@ -526,6 +533,9 @@ class EnrollmentRepository:
     ) -> CourseEnrollment:
         """Create an active enrollment record after successful payment.
 
+        Enrollment expires after 30 days (monthly subscription model).
+        Student must pay again after expiry to regain access.
+
         Args:
             student_id: The student UUID.
             course_id: The course UUID.
@@ -534,12 +544,15 @@ class EnrollmentRepository:
         Returns:
             CourseEnrollment: The newly created enrollment.
         """
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
         enrollment = CourseEnrollment(
             student_id=student_id,
             course_id=course_id,
             payment_id=payment_id,
             status=EnrollmentStatus.ACTIVE,
-            enrolled_at=datetime.now(timezone.utc),
+            enrolled_at=now,
+            expires_at=now + timedelta(days=30),  # Monthly subscription: 30-day access
         )
         self._db.add(enrollment)
         await self._db.flush()
