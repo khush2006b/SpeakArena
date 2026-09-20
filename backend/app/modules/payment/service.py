@@ -52,6 +52,7 @@ from app.core.exceptions.errors import (
 )
 from app.models.audit import AuditLog
 from app.models.enums import AuditSeverity, NotificationType, PaymentStatus, RefundStatus
+from app.models.payment import Payment, PaymentHistory
 from app.models.user import User
 from app.modules.payment.repository import (
     AnalyticsRepository,
@@ -546,9 +547,12 @@ class PaymentService:
         enrollment_svc = EnrollmentService(self._db)
         await enrollment_svc.grant_access(payment)
 
-        # Generate invoice
-        invoice_svc = InvoiceService(self._db)
-        await invoice_svc.generate(payment)
+        # Generate invoice (non-fatal)
+        try:
+            invoice_svc = InvoiceService(self._db)
+            await invoice_svc.generate(payment)
+        except Exception as exc:
+            logger.warning("Invoice generation non-fatal error: %s", exc)
 
         return {
             "payment_id": payment.id,
@@ -810,9 +814,12 @@ class WebhookService:
         enrollment_svc = EnrollmentService(self._db)
         await enrollment_svc.grant_access(payment)
 
-        # Generate invoice number
-        invoice_svc = InvoiceService(self._db)
-        await invoice_svc.generate(payment)
+        # Generate invoice number (non-fatal)
+        try:
+            invoice_svc = InvoiceService(self._db)
+            await invoice_svc.generate(payment)
+        except Exception as exc:
+            logger.warning("Webhook invoice generation non-fatal error: %s", exc)
 
         return {"status": "success", "payment_id": str(payment.id)}
 
@@ -1294,19 +1301,23 @@ class InvoiceService:
         Returns:
             str: The generated invoice number.
         """
-        from sqlalchemy import func, select, extract
+        from sqlalchemy import func, select
         now = datetime.now(timezone.utc)
 
-        # Count existing invoices this month for sequence number
-        month_count = (
-            await self._db.execute(
-                select(func.count(Payment.id)).where(
-                    Payment.invoice_number.is_not(None),
-                    func.extract("year", Payment.paid_at) == now.year,
-                    func.extract("month", Payment.paid_at) == now.month,
+        try:
+            # Count existing invoices this month for sequence number
+            month_count = (
+                await self._db.execute(
+                    select(func.count(Payment.id)).where(
+                        Payment.invoice_number.is_not(None),
+                        func.extract("year", Payment.paid_at) == now.year,
+                        func.extract("month", Payment.paid_at) == now.month,
+                    )
                 )
-            )
-        ).scalar_one()
+            ).scalar_one()
+        except Exception as exc:
+            logger.warning("Failed to count month invoices: %s", exc)
+            month_count = 0
 
         invoice_number = f"SA-{now.strftime('%Y%m')}-{(month_count + 1):06d}"
         await self._payment_repo.set_invoice(payment, invoice_number)
