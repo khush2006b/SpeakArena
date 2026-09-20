@@ -71,9 +71,11 @@ export function useVerifyPayment() {
     onSuccess: (data) => {
       // Invalidate payments list and course progress caches
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.courses.progress(data.payment.courseId),
-      });
+      if (data?.courseId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.courses.progress(data.courseId),
+        });
+      }
       // Refresh the enrolled courses list
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.all() });
     },

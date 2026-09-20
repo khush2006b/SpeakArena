@@ -37,8 +37,10 @@ export interface VerifyPaymentPayload {
 }
 
 export interface VerifyPaymentResponse {
-  payment: Payment;
-  enrolled: boolean;
+  paymentId?: string;
+  courseId?: string;
+  status?: string;
+  message?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,14 +50,14 @@ export interface VerifyPaymentResponse {
 export const paymentService = {
   /** GET /payments — payment history (paginated) */
   list: async (pagination?: PaginationConfig): Promise<PaginatedResponse<Payment>> => {
-    const { data } = await apiClient.get<PaginatedResponse<Payment>>(
-      ENDPOINTS.PAYMENTS.LIST,
+    const { data } = await apiClient.get<APIResponse<PaginatedResponse<Payment>>>(
+      ENDPOINTS.PAYMENTS.BASE,
       { params: pagination },
     );
-    return data;
+    return data.data;
   },
 
-  /** GET /payments/:id */
+  /** GET /payments/:id — single payment detail */
   detail: async (id: string): Promise<Payment> => {
     const { data } = await apiClient.get<APIResponse<Payment>>(
       ENDPOINTS.PAYMENTS.DETAIL(id),
@@ -65,21 +67,19 @@ export const paymentService = {
 
   /**
    * POST /payments/create-order
-   * Creates a Razorpay order server-side and returns the order metadata
-   * needed to open the Razorpay checkout modal on the client.
-   *
-   * Backend returns snake_case; we map to camelCase for the hook.
+   * Initiates a payment by creating a Razorpay order on the backend.
+   * Returns order metadata needed by useRazorpay to open the checkout modal.
    */
   initiate: async (payload: InitiatePaymentPayload): Promise<InitiatePaymentResponse> => {
-    const { data } = await apiClient.post<APIResponse<Record<string, any>>>(
-      ENDPOINTS.PAYMENTS.INITIATE,
+    const { data } = await apiClient.post<APIResponse<any>>(
+      ENDPOINTS.PAYMENTS.CREATE_ORDER,
       { course_id: payload.courseId },
     );
     const raw = data.data;
     return {
-      orderId: raw.razorpay_order_id,
-      keyId: raw.razorpay_key_id,
-      amount: raw.amount_paise,         // in paise, as Razorpay expects
+      orderId: raw.razorpay_order_id ?? raw.order_id ?? raw.orderId,
+      keyId: raw.razorpay_key_id ?? raw.key_id ?? raw.keyId,
+      amount: raw.amount_paise ?? raw.amount,
       currency: raw.currency ?? "INR",
       courseName: raw.course_title ?? "",
       studentName: raw.student_name ?? "",
@@ -93,7 +93,7 @@ export const paymentService = {
    * Only after successful verification is enrollment created.
    */
   verify: async (payload: VerifyPaymentPayload): Promise<VerifyPaymentResponse> => {
-    const { data } = await apiClient.post<APIResponse<VerifyPaymentResponse>>(
+    const { data } = await apiClient.post<APIResponse<any>>(
       ENDPOINTS.PAYMENTS.VERIFY,
       {
         razorpay_order_id: payload.razorpayOrderId,
@@ -101,6 +101,12 @@ export const paymentService = {
         razorpay_signature: payload.razorpaySignature,
       },
     );
-    return data.data;
+    const raw = data.data ?? {};
+    return {
+      paymentId: raw.payment_id ?? raw.paymentId ?? "",
+      courseId: raw.course_id ?? raw.courseId ?? "",
+      status: raw.status ?? "",
+      message: raw.message ?? "",
+    };
   },
 };

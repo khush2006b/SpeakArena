@@ -556,6 +556,7 @@ class PaymentService:
 
         return {
             "payment_id": payment.id,
+            "course_id": payment.course_id,
             "status": payment.status,
             "message": "Payment verified and enrollment confirmed.",
         }
