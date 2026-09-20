@@ -114,6 +114,17 @@ async def full_health(
     db_status = await _check_database(session)
     redis_status = await _check_redis(redis)
 
+    # Razorpay config check — shows key prefix only, NEVER the full secret
+    rzp_key_id = settings.RAZORPAY_KEY_ID or ""
+    rzp_secret = settings.RAZORPAY_KEY_SECRET or ""
+    razorpay_status = {
+        "key_id_prefix": rzp_key_id[:12] + "..." if len(rzp_key_id) > 12 else ("(empty)" if not rzp_key_id else rzp_key_id),
+        "key_id_set": bool(rzp_key_id),
+        "key_secret_set": bool(rzp_secret),
+        "key_secret_length": len(rzp_secret),
+        "mode": "live" if rzp_key_id.startswith("rzp_live_") else ("test" if rzp_key_id.startswith("rzp_test_") else "unknown"),
+    }
+
     all_ok = (
         db_status["status"] == "ok"
         and redis_status["status"] == "ok"
@@ -122,6 +133,7 @@ async def full_health(
     checks: dict[str, Any] = {
         "database": db_status,
         "redis": redis_status,
+        "razorpay": razorpay_status,
     }
 
     return JSONResponse(
