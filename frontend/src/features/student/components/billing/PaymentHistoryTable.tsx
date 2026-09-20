@@ -30,24 +30,50 @@ export function PaymentHistoryTable() {
     return result;
   }, [searchQuery, activeFilter, payments]);
 
-  const StatusBadge = ({ status }: { status?: string }) => {
+  const StatusBadge = ({ status, refundStatus }: { status?: string; refundStatus?: string }) => {
     const s = (status || "").toLowerCase();
+    const r = (refundStatus || "").toLowerCase();
+    if (s === "refunded" || r === "processed" || r === "refunded") {
+      return (
+        <span className="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+          Refunded
+        </span>
+      );
+    }
     switch (s) {
       case "success":
       case "captured":
-        return <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Success</span>;
-      case "pending":
-      case "created":
-      case "attempted":
-        return <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Pending</span>;
+        return (
+          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+            Success
+          </span>
+        );
       case "failed":
-        return <span className="bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Failed</span>;
-      case "refunded":
-        return <span className="bg-muted-foreground/15 text-muted-foreground border border-muted-foreground/25 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Refunded</span>;
+        return (
+          <span className="bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+            Failed
+          </span>
+        );
+      case "created":
+        return (
+          <span className="bg-zinc-500/15 text-zinc-400 border border-zinc-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+            Cancelled
+          </span>
+        );
+      case "attempted":
+      case "pending":
       case "processing":
-        return <span className="bg-blue-400/15 text-blue-400 border border-blue-400/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Processing</span>;
+        return (
+          <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+            Pending
+          </span>
+        );
       default:
-        return <span className="bg-white/10 text-foreground px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">{status || "Unknown"}</span>;
+        return (
+          <span className="bg-white/10 text-foreground px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">
+            {status || "Unknown"}
+          </span>
+        );
     }
   };
 
@@ -85,19 +111,18 @@ export function PaymentHistoryTable() {
               <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Status</th>
               <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Date</th>
               <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Payment Method</th>
-              <th className="p-4 sm:p-5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground text-right">Invoice</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="h-40 text-center">
+                <td colSpan={5} className="h-40 text-center">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground opacity-60" />
                 </td>
               </tr>
             ) : filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-16 text-center text-muted-foreground">
+                <td colSpan={5} className="py-16 text-center text-muted-foreground">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <CreditCard className="w-8 h-8 text-muted-foreground/40" />
                     <p className="text-sm font-semibold text-muted-foreground m-0">No transactions found.</p>
@@ -125,25 +150,13 @@ export function PaymentHistoryTable() {
                       ₹{Number(t.amount || 0).toLocaleString("en-IN")}
                     </td>
                     <td className="p-4 sm:p-5">
-                      <StatusBadge status={t.status} />
+                      <StatusBadge status={t.status} refundStatus={(t as any).refund_status || (t as any).refundStatus} />
                     </td>
                     <td className="p-4 sm:p-5 text-muted-foreground text-xs font-medium">
                       {dateVal ? format(parseISO(dateVal), "MMM d, yyyy") : "N/A"}
                     </td>
                     <td className="p-4 sm:p-5">
                       <PaymentMethod method={(t as any).paymentMethod} />
-                    </td>
-                    <td className="p-4 sm:p-5 text-right">
-                      <button
-                        className="btn-ghost text-indigo-400 hover:text-indigo-300 h-8 px-3 text-xs font-semibold press-scale disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10"
-                        disabled={(t.status || "").toLowerCase() === "failed"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if ((t.status || "").toLowerCase() !== "failed") window.open("#", "_blank");
-                        }}
-                      >
-                        <Download size={13} /> PDF
-                      </button>
                     </td>
                   </tr>
                 );
