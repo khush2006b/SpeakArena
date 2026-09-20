@@ -71,9 +71,11 @@ export const ENDPOINTS = {
 
   // --- Payments ---
   PAYMENTS: {
+    BASE: `${API_V1}/payments/history`,
     LIST: `${API_V1}/payments/history`,
     HISTORY: `${API_V1}/payments/history`,
     INITIATE: `${API_V1}/payments/create-order`,
+    CREATE_ORDER: `${API_V1}/payments/create-order`,
     VERIFY: `${API_V1}/payments/verify`,
     DETAIL: (id: string) => `${API_V1}/payments/${id}`,
   },

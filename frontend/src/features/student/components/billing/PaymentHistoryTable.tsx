@@ -9,7 +9,8 @@ import { usePaymentList } from "@/hooks/queries/usePaymentQueries";
 export function PaymentHistoryTable() {
   const { setSelectedTransaction, searchQuery, activeFilter } = useBillingStore();
   const { data, isLoading } = usePaymentList({ page: 1, pageSize: 50 });
-  const payments = data?.items || [];
+  const rawItems = (data as any)?.items ?? (Array.isArray(data) ? data : []);
+  const payments = Array.isArray(rawItems) ? rawItems : [];
 
   const filteredTransactions = React.useMemo(() => {
     let result = [...payments];
@@ -17,22 +18,27 @@ export function PaymentHistoryTable() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(t =>
-        t.id.toLowerCase().includes(q)
+        t.id?.toLowerCase().includes(q) ||
+        (t as any).course_title?.toLowerCase().includes(q)
       );
     }
 
     if (activeFilter !== "all") {
-      result = result.filter(t => t.status.toLowerCase() === activeFilter.toLowerCase());
+      result = result.filter(t => (t.status || "").toLowerCase() === activeFilter.toLowerCase());
     }
 
     return result;
   }, [searchQuery, activeFilter, payments]);
 
-  const StatusBadge = ({ status }: { status: string }) => {
-    switch (status.toLowerCase()) {
+  const StatusBadge = ({ status }: { status?: string }) => {
+    const s = (status || "").toLowerCase();
+    switch (s) {
       case "success":
+      case "captured":
         return <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Success</span>;
       case "pending":
+      case "created":
+      case "attempted":
         return <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Pending</span>;
       case "failed":
         return <span className="bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Failed</span>;
@@ -41,7 +47,7 @@ export function PaymentHistoryTable() {
       case "processing":
         return <span className="bg-blue-400/15 text-blue-400 border border-blue-400/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">Processing</span>;
       default:
-        return <span className="bg-white/10 text-foreground px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">{status}</span>;
+        return <span className="bg-white/10 text-foreground px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest">{status || "Unknown"}</span>;
     }
   };
 
@@ -99,46 +105,49 @@ export function PaymentHistoryTable() {
                 </td>
               </tr>
             ) : (
-              filteredTransactions.map((t) => (
-                <tr
-                  key={t.id}
-                  className="cursor-pointer hover:bg-white/[0.03] transition-colors"
-                  onClick={() => setSelectedTransaction(t)}
-                >
-                  <td className="p-4 sm:p-5">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-foreground truncate max-w-[280px]">
-                        {(t as any).course_title || (t as any).courseTitle || t.courseId || "Speak Arena Course"}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">ID: {t.id}</span>
-                    </div>
-                  </td>
-                  <td className="p-4 sm:p-5 font-extrabold text-foreground">
-                    ₹{t.amount.toLocaleString()}
-                  </td>
-                  <td className="p-4 sm:p-5">
-                    <StatusBadge status={t.status} />
-                  </td>
-                  <td className="p-4 sm:p-5 text-muted-foreground text-xs font-medium">
-                    {t.createdAt ? format(parseISO(t.createdAt), "MMM d, yyyy") : "N/A"}
-                  </td>
-                  <td className="p-4 sm:p-5">
-                    <PaymentMethod method={(t as any).paymentMethod} />
-                  </td>
-                  <td className="p-4 sm:p-5 text-right">
-                    <button
-                      className="btn-ghost text-indigo-400 hover:text-indigo-300 h-8 px-3 text-xs font-semibold press-scale disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10"
-                      disabled={t.status.toLowerCase() === "failed"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (t.status.toLowerCase() !== "failed") window.open("#", "_blank");
-                      }}
-                    >
-                      <Download size={13} /> PDF
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filteredTransactions.map((t) => {
+                const dateVal = (t as any).created_at || (t as any).createdAt;
+                return (
+                  <tr
+                    key={t.id}
+                    className="cursor-pointer hover:bg-white/[0.03] transition-colors"
+                    onClick={() => setSelectedTransaction(t)}
+                  >
+                    <td className="p-4 sm:p-5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-foreground truncate max-w-[280px]">
+                          {(t as any).course_title || (t as any).courseTitle || t.courseId || "Speak Arena Course"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">ID: {t.id}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 sm:p-5 font-extrabold text-foreground">
+                      ₹{Number(t.amount || 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="p-4 sm:p-5">
+                      <StatusBadge status={t.status} />
+                    </td>
+                    <td className="p-4 sm:p-5 text-muted-foreground text-xs font-medium">
+                      {dateVal ? format(parseISO(dateVal), "MMM d, yyyy") : "N/A"}
+                    </td>
+                    <td className="p-4 sm:p-5">
+                      <PaymentMethod method={(t as any).paymentMethod} />
+                    </td>
+                    <td className="p-4 sm:p-5 text-right">
+                      <button
+                        className="btn-ghost text-indigo-400 hover:text-indigo-300 h-8 px-3 text-xs font-semibold press-scale disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10"
+                        disabled={(t.status || "").toLowerCase() === "failed"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if ((t.status || "").toLowerCase() !== "failed") window.open("#", "_blank");
+                        }}
+                      >
+                        <Download size={13} /> PDF
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

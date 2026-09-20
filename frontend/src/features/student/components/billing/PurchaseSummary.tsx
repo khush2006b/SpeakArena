@@ -29,20 +29,26 @@ export function PurchaseSummary() {
     const fetchPayments = async () => {
       try {
         const response = await apiClient.get("/api/v1/payments/history?page=1&page_size=100");
-        const payments = response.data?.items || [];
+        const raw = response.data;
+        const payments = (raw?.data?.items ?? raw?.items ?? (Array.isArray(raw?.data) ? raw?.data : [])) || [];
         
         let totalSpent = 0;
+        let activeCount = 0;
         let recentDate = new Date().toISOString();
         if (payments.length > 0) {
-          recentDate = payments[0].created_at || new Date().toISOString();
+          recentDate = payments[0].created_at || payments[0].createdAt || new Date().toISOString();
           payments.forEach((p: any) => {
-            totalSpent += (p.amount || 0);
+            const status = String(p.status || "").toLowerCase();
+            if (status === "captured" || status === "success") {
+              totalSpent += (Number(p.amount) || 0);
+              activeCount += 1;
+            }
           });
         }
         
         setSummary({
           totalSpent,
-          activeCourses: payments.length,
+          activeCourses: activeCount,
           lifetimeValue: totalSpent,
           recentPurchaseDate: recentDate
         });
