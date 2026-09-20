@@ -415,6 +415,10 @@ class PaymentService:
             )
 
         amount_paise = int(float(course.price) * 100)
+        if amount_paise < 100:
+            raise CourseNotPurchasableError(
+                message="Amount must be at least ₹1 (100 paise) to initiate payment."
+            )
 
         # Create pending Payment record first to get our UUID for the receipt
         payment = await self._payment_repo.create(
@@ -521,26 +525,35 @@ class PaymentService:
             )
             raise PaymentSignatureError()
 
-        # Update payment with signature (webhook will set final status)
+        # Update payment with signature and mark as captured
         old_status = payment.status
         await self._payment_repo.update_status(
             payment,
-            status=PaymentStatus.ATTEMPTED,
+            status=PaymentStatus.CAPTURED,
             razorpay_payment_id=razorpay_payment_id,
             razorpay_signature=razorpay_signature,
+            paid_at=datetime.now(timezone.utc),
         )
         await self._payment_repo.append_history(
             payment_id=payment.id,
             from_status=old_status,
-            to_status=PaymentStatus.ATTEMPTED,
+            to_status=PaymentStatus.CAPTURED,
             event="payment.client_verified",
             actor_id=self._student.id,
         )
 
+        # Grant enrollment access immediately
+        enrollment_svc = EnrollmentService(self._db)
+        await enrollment_svc.grant_access(payment)
+
+        # Generate invoice
+        invoice_svc = InvoiceService(self._db)
+        await invoice_svc.generate(payment)
+
         return {
             "payment_id": payment.id,
             "status": payment.status,
-            "message": "Payment received. Enrollment will be granted shortly.",
+            "message": "Payment verified and enrollment confirmed.",
         }
 
     async def get_payment_detail(
