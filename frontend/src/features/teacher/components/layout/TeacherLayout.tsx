@@ -11,7 +11,8 @@ export function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isFullBleedPage =
     pathname?.startsWith("/teacher/chat") ||
-    pathname?.startsWith("/teacher/communication");
+    pathname?.startsWith("/teacher/communication") ||
+    pathname?.startsWith("/teacher/builder");
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
