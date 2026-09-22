@@ -33,6 +33,7 @@ interface RazorpayOptions {
   description?: string;
   prefill?: { name?: string; email?: string };
   theme?: { color?: string };
+  config?: Record<string, any>;
   handler: (response: RazorpaySuccessResponse) => void;
   modal?: { ondismiss?: () => void };
 }
@@ -69,6 +70,8 @@ export function useRazorpay() {
       return new Promise(async (resolve, reject) => {
         await loadRazorpayScript();
 
+        const isUsd = orderData.currency?.toUpperCase() === "USD";
+
         const rzp = new window.Razorpay({
           key: orderData.keyId,
           amount: orderData.amount,
@@ -81,6 +84,29 @@ export function useRazorpay() {
             email: orderData.studentEmail,
           },
           theme: { color: "#6366f1" },
+          ...(isUsd
+            ? {
+                config: {
+                  display: {
+                    blocks: {
+                      wallets: {
+                        name: "PayPal & Digital Wallets",
+                        instruments: [
+                          {
+                            method: "wallet",
+                            wallets: ["paypal"],
+                          },
+                        ],
+                      },
+                    },
+                    sequence: ["block.wallets", "block.card", "block.netbanking", "block.upi"],
+                    preferences: {
+                      show_default_blocks: true,
+                    },
+                  },
+                },
+              }
+            : {}),
           handler: (response) => {
             resolve(response);
           },
