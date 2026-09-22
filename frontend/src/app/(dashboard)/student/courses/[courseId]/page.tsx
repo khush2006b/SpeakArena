@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/services/api/client";
 import { getCourseThumbnailUrl } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CourseDetail {
   id: string;
@@ -249,7 +250,18 @@ export default function StudentCourseDetailPage() {
 
           {/* Thumbnail / Action Box */}
           <div className="flex flex-col gap-4">
-            <div className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl group cursor-pointer bg-black/40">
+            <div
+              onClick={() => {
+                if (videos.length > 0) {
+                  setActiveTab("content");
+                  setActiveVideo(videos[0]);
+                  document.getElementById("course-content-section")?.scrollIntoView({ behavior: "smooth" });
+                } else {
+                  toast.info("No video lectures have been uploaded for this course yet.");
+                }
+              }}
+              className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl group cursor-pointer bg-black/40"
+            >
               <Image
                 src={course.thumbnail_r2_key || THUMBNAIL_FALLBACK}
                 alt={course.title}
@@ -269,7 +281,11 @@ export default function StudentCourseDetailPage() {
               style={{ borderRadius: 12 }}
               onClick={() => {
                 if (videos.length > 0) {
+                  setActiveTab("content");
                   setActiveVideo(videos[0]);
+                  document.getElementById("course-content-section")?.scrollIntoView({ behavior: "smooth" });
+                } else {
+                  toast.info("No video lectures have been uploaded for this course yet.");
                 }
               }}
             >
@@ -281,7 +297,7 @@ export default function StudentCourseDetailPage() {
       </div>
 
       {/* ── COURSE CONTENT & LESSONS SECTION ───────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div id="course-content-section" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content Area */}
         <div className="lg:col-span-2 space-y-6">
           {/* Navigation Tabs */}
