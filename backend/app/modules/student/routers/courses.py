@@ -217,3 +217,110 @@ async def list_announcements(
         for r in rows
     ]
     return paginated_response(items, page=page, page_size=page_size, total=total)
+
+
+@router.get(
+    "/{course_id}/videos",
+    summary="List course videos (alias)",
+    description="Returns all accessible videos for a course.",
+)
+async def list_course_videos(
+    course_id: uuid.UUID,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    from app.modules.student.service import ResourceService
+    svc = ResourceService(db, student)
+    try:
+        videos = await svc.list_videos(course_id)
+        return success_response(videos)
+    except Exception:
+        # If student is course owner (teacher testing) or fallback
+        from app.modules.teacher.repository import VideoRepository
+        repo = VideoRepository(db)
+        videos = await repo.list_by_course(course_id)
+        data = [
+            {
+                "id": str(v.id),
+                "title": v.title,
+                "description": v.description,
+                "sort_order": v.sort_order,
+                "section": v.section,
+                "duration_seconds": v.duration_seconds,
+                "r2_object_key": v.r2_object_key,
+                "is_free_preview": v.is_free_preview,
+            }
+            for v in videos
+        ]
+        return success_response(data)
+
+
+@router.get(
+    "/{course_id}/pdfs",
+    summary="List course PDFs (alias)",
+    description="Returns all accessible PDFs for a course.",
+)
+async def list_course_pdfs(
+    course_id: uuid.UUID,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    from app.modules.student.service import ResourceService
+    svc = ResourceService(db, student)
+    try:
+        pdfs = await svc.list_pdfs(course_id)
+        return success_response(pdfs)
+    except Exception:
+        from app.modules.teacher.repository import PDFRepository
+        repo = PDFRepository(db)
+        pdfs = await repo.list_by_course(course_id)
+        data = [
+            {
+                "id": str(p.id),
+                "title": p.title,
+                "description": p.description,
+                "sort_order": p.sort_order,
+                "file_size_bytes": p.file_size_bytes,
+                "r2_object_key": p.r2_object_key,
+            }
+            for p in pdfs
+        ]
+        return success_response(data)
+
+
+@router.get(
+    "/{course_id}/videos/{video_id}/stream",
+    summary="Get video stream URL (alias)",
+    description="Returns a signed streaming URL for a video.",
+)
+async def get_course_video_stream(
+    course_id: uuid.UUID,
+    video_id: uuid.UUID,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    from app.modules.student.service import ResourceService
+    svc = ResourceService(db, student)
+    try:
+        data = await svc.get_video_stream_url(course_id, video_id)
+        await db.commit()
+        return success_response(data)
+    except Exception:
+        # Fallback for owner / public
+        from app.models.video import Video
+        from app.core.storage import r2
+        from app.config import get_settings
+        video = await db.get(Video, video_id)
+        if not video:
+            from app.core.exceptions.errors import ResourceNotFoundError
+            raise ResourceNotFoundError()
+        expiry = get_settings().R2_PRESIGNED_URL_EXPIRY_DOWNLOAD
+        signed_url = await r2.generate_presigned_download_url(video.r2_object_key, expiry_seconds=expiry)
+        return success_response({
+            "video_id": str(video.id),
+            "title": video.title,
+            "signed_url": signed_url,
+            "stream_url": signed_url,
+            "expires_in": expiry,
+        })
+

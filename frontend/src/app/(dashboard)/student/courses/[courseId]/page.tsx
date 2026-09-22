@@ -70,9 +70,37 @@ export default function StudentCourseDetailPage() {
   const [pdfs, setPdfs] = React.useState<PdfItem[]>([]);
   const [activeTab, setActiveTab] = React.useState<"content" | "pdfs" | "about">("content");
   const [activeVideo, setActiveVideo] = React.useState<VideoItem | null>(null);
+  const [activeStreamUrl, setActiveStreamUrl] = React.useState<string | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const playVideo = React.useCallback(async (video: VideoItem) => {
+    setActiveVideo(video);
+    setActiveTab("content");
+    document.getElementById("course-content-section")?.scrollIntoView({ behavior: "smooth" });
+
+    // Fetch presigned stream URL from backend
+    try {
+      const res = await apiClient
+        .get(`/api/v1/resources/${courseId}/videos/${video.id}/stream`)
+        .catch(async () => {
+          return await apiClient
+            .get(`/api/v1/courses/${courseId}/videos/${video.id}/stream`)
+            .catch(() => null);
+        });
+      const streamData = res?.data?.data ?? res?.data;
+      const url =
+        streamData?.signed_url ||
+        streamData?.stream_url ||
+        streamData?.url ||
+        video.r2_object_key ||
+        null;
+      setActiveStreamUrl(url);
+    } catch {
+      setActiveStreamUrl(video.r2_object_key || null);
+    }
+  }, [courseId]);
 
   React.useEffect(() => {
     if (!courseId) return;
@@ -80,9 +108,9 @@ export default function StudentCourseDetailPage() {
     setIsLoading(true);
     setError(null);
 
-    // Fetch course details, videos, and pdfs using student-accessible endpoints
+    // Fetch course details, videos, and pdfs using resilient endpoints
     Promise.all([
-      // 1. Course details (try student detail endpoint, fallback to explore catalog)
+      // 1. Course details
       apiClient
         .get(`/api/v1/courses/${courseId}`)
         .then((res) => res.data?.data ?? res.data)
@@ -96,16 +124,36 @@ export default function StudentCourseDetailPage() {
             ) || null
           );
         }),
-      // 2. Videos (graceful fallback)
+      // 2. Videos (tries resources, courses, and teacher endpoints)
       apiClient
-        .get(`/api/v1/courses/${courseId}/videos`)
-        .then((res) => res.data?.data ?? res.data)
-        .catch(() => []),
-      // 3. PDFs (graceful fallback)
+        .get(`/api/v1/resources/${courseId}/videos`)
+        .then((res) => {
+          const d = res.data?.data ?? res.data;
+          return Array.isArray(d) ? d : [];
+        })
+        .catch(async () => {
+          const cRes = await apiClient.get(`/api/v1/courses/${courseId}/videos`).catch(() => null);
+          const cData = cRes?.data?.data ?? cRes?.data;
+          if (Array.isArray(cData) && cData.length > 0) return cData;
+          const tRes = await apiClient.get(`/api/v1/teacher/courses/${courseId}/videos`).catch(() => null);
+          const tData = tRes?.data?.data ?? tRes?.data;
+          return Array.isArray(tData) ? tData : [];
+        }),
+      // 3. PDFs (tries resources, courses, and teacher endpoints)
       apiClient
-        .get(`/api/v1/courses/${courseId}/pdfs`)
-        .then((res) => res.data?.data ?? res.data)
-        .catch(() => []),
+        .get(`/api/v1/resources/${courseId}/pdfs`)
+        .then((res) => {
+          const d = res.data?.data ?? res.data;
+          return Array.isArray(d) ? d : [];
+        })
+        .catch(async () => {
+          const cRes = await apiClient.get(`/api/v1/courses/${courseId}/pdfs`).catch(() => null);
+          const cData = cRes?.data?.data ?? cRes?.data;
+          if (Array.isArray(cData) && cData.length > 0) return cData;
+          const tRes = await apiClient.get(`/api/v1/teacher/courses/${courseId}/pdfs`).catch(() => null);
+          const tData = tRes?.data?.data ?? tRes?.data;
+          return Array.isArray(tData) ? tData : [];
+        }),
     ])
       .then(([courseData, videoList, pdfList]) => {
         if (courseData) {
@@ -122,7 +170,7 @@ export default function StudentCourseDetailPage() {
               courseData.teacherName ||
               courseData.teacher?.full_name ||
               "Speak Arena Instructor",
-            total_lectures: courseData.total_lectures || 0,
+            total_lectures: courseData.total_lectures || (Array.isArray(videoList) ? videoList.length : 0),
             ...courseData,
           });
         } else {
@@ -132,7 +180,7 @@ export default function StudentCourseDetailPage() {
         if (Array.isArray(videoList)) {
           setVideos(videoList);
           if (videoList.length > 0) {
-            setActiveVideo(videoList[0]);
+            playVideo(videoList[0]);
           }
         }
         if (Array.isArray(pdfList)) {
@@ -146,7 +194,7 @@ export default function StudentCourseDetailPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [courseId]);
+  }, [courseId, playVideo]);
 
   const teacherName = course?.teacher_name || course?.teacherName || "Paras (Construction)";
 
@@ -253,9 +301,7 @@ export default function StudentCourseDetailPage() {
             <div
               onClick={() => {
                 if (videos.length > 0) {
-                  setActiveTab("content");
-                  setActiveVideo(videos[0]);
-                  document.getElementById("course-content-section")?.scrollIntoView({ behavior: "smooth" });
+                  playVideo(videos[0]);
                 } else {
                   toast.info("No video lectures have been uploaded for this course yet.");
                 }
@@ -281,9 +327,7 @@ export default function StudentCourseDetailPage() {
               style={{ borderRadius: 12 }}
               onClick={() => {
                 if (videos.length > 0) {
-                  setActiveTab("content");
-                  setActiveVideo(videos[0]);
-                  document.getElementById("course-content-section")?.scrollIntoView({ behavior: "smooth" });
+                  playVideo(videos[0]);
                 } else {
                   toast.info("No video lectures have been uploaded for this course yet.");
                 }
@@ -344,9 +388,10 @@ export default function StudentCourseDetailPage() {
                 <span className="text-xs text-muted-foreground">{activeVideo.title}</span>
               </div>
               <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
-                {activeVideo.r2_object_key ? (
+                {activeStreamUrl || activeVideo.r2_object_key ? (
                   <video
-                    src={activeVideo.r2_object_key}
+                    key={activeStreamUrl || activeVideo.id}
+                    src={activeStreamUrl || activeVideo.r2_object_key}
                     controls
                     autoPlay
                     className="w-full h-full object-contain"
@@ -355,7 +400,7 @@ export default function StudentCourseDetailPage() {
                   <div className="text-center p-6 space-y-2">
                     <Video className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
                     <p className="text-sm font-medium text-foreground">{activeVideo.title}</p>
-                    <p className="text-xs text-muted-foreground">Video stream ready for playback.</p>
+                    <p className="text-xs text-muted-foreground">Loading video stream...</p>
                   </div>
                 )}
               </div>
@@ -380,7 +425,7 @@ export default function StudentCourseDetailPage() {
                     return (
                       <div
                         key={vid.id || idx}
-                        onClick={() => setActiveVideo(vid)}
+                        onClick={() => playVideo(vid)}
                         className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
                           isCurrent
                             ? "bg-primary/10 border-primary/40 text-foreground"
