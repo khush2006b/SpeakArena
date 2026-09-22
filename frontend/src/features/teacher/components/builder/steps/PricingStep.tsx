@@ -12,6 +12,7 @@ export function PricingStep() {
     nextStep, prevStep,
     price, setPrice,
     discountedPrice, setDiscountedPrice,
+    usdPrice, setUsdPrice,
     accessType, setAccessType,
     maxStudents, setMaxStudents,
   } = useBuilderStore();
@@ -25,14 +26,14 @@ export function PricingStep() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing &amp; Enrollment Capacity</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Set up pricing, student seat limits, and access rules for your course.
+          Set up separate pricing for Indian and International students, seat limits, and access rules.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Price Input */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Base Price (INR) */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">Base Price (INR)</label>
+          <label className="text-sm font-semibold text-foreground">India Price (INR)</label>
           <div className="flex h-11 w-full rounded-xl border border-input bg-background/80 overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all">
             <div className="flex items-center justify-center px-3.5 bg-muted/40 border-r border-border/50 text-emerald-400 font-extrabold text-sm shrink-0 select-none">
               ₹
@@ -47,12 +48,35 @@ export function PricingStep() {
               className="w-full h-full bg-transparent px-3 text-sm font-semibold text-foreground focus:outline-none"
             />
           </div>
-          <p className="text-xs text-muted-foreground">Set to 0 for free access.</p>
+          <p className="text-xs text-muted-foreground">For students in India (e.g. ₹199).</p>
+        </div>
+
+        {/* International Price (USD) */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">International Price (USD)</label>
+          <div className="flex h-11 w-full rounded-xl border border-input bg-background/80 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 transition-all">
+            <div className="flex items-center justify-center px-3.5 bg-muted/40 border-r border-border/50 text-blue-400 font-extrabold text-sm shrink-0 select-none">
+              $
+            </div>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={usdPrice ?? ""}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setUsdPrice(isNaN(v) ? null : v);
+              }}
+              placeholder="19"
+              className="w-full h-full bg-transparent px-3 text-sm font-semibold text-foreground focus:outline-none"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">For students outside India (e.g. $19).</p>
         </div>
 
         {/* Discount Input */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">Discounted Price (Optional)</label>
+          <label className="text-sm font-semibold text-foreground">Discounted INR (Optional)</label>
           <div className="flex h-11 w-full rounded-xl border border-input bg-background/80 overflow-hidden focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-500/50 transition-all">
             <div className="flex items-center justify-center px-3 bg-muted/40 border-r border-border/50 text-amber-400 shrink-0 select-none">
               <Tag className="h-4 w-4" />
@@ -71,14 +95,14 @@ export function PricingStep() {
             />
           </div>
           {discountedPrice !== null && price > 0 && discountedPrice >= price && (
-            <p className="text-xs text-destructive">Discounted price must be less than base price.</p>
+            <p className="text-xs text-destructive">Must be less than India price.</p>
           )}
         </div>
 
         {/* Student Seat Limit Input */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground flex items-center justify-between">
-            <span>Student Seat Limit</span>
+            <span>Seat Limit</span>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-mono font-bold border border-violet-500/25">
               {maxStudents || 50} seats
             </span>
@@ -105,7 +129,7 @@ export function PricingStep() {
               className="w-full h-full bg-transparent px-3 text-sm font-semibold text-foreground focus:outline-none"
             />
           </div>
-          <p className="text-xs text-muted-foreground">Maximum students allowed to enroll (default: 50).</p>
+          <p className="text-xs text-muted-foreground">Max enrolled students.</p>
         </div>
       </div>
 

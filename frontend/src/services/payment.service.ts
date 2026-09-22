@@ -18,6 +18,7 @@ import type { Payment, PaginatedResponse, APIResponse, PaginationConfig } from "
 
 export interface InitiatePaymentPayload {
   courseId: string;
+  currency?: string;
 }
 
 export interface InitiatePaymentResponse {
@@ -73,14 +74,14 @@ export const paymentService = {
   initiate: async (payload: InitiatePaymentPayload): Promise<InitiatePaymentResponse> => {
     const { data } = await apiClient.post<APIResponse<any>>(
       ENDPOINTS.PAYMENTS.CREATE_ORDER,
-      { course_id: payload.courseId },
+      { course_id: payload.courseId, currency: payload.currency || "INR" },
     );
     const raw = data.data;
     return {
       orderId: raw.razorpay_order_id ?? raw.order_id ?? raw.orderId,
       keyId: raw.razorpay_key_id ?? raw.key_id ?? raw.keyId,
       amount: raw.amount_paise ?? raw.amount,
-      currency: raw.currency ?? "INR",
+      currency: raw.currency ?? payload.currency ?? "INR",
       courseName: raw.course_title ?? "",
       studentName: raw.student_name ?? "",
       studentEmail: raw.student_email ?? "",

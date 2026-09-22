@@ -415,18 +415,31 @@ class PaymentService:
                 message=f"This course has reached its student limit of {course.max_students} enrolled seats."
             )
 
-        amount_paise = int(float(course.price) * 100)
-        if amount_paise < 100:
-            raise CourseNotPurchasableError(
-                message="Amount must be at least ₹1 (100 paise) to initiate payment."
-            )
+        is_usd = str(currency).upper() == "USD"
+        if is_usd:
+            currency = "USD"
+            custom_usd = getattr(course, "usd_price", None)
+            target_price = float(custom_usd) if custom_usd is not None and float(custom_usd) > 0 else max(round(float(course.price) / 80.0, 2), 1.0)
+            amount_units = int(target_price * 100)
+            if amount_units < 100:
+                raise CourseNotPurchasableError(
+                    message="Amount must be at least $1 (100 cents) to initiate payment."
+                )
+        else:
+            currency = "INR"
+            target_price = float(course.price)
+            amount_units = int(target_price * 100)
+            if amount_units < 100:
+                raise CourseNotPurchasableError(
+                    message="Amount must be at least ₹1 (100 paise) to initiate payment."
+                )
 
         # Create pending Payment record first to get our UUID for the receipt
         payment = await self._payment_repo.create(
             student_id=self._student.id,
             course_id=course_id,
             razorpay_order_id="pending",  # Updated after order creation
-            amount=float(course.price),
+            amount=target_price,
             currency=currency,
             ip_address=self._ip,
             metadata={"course_title": course.title},
@@ -434,7 +447,7 @@ class PaymentService:
 
         # Create Razorpay order
         rz_order = await self._razorpay.create_order(
-            amount_paise=amount_paise,
+            amount_paise=amount_units,
             currency=currency,
             receipt=str(payment.id),
             notes={
@@ -465,17 +478,17 @@ class PaymentService:
             action="payment.order_created",
             entity_type="payment",
             entity_id=payment.id,
-            metadata={"course_id": str(course_id), "amount": float(course.price)},
+            metadata={"course_id": str(course_id), "amount": target_price, "currency": currency},
         )
 
         return {
             "payment_id": payment.id,
             "razorpay_order_id": rz_order["id"],
             "razorpay_key_id": self._razorpay.key_id,
-            "amount_paise": amount_paise,
+            "amount_paise": amount_units,
             "currency": currency,
             "course_title": course.title,
-            "course_price": float(course.price),
+            "course_price": target_price,
         }
 
     async def verify_payment(

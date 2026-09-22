@@ -150,6 +150,8 @@ class CreateCourseRequest(_StrictBase):
     short_description: Optional[str] = Field(default=None, max_length=500)
     price: float = Field(default=0.00, ge=0)
     original_price: Optional[float] = Field(default=None, ge=0)
+    usd_price: Optional[float] = Field(default=None, ge=0)
+    original_usd_price: Optional[float] = Field(default=None, ge=0)
     currency: str = Field(default="INR", max_length=3)
     level: CourseLevel = Field(default=CourseLevel.BEGINNER)
     language: str = Field(default="en", max_length=10)
@@ -181,6 +183,8 @@ class UpdateCourseRequest(_StrictBase):
     short_description: Optional[str] = Field(default=None, max_length=500)
     price: Optional[float] = Field(default=None, ge=0)
     original_price: Optional[float] = Field(default=None, ge=0)
+    usd_price: Optional[float] = Field(default=None, ge=0)
+    original_usd_price: Optional[float] = Field(default=None, ge=0)
     currency: Optional[str] = Field(default=None, max_length=3)
     level: Optional[CourseLevel] = None
     language: Optional[str] = Field(default=None, max_length=10)
@@ -215,6 +219,8 @@ class CourseResponse(_ReadBase):
     promo_video_r2_key: Optional[str]
     price: float
     original_price: Optional[float]
+    usd_price: Optional[float] = None
+    original_usd_price: Optional[float] = None
     currency: str
     status: str
     visibility: str

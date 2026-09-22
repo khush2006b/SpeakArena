@@ -49,6 +49,66 @@ const TIERS = [
 ];
 
 export function PricingSection() {
+  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
+
+  React.useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const isIndia =
+        tz.includes("Calcutta") ||
+        tz.includes("Kolkata") ||
+        tz.includes("Asia/Kolkata") ||
+        tz.includes("IST");
+      setCurrency(isIndia ? "INR" : "USD");
+    } catch {
+      setCurrency("INR");
+    }
+  }, []);
+
+  const tiers = [
+    {
+      name: "Free Preview",
+      price: currency === "INR" ? "₹0" : "$0",
+      interval: "forever",
+      description: "Explore the platform and see what SpeakArena has to offer.",
+      features: [
+        "Access to free course previews",
+        "Community forum access",
+        "Standard video quality",
+      ],
+      notIncluded: [
+        "Live coaching sessions",
+        "Study resources & PDFs",
+        "1-on-1 teacher chat",
+        "Certificate of completion",
+      ],
+      featured: false,
+      cta: "Get Started Free",
+      ctaStyle: "outline" as const,
+      accentColor: "#6b7280",
+    },
+    {
+      name: "Monthly Access",
+      price: currency === "INR" ? "₹199" : "$19",
+      interval: "/month",
+      description: "Full access to live classes, study resources, tests, and chat.",
+      badge: "Most Popular",
+      features: [
+        "Live online coaching sessions",
+        "Practice tests & assessments",
+        "Study resources & PDF guides",
+        "Real-time student-teacher chat",
+        "HD video quality",
+        "Certificate of completion",
+      ],
+      notIncluded: [],
+      featured: true,
+      cta: currency === "INR" ? "Enroll Now — ₹199" : "Enroll Now — $19",
+      ctaStyle: "primary" as const,
+      accentColor: "#4f46e5",
+    },
+  ];
+
   return (
     <section style={{ width: "100%", background: "#080c14", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)" }} />
@@ -57,7 +117,7 @@ export function PricingSection() {
       <div className="w-full px-6 sm:px-12 lg:px-20 py-16 sm:py-20 lg:py-28" style={{ position: "relative", zIndex: 10 }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 64 }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 20 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", display: "inline-block" }} />
             <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Pricing</span>
@@ -65,14 +125,52 @@ export function PricingSection() {
           <h2 style={{ fontSize: "clamp(28px, 3.5vw, 48px)", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, margin: "0 0 18px 0" }}>
             Invest in your English career
           </h2>
-          <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
+          <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.7, maxWidth: 480, margin: "0 auto 24px auto" }}>
             Transparent pricing with no hidden fees. Start for free, upgrade when you need live guidance.
           </p>
+
+          {/* Currency Toggle */}
+          <div style={{ display: "inline-flex", alignItems: "center", padding: 4, borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <button
+              type="button"
+              onClick={() => setCurrency("INR")}
+              style={{
+                padding: "6px 16px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                background: currency === "INR" ? "#4f46e5" : "transparent",
+                color: currency === "INR" ? "#fff" : "#9ca3af",
+              }}
+            >
+              🇮🇳 India (INR ₹)
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrency("USD")}
+              style={{
+                padding: "6px 16px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                background: currency === "USD" ? "#2563eb" : "transparent",
+                color: currency === "USD" ? "#fff" : "#9ca3af",
+              }}
+            >
+              🌐 International (USD $)
+            </button>
+          </div>
         </div>
 
-        {/* 3-col pricing cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
-          {TIERS.map((tier) => (
+        {/* 2-col pricing cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch max-w-4xl mx-auto">
+          {tiers.map((tier) => (
             <div
               key={tier.name}
               style={{

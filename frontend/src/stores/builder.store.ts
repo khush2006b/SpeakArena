@@ -33,6 +33,7 @@ export interface BuilderState {
   // ── Pricing ──────────────────────────────────────────────────────
   price: number;
   discountedPrice: number | null;
+  usdPrice: number | null;
   accessType: AccessType;
   maxStudents: number;
 
@@ -63,6 +64,7 @@ export interface BuilderState {
   setThumbnailFile: (file: File | null) => void;
   setPrice: (price: number) => void;
   setDiscountedPrice: (price: number | null) => void;
+  setUsdPrice: (price: number | null) => void;
   setAccessType: (type: AccessType) => void;
   setMaxStudents: (count: number) => void;
   setStagedLessons: (lessons: StagedLesson[] | ((prev: StagedLesson[]) => StagedLesson[])) => void;
@@ -89,6 +91,7 @@ const DEFAULT_STATE = {
   thumbnailFile: null,
   price: 0,
   discountedPrice: null,
+  usdPrice: null,
   accessType: "public" as AccessType,
   maxStudents: 50,
   stagedLessons: [],
@@ -125,6 +128,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setThumbnailFile: (file) => set({ thumbnailFile: file, isDirty: true }),
   setPrice: (price) => set({ price, isDirty: true }),
   setDiscountedPrice: (price) => set({ discountedPrice: price, isDirty: true }),
+  setUsdPrice: (price) => set({ usdPrice: price, isDirty: true }),
   setAccessType: (type) => set({ accessType: type, isDirty: true }),
   setMaxStudents: (count) => set({ maxStudents: count, isDirty: true }),
   setStagedLessons: (updater) =>
@@ -156,6 +160,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           description: course.description || "",
           price: Number(course.price) || 0,
           discountedPrice: course.discounted_price != null ? Number(course.discounted_price) : null,
+          usdPrice: course.usd_price != null ? Number(course.usd_price) : null,
           accessType: course.visibility === "private" ? "private" : "public",
           maxStudents: course.max_students || 50,
           thumbnailUrl: course.thumbnail_url || null,
@@ -242,7 +247,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // ── saveDraft (Updates course in DB if existing) ──────────────────
   saveDraft: async () => {
-    const { courseId, courseTitle, description, price, accessType, maxStudents, thumbnailFile, uploadThumbnail } = get();
+    const { courseId, courseTitle, description, price, usdPrice, accessType, maxStudents, thumbnailFile, uploadThumbnail } = get();
     if (courseId) {
       set({ isSaving: true });
       try {
@@ -250,6 +255,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           title: courseTitle.trim(),
           description: description.trim() || undefined,
           price: typeof price === "number" ? price : 0,
+          usd_price: typeof usdPrice === "number" ? usdPrice : null,
           visibility: accessType === "private" ? "private" : "public",
           max_students: maxStudents || 50,
         });
@@ -269,7 +275,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // ── publishCourse (Creates/Updates course in DB and uploads thumbnail) ─
   publishCourse: async () => {
-    const { courseId, courseTitle, description, price, accessType, maxStudents, stagedLessons, thumbnailFile, uploadThumbnail } = get();
+    const { courseId, courseTitle, description, price, usdPrice, accessType, maxStudents, stagedLessons, thumbnailFile, uploadThumbnail } = get();
 
     if (!courseTitle.trim()) {
       set({ error: "Please enter a course title before publishing." });
@@ -288,6 +294,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             title: courseTitle.trim(),
             description: description.trim() || undefined,
             price: typeof price === "number" ? price : 0,
+            usd_price: typeof usdPrice === "number" ? usdPrice : null,
             currency: "INR",
             language: "en",
             level: "beginner",
@@ -304,6 +311,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           title: courseTitle.trim(),
           description: description.trim() || undefined,
           price: typeof price === "number" ? price : 0,
+          usd_price: typeof usdPrice === "number" ? usdPrice : null,
           visibility: accessType === "private" ? "private" : "public",
           max_students: maxStudents || 50,
         });

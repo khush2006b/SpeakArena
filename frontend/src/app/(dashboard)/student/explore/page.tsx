@@ -29,6 +29,9 @@ const THUMBNAIL_FALLBACKS = [
 
 type ExploreCourse = Course & {
   isEnrolled?: boolean;
+  usd_price?: number | null;
+  usdPrice?: number | null;
+  original_usd_price?: number | null;
 };
 
 export default function ExploreCoursesPage() {
@@ -38,10 +41,26 @@ export default function ExploreCoursesPage() {
   const [enrollingId, setEnrollingId] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [paymentError, setPaymentError] = React.useState<string | null>(null);
+  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
 
   const initiatePayment = useInitiatePayment();
   const verifyPayment = useVerifyPayment();
   const { openCheckout } = useRazorpay();
+
+  // Auto-detect visitor location: India -> INR, International -> USD
+  React.useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const isIndia =
+        tz.includes("Calcutta") ||
+        tz.includes("Kolkata") ||
+        tz.includes("Asia/Kolkata") ||
+        tz.includes("IST");
+      setCurrency(isIndia ? "INR" : "USD");
+    } catch {
+      setCurrency("INR");
+    }
+  }, []);
 
   const fetchExploreCourses = React.useCallback(async () => {
     setIsLoading(true);
@@ -61,21 +80,30 @@ export default function ExploreCoursesPage() {
     fetchExploreCourses();
   }, [fetchExploreCourses]);
 
+  const getDisplayPrice = (c: ExploreCourse) => {
+    if (currency === "USD") {
+      const usdVal = c.usd_price ?? c.usdPrice;
+      const finalUsd = usdVal != null && usdVal > 0 ? usdVal : Math.max(Math.ceil((c.price || 0) / 80), 1);
+      return c.price === 0 ? "Free" : `$${finalUsd}`;
+    }
+    return c.price === 0 ? "Free" : `₹${Number(c.price || 0).toLocaleString("en-IN")}`;
+  };
+
   const handleEnroll = async (courseId: string, courseTitle: string) => {
     setEnrollingId(courseId);
     setSuccessMessage(null);
     setPaymentError(null);
 
     try {
-      // Step 1: Create Razorpay order on backend
-      const orderData = await initiatePayment.mutateAsync({ courseId });
+      // Step 1: Create Razorpay order on backend with selected currency
+      const orderData = await initiatePayment.mutateAsync({ courseId, currency });
 
       // Step 2: Open Razorpay checkout modal
       const paymentResult = await openCheckout({
         keyId: orderData.keyId ?? (process.env["NEXT_PUBLIC_RAZORPAY_KEY_ID"] || ""),
         orderId: orderData.orderId,
         amount: orderData.amount,
-        currency: orderData.currency ?? "INR",
+        currency: orderData.currency ?? currency,
         courseName: orderData.courseName ?? courseTitle,
         studentName: orderData.studentName ?? "",
         studentEmail: orderData.studentEmail ?? "",
@@ -198,12 +226,41 @@ export default function ExploreCoursesPage() {
 
       {/* Course Grid */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-indigo-400" />
             <h2 className="text-xl font-bold tracking-tight text-foreground">
               Available Courses ({filteredCourses.length})
             </h2>
+          </div>
+
+          {/* Currency Switcher */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Currency:</span>
+            <div className="inline-flex items-center p-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setCurrency("INR")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  currency === "INR"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                🇮🇳 INR (₹)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency("USD")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  currency === "USD"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                🌐 USD ($)
+              </button>
+            </div>
           </div>
         </div>
 
@@ -234,6 +291,7 @@ export default function ExploreCoursesPage() {
             {filteredCourses.map((course, idx) => {
               const isEnrolled = course.isEnrolled;
               const isEnrollingThis = enrollingId === course.id;
+              const displayPrice = getDisplayPrice(course);
 
               return (
                 <div
@@ -323,7 +381,7 @@ export default function ExploreCoursesPage() {
                         <div>
                           <span className="text-xs text-muted-foreground block">Price</span>
                           <span className="text-sm font-extrabold text-foreground">
-                            {course.price === 0 ? "Free" : `₹${course.price.toLocaleString("en-IN")}`}
+                            {displayPrice}
                           </span>
                         </div>
 
@@ -371,7 +429,7 @@ export default function ExploreCoursesPage() {
                                 <CreditCard className="h-3.5 w-3.5" />{" "}
                                 {course.price === 0
                                   ? "Enroll Free"
-                                  : `₹${course.price.toLocaleString("en-IN")}/mo`}
+                                  : `${displayPrice}/mo`}
                               </>
                             )}
                           </button>

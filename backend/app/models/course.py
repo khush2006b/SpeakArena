@@ -160,6 +160,18 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         default=None,
         comment="Strike-through price for discount display.",
     )
+    usd_price: Mapped[Optional[float]] = mapped_column(
+        Numeric(10, 2),
+        nullable=True,
+        default=None,
+        comment="Course price in USD for international students. If NULL, auto-calculated.",
+    )
+    original_usd_price: Mapped[Optional[float]] = mapped_column(
+        Numeric(10, 2),
+        nullable=True,
+        default=None,
+        comment="Strike-through USD price for discount display.",
+    )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="INR", server_default="INR"
     )
