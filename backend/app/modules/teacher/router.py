@@ -361,6 +361,8 @@ async def get_course(
             "thumbnail_url": resolve_course_thumbnail_url(course),
             "price": float(course.price),
             "original_price": float(course.original_price) if course.original_price else None,
+            "usd_price": float(course.usd_price) if getattr(course, "usd_price", None) is not None else None,
+            "original_usd_price": float(course.original_usd_price) if getattr(course, "original_usd_price", None) is not None else None,
             "currency": course.currency,
             "status": course.status,
             "visibility": course.visibility,
@@ -403,6 +405,7 @@ async def update_course(
             "status": course.status,
             "max_students": course.max_students,
             "price": float(course.price),
+            "usd_price": float(course.usd_price) if getattr(course, "usd_price", None) is not None else None,
         },
         message="Course updated successfully.",
     )
@@ -431,6 +434,7 @@ async def update_course_details(
             "status": course.status,
             "max_students": course.max_students,
             "price": float(course.price),
+            "usd_price": float(course.usd_price) if getattr(course, "usd_price", None) is not None else None,
         },
         message="Course updated successfully.",
     )
