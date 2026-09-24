@@ -793,6 +793,44 @@ async def get_video(
     )
 
 
+@router.get(
+    "/courses/{course_id}/videos/{video_id}/stream",
+    summary="Get video stream URL for teacher preview",
+)
+async def get_teacher_video_stream(
+    course_id: uuid.UUID,
+    video_id: uuid.UUID,
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return a presigned streaming URL for a teacher's course video."""
+    from app.modules.teacher.repository import VideoRepository
+    from app.core.exceptions.errors import ResourceNotFoundError
+    from app.core.storage import r2
+    from app.config import get_settings
+
+    course_svc = CourseService(db, teacher)
+    await course_svc.get_course(course_id)
+
+    repo = VideoRepository(db)
+    video = await repo.get_by_id(video_id, course_id=course_id)
+    if video is None:
+        raise ResourceNotFoundError()
+
+    expiry = get_settings().R2_PRESIGNED_URL_EXPIRY_DOWNLOAD
+    signed_url = await r2.generate_presigned_download_url(
+        video.r2_object_key, expiry_seconds=expiry
+    )
+    return success_response({
+        "video_id": str(video.id),
+        "title": video.title,
+        "signed_url": signed_url,
+        "stream_url": signed_url,
+        "expires_in": expiry,
+    })
+
+
+
 @router.patch(
     "/courses/{course_id}/videos/{video_id}",
     summary="Update video metadata",
@@ -999,6 +1037,44 @@ async def get_pdf(
             "updated_at": pdf.updated_at.isoformat(),
         }
     )
+
+
+@router.get(
+    "/courses/{course_id}/pdfs/{pdf_id}/access",
+    summary="Get PDF access URL for teacher preview",
+)
+async def get_teacher_pdf_access(
+    course_id: uuid.UUID,
+    pdf_id: uuid.UUID,
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return a presigned access URL for a teacher's course PDF."""
+    from app.modules.teacher.repository import PDFRepository
+    from app.core.exceptions.errors import ResourceNotFoundError
+    from app.core.storage import r2
+    from app.config import get_settings
+
+    course_svc = CourseService(db, teacher)
+    await course_svc.get_course(course_id)
+
+    repo = PDFRepository(db)
+    pdf = await repo.get_by_id(pdf_id, course_id=course_id)
+    if pdf is None:
+        raise ResourceNotFoundError()
+
+    expiry = get_settings().R2_PRESIGNED_URL_EXPIRY_DOWNLOAD
+    signed_url = await r2.generate_presigned_download_url(
+        pdf.r2_object_key, expiry_seconds=expiry
+    )
+    return success_response({
+        "pdf_id": str(pdf.id),
+        "title": pdf.title,
+        "signed_url": signed_url,
+        "access_url": signed_url,
+        "expires_in": expiry,
+    })
+
 
 
 @router.patch(

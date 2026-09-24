@@ -91,9 +91,57 @@ export default function TeacherCourseDetailPage() {
   const [students, setStudents] = React.useState<StudentItem[]>([]);
   const [activeTab, setActiveTab] = React.useState<"videos" | "students" | "pdfs" | "about">("videos");
   const [activeVideo, setActiveVideo] = React.useState<VideoItem | null>(null);
+  const [activeStreamUrl, setActiveStreamUrl] = React.useState<string | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const playVideo = React.useCallback(async (video: VideoItem) => {
+    setActiveVideo(video);
+    setActiveTab("videos");
+
+    // Fetch presigned stream URL from backend
+    try {
+      const res = await apiClient
+        .get(`/api/v1/teacher/courses/${courseId}/videos/${video.id}/stream`)
+        .catch(async () => {
+          return await apiClient
+            .get(`/api/v1/resources/${courseId}/videos/${video.id}/stream`)
+            .catch(() => null);
+        });
+      const streamData = res?.data?.data ?? res?.data;
+      const url =
+        streamData?.signed_url ||
+        streamData?.stream_url ||
+        streamData?.url ||
+        video.r2_object_key ||
+        null;
+      setActiveStreamUrl(url);
+    } catch {
+      setActiveStreamUrl(video.r2_object_key || null);
+    }
+  }, [courseId]);
+
+  const handleDownloadPdf = async (pdf: PdfItem) => {
+    try {
+      const res = await apiClient
+        .get(`/api/v1/teacher/courses/${courseId}/pdfs/${pdf.id}/access`)
+        .catch(async () => {
+          return await apiClient
+            .get(`/api/v1/resources/${courseId}/pdfs/${pdf.id}/access`)
+            .catch(() => null);
+        });
+      const accessData = res?.data?.data ?? res?.data;
+      const url = accessData?.signed_url || accessData?.access_url || accessData?.url || pdf.r2_object_key;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      if (pdf.r2_object_key) {
+        window.open(pdf.r2_object_key, "_blank", "noopener,noreferrer");
+      }
+    }
+  };
 
   React.useEffect(() => {
     if (!courseId) return;
@@ -119,7 +167,7 @@ export default function TeacherCourseDetailPage() {
         if (Array.isArray(videoList)) {
           setVideos(videoList);
           if (videoList.length > 0) {
-            setActiveVideo(videoList[0]);
+            playVideo(videoList[0]);
           }
         }
 
@@ -140,7 +188,7 @@ export default function TeacherCourseDetailPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [courseId]);
+  }, [courseId, playVideo]);
 
   if (isLoading) {
     return (
@@ -373,17 +421,19 @@ export default function TeacherCourseDetailPage() {
                     <span className="text-xs text-muted-foreground">{activeVideo.title}</span>
                   </div>
                   <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
-                    {activeVideo.r2_object_key ? (
+                    {activeStreamUrl || activeVideo.r2_object_key ? (
                       <video
-                        src={activeVideo.r2_object_key}
+                        key={activeStreamUrl || activeVideo.id}
+                        src={activeStreamUrl || activeVideo.r2_object_key}
                         controls
+                        autoPlay
                         className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="text-center p-6 space-y-2">
                         <Video className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
                         <p className="text-sm font-medium text-foreground">{activeVideo.title}</p>
-                        <p className="text-xs text-muted-foreground">Video ready for student viewing.</p>
+                        <p className="text-xs text-muted-foreground">Loading video stream...</p>
                       </div>
                     )}
                   </div>
@@ -408,7 +458,7 @@ export default function TeacherCourseDetailPage() {
                     return (
                       <div
                         key={vid.id || idx}
-                        onClick={() => setActiveVideo(vid)}
+                        onClick={() => playVideo(vid)}
                         className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
                           isCurrent
                             ? "bg-primary/10 border-primary/40 text-foreground"
@@ -518,18 +568,14 @@ export default function TeacherCourseDetailPage() {
                         </div>
                       </div>
 
-                      {pdf.r2_object_key && (
-                        <a
-                          href={pdf.r2_object_key}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full"
-                        >
-                          <Button variant="outline" size="sm" className="w-full text-xs btn-outline gap-1.5">
-                            <Download className="h-3.5 w-3.5" /> Download Resource
-                          </Button>
-                        </a>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadPdf(pdf)}
+                        className="w-full text-xs btn-outline gap-1.5"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download / View Document
+                      </Button>
                     </div>
                   ))}
                 </div>
