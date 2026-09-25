@@ -1191,8 +1191,6 @@ class FreeEnrollmentService:
             CourseNotPurchasableError: Course is not free.
             DuplicateEnrollmentError: Student already enrolled.
         """
-        import uuid as _uuid
-
         course = await self._course_repo.get_by_id(course_id)
         if course is None or not course.is_published:
             raise CourseNotFoundError()
@@ -1206,10 +1204,12 @@ class FreeEnrollmentService:
         if enrolled:
             raise DuplicateEnrollmentError()
 
-        # Create a lightweight proxy object that satisfies EnrollmentService.grant_access
+        # Create a lightweight proxy object that satisfies EnrollmentService.grant_access.
+        # payment_id is nullable=True on course_enrollments (explicitly for free courses),
+        # so we pass id=None to avoid a FK violation against the payments table.
         class _FreePayment:
             def __init__(self, student_id, course_id):
-                self.id = _uuid.uuid4()
+                self.id = None  # NULL payment_id — schema allows this for free courses
                 self.student_id = student_id
                 self.course_id = course_id
 
