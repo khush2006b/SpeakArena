@@ -1159,6 +1159,69 @@ class EnrollmentService:
 
 
 # ===========================================================================
+# FreeEnrollmentService
+# ===========================================================================
+
+
+class FreeEnrollmentService:
+    """Directly enrolls a student in a free (price=0) course without payment.
+
+    Validates that the course is published, has price=0, and the student
+    is not already enrolled. Then delegates to EnrollmentService for the
+    actual enrollment + side-effects (counters, notifications, audit).
+    """
+
+    def __init__(self, db: AsyncSession, student: User) -> None:
+        self._db = db
+        self._student = student
+        self._course_repo = CourseRepository(db)
+        self._enrollment_repo = EnrollmentRepository(db)
+
+    async def enroll(self, course_id: str) -> dict:
+        """Enroll the student in a free course.
+
+        Args:
+            course_id: UUID of the course.
+
+        Returns:
+            dict with course_id and enrolled=True.
+
+        Raises:
+            CourseNotFoundError: Course not found or not published.
+            CourseNotPurchasableError: Course is not free.
+            DuplicateEnrollmentError: Student already enrolled.
+        """
+        import uuid as _uuid
+
+        course = await self._course_repo.get_by_id(course_id)
+        if course is None or not course.is_published:
+            raise CourseNotFoundError()
+
+        if float(course.price) != 0.0:
+            raise CourseNotPurchasableError(
+                message="This course requires payment. Please use the purchase flow."
+            )
+
+        enrolled = await self._enrollment_repo.exists(self._student.id, course_id)
+        if enrolled:
+            raise DuplicateEnrollmentError()
+
+        # Create a lightweight proxy object that satisfies EnrollmentService.grant_access
+        class _FreePayment:
+            def __init__(self, student_id, course_id):
+                self.id = _uuid.uuid4()
+                self.student_id = student_id
+                self.course_id = course_id
+
+        proxy = _FreePayment(self._student.id, course_id)
+
+        enrollment_svc = EnrollmentService(self._db)
+        await enrollment_svc.grant_access(proxy)
+
+        return {"enrolled": True, "course_id": str(course_id)}
+
+
+# ===========================================================================
 # RefundService
 # ===========================================================================
 

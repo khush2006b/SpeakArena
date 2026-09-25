@@ -47,6 +47,7 @@ from app.modules.payment.schemas import (
 )
 from app.modules.payment.service import (
     AnalyticsService,
+    FreeEnrollmentService,
     InvoiceService,
     PaymentService,
     PaymentSignatureError,
@@ -110,6 +111,27 @@ async def verify_payment(
     )
     await db.commit()
     return success_response(data)
+
+
+@router.post(
+    "/enroll-free",
+    summary="Enroll in a free course",
+    description=(
+        "Directly enrolls the authenticated student in a free (price=0) course "
+        "without any payment flow. Returns 409 if already enrolled."
+    ),
+    status_code=201,
+)
+async def enroll_free(
+    body: CreateOrderRequest,
+    student: User = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Enroll student in a free course instantly."""
+    svc = FreeEnrollmentService(db, student)
+    data = await svc.enroll(str(body.course_id))
+    await db.commit()
+    return success_response(data, status_code=201)
 
 
 @router.get(

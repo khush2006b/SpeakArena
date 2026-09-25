@@ -89,12 +89,30 @@ export default function ExploreCoursesPage() {
     return c.price === 0 ? "Free" : `₹${Number(c.price || 0).toLocaleString("en-IN")}`;
   };
 
-  const handleEnroll = async (courseId: string, courseTitle: string) => {
+  const handleEnroll = async (courseId: string, courseTitle: string, isFree: boolean) => {
     setEnrollingId(courseId);
     setSuccessMessage(null);
     setPaymentError(null);
 
     try {
+      if (isFree) {
+        // Free course: direct enrollment — no payment needed
+        const { apiClient } = await import("@/services/api/client");
+        await apiClient.post("/api/v1/payments/enroll-free", { course_id: courseId, currency: "INR" });
+
+        setCourses((prev) =>
+          prev.map((c) =>
+            c.id === courseId
+              ? { ...c, isEnrolled: true, enrolledCount: (c.enrolledCount ?? 0) + 1 }
+              : c
+          )
+        );
+        setSuccessMessage(`Successfully enrolled in "${courseTitle}"! You can start learning now.`);
+        setTimeout(() => setSuccessMessage(null), 6000);
+        return;
+      }
+
+      // Paid course: Razorpay flow
       // Step 1: Create Razorpay order on backend with selected currency
       const orderData = await initiatePayment.mutateAsync({ courseId, currency });
 
@@ -135,7 +153,7 @@ export default function ExploreCoursesPage() {
         err?.response?.data?.message ||
         err?.response?.data?.detail ||
         err?.message ||
-        "Payment failed. Please try again.";
+        "Enrollment failed. Please try again.";
       setPaymentError(msg);
       setTimeout(() => setPaymentError(null), 6000);
     } finally {
@@ -411,7 +429,7 @@ export default function ExploreCoursesPage() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleEnroll(course.id, course.title)}
+                            onClick={() => handleEnroll(course.id, course.title, course.price === 0)}
                             disabled={isEnrollingThis}
                             className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-95 disabled:opacity-50"
                             style={{
