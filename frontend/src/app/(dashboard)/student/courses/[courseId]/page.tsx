@@ -470,20 +470,15 @@ export default function StudentCourseDetailPage() {
                   toast.info("No video lectures uploaded for this course yet.");
                 }
               }}
-              className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl group cursor-pointer bg-black/60"
+              className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl bg-black/60"
             >
               <Image
                 src={course.thumbnail_r2_key || THUMBNAIL_FALLBACK}
                 alt={course.title}
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-cover"
                 unoptimized
               />
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <div className="h-14 w-14 rounded-full bg-primary/90 text-white flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                  <Play className="h-6 w-6 fill-current ml-1" />
-                </div>
-              </div>
             </div>
 
             {/* Price & Action Area */}
