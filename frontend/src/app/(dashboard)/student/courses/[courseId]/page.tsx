@@ -213,7 +213,6 @@ export default function StudentCourseDetailPage() {
             description: courseData.description || courseData.short_description || "",
             level: courseData.level || "All Levels",
             category: courseData.category || "General",
-            thumbnail_r2_key: resolvedThumb,
             teacher_name:
               courseData.teacher_name ||
               courseData.teacherName ||
@@ -226,6 +225,8 @@ export default function StudentCourseDetailPage() {
             original_usd_price: courseData.original_usd_price ? Number(courseData.original_usd_price) : undefined,
             total_enrollments: courseData.total_enrollments || courseData.enrolled_count || 0,
             ...courseData,
+            // Must come AFTER spread — resolvedThumb is the full URL, not the raw R2 key
+            thumbnail_r2_key: resolvedThumb,
           });
         } else {
           setError("Course details not found.");
