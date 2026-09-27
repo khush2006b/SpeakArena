@@ -15,12 +15,21 @@ import {
   Download,
   Video,
   ChevronRight,
+  CheckCircle2,
+  GraduationCap,
+  CreditCard,
+  Loader2,
+  ShieldCheck,
+  Globe,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/services/api/client";
 import { getCourseThumbnailUrl } from "@/lib/utils";
+import { useInitiatePayment, useVerifyPayment } from "@/hooks/queries/usePaymentQueries";
+import { useRazorpay } from "@/hooks/useRazorpay";
 import { toast } from "sonner";
 
 interface CourseDetail {
@@ -33,8 +42,17 @@ interface CourseDetail {
   teacher_name?: string;
   teacherName?: string;
   is_published?: boolean;
+  is_enrolled?: boolean;
+  isEnrolled?: boolean;
+  enrollment_id?: string;
+  enrollment_status?: string;
+  price?: number;
+  original_price?: number;
+  usd_price?: number;
+  original_usd_price?: number;
   total_lectures?: number;
   total_duration_minutes?: number;
+  total_enrollments?: number;
   created_at?: string;
 }
 
@@ -72,8 +90,31 @@ export default function StudentCourseDetailPage() {
   const [activeVideo, setActiveVideo] = React.useState<VideoItem | null>(null);
   const [activeStreamUrl, setActiveStreamUrl] = React.useState<string | null>(null);
 
+  const [isEnrolled, setIsEnrolled] = React.useState<boolean>(false);
+  const [isEnrolling, setIsEnrolling] = React.useState<boolean>(false);
+  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
+
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const initiatePayment = useInitiatePayment();
+  const verifyPayment = useVerifyPayment();
+  const { openCheckout } = useRazorpay();
+
+  // Auto-detect visitor location: India -> INR, International -> USD
+  React.useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const isIndia =
+        tz.includes("Calcutta") ||
+        tz.includes("Kolkata") ||
+        tz.includes("Asia/Kolkata") ||
+        tz.includes("IST");
+      setCurrency(isIndia ? "INR" : "USD");
+    } catch {
+      setCurrency("INR");
+    }
+  }, []);
 
   const playVideo = React.useCallback(async (video: VideoItem) => {
     setActiveVideo(video);
@@ -158,6 +199,14 @@ export default function StudentCourseDetailPage() {
       .then(([courseData, videoList, pdfList]) => {
         if (courseData) {
           const resolvedThumb = getCourseThumbnailUrl(courseData);
+          const enrolledStatus = Boolean(
+            courseData.is_enrolled ||
+            courseData.isEnrolled ||
+            Boolean(courseData.enrollment_id) ||
+            courseData.enrollment_status === "active"
+          );
+          setIsEnrolled(enrolledStatus);
+
           setCourse({
             id: String(courseData.id || courseData.course_id || courseId),
             title: courseData.title || "Course Details",
@@ -171,6 +220,11 @@ export default function StudentCourseDetailPage() {
               courseData.teacher?.full_name ||
               "Speak Arena Instructor",
             total_lectures: courseData.total_lectures || (Array.isArray(videoList) ? videoList.length : 0),
+            price: courseData.price !== undefined ? Number(courseData.price) : 0,
+            original_price: courseData.original_price ? Number(courseData.original_price) : undefined,
+            usd_price: courseData.usd_price ? Number(courseData.usd_price) : undefined,
+            original_usd_price: courseData.original_usd_price ? Number(courseData.original_usd_price) : undefined,
+            total_enrollments: courseData.total_enrollments || courseData.enrolled_count || 0,
             ...courseData,
           });
         } else {
@@ -197,6 +251,80 @@ export default function StudentCourseDetailPage() {
   }, [courseId, playVideo]);
 
   const teacherName = course?.teacher_name || course?.teacherName || "Paras (Construction)";
+
+  const isFree = !course?.price || Number(course.price) === 0;
+
+  const displayPrice = React.useMemo(() => {
+    if (!course) return "Free";
+    if (isFree) return "Free";
+    if (currency === "USD") {
+      const usdVal = course.usd_price;
+      const finalUsd = usdVal != null && usdVal > 0 ? usdVal : Math.max(Math.ceil((course.price || 0) / 80), 1);
+      return `$${finalUsd}`;
+    }
+    return `₹${Number(course.price || 0).toLocaleString("en-IN")}`;
+  }, [course, isFree, currency]);
+
+  const displayOriginalPrice = React.useMemo(() => {
+    if (!course) return null;
+    if (currency === "USD" && course.original_usd_price) {
+      return `$${course.original_usd_price}`;
+    }
+    if (course.original_price && course.original_price > (course.price || 0)) {
+      return `₹${Number(course.original_price).toLocaleString("en-IN")}`;
+    }
+    return null;
+  }, [course, currency]);
+
+  const handleEnroll = async () => {
+    if (!course) return;
+    setIsEnrolling(true);
+
+    try {
+      if (isFree) {
+        // Free Course Enrollment
+        await apiClient
+          .post("/api/v1/payments/enroll-free", { course_id: course.id, currency })
+          .catch(async () => {
+            return await apiClient.post(`/api/v1/courses/${course.id}/enroll`);
+          });
+
+        setIsEnrolled(true);
+        toast.success(`🎉 Successfully enrolled in "${course.title}"! You can start learning now.`);
+        return;
+      }
+
+      // Paid Course: Razorpay Flow
+      const orderData = await initiatePayment.mutateAsync({ courseId: course.id, currency });
+
+      const paymentResult = await openCheckout({
+        keyId: orderData.keyId ?? (process.env["NEXT_PUBLIC_RAZORPAY_KEY_ID"] || ""),
+        orderId: orderData.orderId,
+        amount: orderData.amount,
+        currency: orderData.currency ?? currency,
+        courseName: orderData.courseName ?? course.title,
+        studentName: orderData.studentName ?? "",
+        studentEmail: orderData.studentEmail ?? "",
+      });
+
+      await verifyPayment.mutateAsync({
+        razorpayOrderId: paymentResult.razorpay_order_id,
+        razorpayPaymentId: paymentResult.razorpay_payment_id,
+        razorpaySignature: paymentResult.razorpay_signature,
+      });
+
+      setIsEnrolled(true);
+      toast.success(`🎉 Payment successful! You are now enrolled in "${course.title}".`);
+    } catch (err: any) {
+      if (err?.message === "Payment cancelled by user.") {
+        return;
+      }
+      console.error("Enrollment failed:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Enrollment failed. Please try again.");
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -241,6 +369,30 @@ export default function StudentCourseDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Courses
         </Button>
         <div className="flex items-center gap-2">
+          {/* Currency Switcher */}
+          {!isFree && (
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setCurrency("INR")}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                  currency === "INR" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                ₹ INR
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency("USD")}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                  currency === "USD" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                $ USD
+              </button>
+            </div>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -270,6 +422,17 @@ export default function StudentCourseDetailPage() {
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-muted-foreground border border-white/10">
                 {course.category || "General"}
               </span>
+
+              {/* Enrollment Badge */}
+              {isEnrolled ? (
+                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Enrolled
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+                  <GraduationCap className="h-3.5 w-3.5" /> Ready to Enroll
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
@@ -297,16 +460,16 @@ export default function StudentCourseDetailPage() {
           </div>
 
           {/* Thumbnail / Action Box */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 bg-black/40 p-5 rounded-2xl border border-white/10 backdrop-blur-md">
             <div
               onClick={() => {
                 if (videos.length > 0) {
                   playVideo(videos[0]);
                 } else {
-                  toast.info("No video lectures have been uploaded for this course yet.");
+                  toast.info("No video lectures uploaded for this course yet.");
                 }
               }}
-              className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl group cursor-pointer bg-black/40"
+              className="relative aspect-video rounded-xl overflow-hidden border border-white/15 shadow-2xl group cursor-pointer bg-black/60"
             >
               <Image
                 src={course.thumbnail_r2_key || THUMBNAIL_FALLBACK}
@@ -322,20 +485,68 @@ export default function StudentCourseDetailPage() {
               </div>
             </div>
 
-            <Button
-              className="w-full h-12 text-base font-bold btn-primary shadow-lg"
-              style={{ borderRadius: 12 }}
-              onClick={() => {
-                if (videos.length > 0) {
-                  playVideo(videos[0]);
-                } else {
-                  toast.info("No video lectures have been uploaded for this course yet.");
-                }
-              }}
-            >
-              <Play className="mr-2 h-5 w-5 fill-current" />
-              Start Learning Now
-            </Button>
+            {/* Price & Action Area */}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-foreground">{displayPrice}</span>
+                  {displayOriginalPrice && (
+                    <span className="text-sm text-muted-foreground line-through font-medium">
+                      {displayOriginalPrice}
+                    </span>
+                  )}
+                </div>
+                {isEnrolled ? (
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded">
+                    <CheckCircle2 className="h-3 w-3" /> Active Access
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Full Lifetime Access</span>
+                )}
+              </div>
+
+              {/* ENROLL OR START LEARNING BUTTON */}
+              {isEnrolled ? (
+                <Button
+                  className="w-full h-12 text-base font-bold btn-primary shadow-lg"
+                  style={{ borderRadius: 12 }}
+                  onClick={() => {
+                    if (videos.length > 0) {
+                      playVideo(videos[0]);
+                    } else {
+                      toast.info("No video lectures have been uploaded for this course yet.");
+                    }
+                  }}
+                >
+                  <Play className="mr-2 h-5 w-5 fill-current" />
+                  Start Learning Now
+                </Button>
+              ) : (
+                <Button
+                  className="w-full h-12 text-base font-bold shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ borderRadius: 12 }}
+                  disabled={isEnrolling}
+                  onClick={handleEnroll}
+                >
+                  {isEnrolling ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Enrolling...
+                    </>
+                  ) : (
+                    <>
+                      <GraduationCap className="mr-2 h-5 w-5" />
+                      {isFree ? "Enroll in Course (Free)" : `Enroll Now • ${displayPrice}`}
+                    </>
+                  )}
+                </Button>
+              )}
+
+              <p className="text-[11px] text-center text-muted-foreground flex items-center justify-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                Instant access • Includes all lectures & guides
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -374,7 +585,7 @@ export default function StudentCourseDetailPage() {
               }`}
               onClick={() => setActiveTab("about")}
             >
-              Course Overview
+              Course Overview &amp; Enroll
             </button>
           </div>
 
@@ -410,9 +621,22 @@ export default function StudentCourseDetailPage() {
           {/* TAB 1: VIDEO LECTURES */}
           {activeTab === "content" && (
             <div className="space-y-3">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Video className="h-5 w-5 text-primary" /> Lectures Curriculum
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Video className="h-5 w-5 text-primary" /> Lectures Curriculum
+                </h3>
+                {!isEnrolled && (
+                  <Button
+                    size="sm"
+                    className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+                    disabled={isEnrolling}
+                    onClick={handleEnroll}
+                  >
+                    <GraduationCap className="h-3.5 w-3.5" />
+                    Enroll to Unlock All
+                  </Button>
+                )}
+              </div>
 
               {videos.length === 0 ? (
                 <div className="p-8 text-center rounded-xl border border-dashed border-border bg-card">
@@ -466,7 +690,7 @@ export default function StudentCourseDetailPage() {
           {activeTab === "pdfs" && (
             <div className="space-y-3">
               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-amber-400" /> Study Guides & Resource Documents
+                <FileText className="h-5 w-5 text-amber-400" /> Study Guides &amp; Resource Documents
               </h3>
 
               {pdfs.length === 0 ? (
@@ -506,29 +730,91 @@ export default function StudentCourseDetailPage() {
             </div>
           )}
 
-          {/* TAB 3: OVERVIEW */}
+          {/* TAB 3: OVERVIEW & ENROLL INFO */}
           {activeTab === "about" && (
-            <div className="space-y-4 p-6 rounded-2xl border border-border bg-card">
-              <h3 className="text-lg font-bold text-foreground">About This Course</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {course.description}
-              </p>
-              <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                <span>Level: <strong className="text-foreground">{course.level || "Beginner to Advanced"}</strong></span>
-                <span>Instructor: <strong className="text-foreground">{teacherName}</strong></span>
+            <div className="space-y-6">
+              <div className="space-y-4 p-6 rounded-2xl border border-border bg-card">
+                <h3 className="text-lg font-bold text-foreground">About This Course</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {course.description}
+                </p>
+                <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Level: <strong className="text-foreground">{course.level || "Beginner to Advanced"}</strong></span>
+                  <span>Instructor: <strong className="text-foreground">{teacherName}</strong></span>
+                </div>
               </div>
+
+              {/* Enrollment Callout Card if not enrolled */}
+              {!isEnrolled && (
+                <div className="p-6 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h4 className="text-base font-bold text-emerald-300">Ready to start mastering English?</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Enroll today to get access to all lectures, class discussions, and downloadable study guides.
+                      </p>
+                    </div>
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-6 h-11 shadow-lg"
+                      disabled={isEnrolling}
+                      onClick={handleEnroll}
+                    >
+                      {isEnrolling ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <GraduationCap className="h-4 w-4 mr-2" />
+                      )}
+                      {isFree ? "Enroll for Free" : `Enroll Now • ${displayPrice}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Sidebar Info & Quick Actions */}
         <div className="space-y-6">
+          {/* Enrollment / Status Card */}
           <div className="p-6 rounded-2xl border border-border bg-card space-y-4">
             <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Course Quick Actions
+              <Sparkles className="h-4 w-4 text-primary" /> Enrollment Status
             </h3>
 
-            <div className="space-y-2">
+            {isEnrolled ? (
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Enrolled &amp; Active</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You have full access to this course material.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Course Fee:</span>
+                    <span className="text-lg font-bold text-foreground">{displayPrice}</span>
+                  </div>
+                  <Button
+                    className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white h-10 shadow-md"
+                    disabled={isEnrolling}
+                    onClick={handleEnroll}
+                  >
+                    {isEnrolling ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <GraduationCap className="h-4 w-4 mr-2" />
+                    )}
+                    {isFree ? "Enroll in Course (Free)" : `Enroll Now (${displayPrice})`}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2 border-t border-border">
               <Button
                 variant="outline"
                 className="w-full justify-start text-xs h-10 btn-outline"
