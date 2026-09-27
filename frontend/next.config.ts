@@ -112,7 +112,7 @@ const nextConfig: NextConfig = {
 
   // Proxy API requests to backend in development to avoid CORS and SameSite cookie issues
   async rewrites() {
-    const target = process.env["NEXT_PUBLIC_API_URL"] || "https://speakarena.onrender.com";
+    const target = process.env["NEXT_PUBLIC_API_URL"] || "https://speakarena-wmp0.onrender.com";
     return [
       {
         source: "/api/:path*",

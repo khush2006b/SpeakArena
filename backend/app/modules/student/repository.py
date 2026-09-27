@@ -38,7 +38,7 @@ def resolve_thumbnail_url(course_id, thumbnail_r2_key) -> str | None:
         return None
     if str(thumbnail_r2_key).startswith("http://") or str(thumbnail_r2_key).startswith("https://"):
         return str(thumbnail_r2_key)
-    return f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
+    return f"https://speakarena-wmp0.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
 from app.models.chat import ChatRoom, Message
 from app.models.course import (
     ContentProgress,

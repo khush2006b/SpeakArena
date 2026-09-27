@@ -13,7 +13,7 @@ const GoogleLogo = () => (
 );
 
 function handleGoogleSignup() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://speakarena.onrender.com";
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://speakarena-wmp0.onrender.com";
   window.location.href = `${apiBase}/api/v1/auth/google/login`;
 }
 

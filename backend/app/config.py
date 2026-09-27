@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     # --- Google OAuth ---
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "https://speakarena.onrender.com/api/v1/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "https://speakarena-wmp0.onrender.com/api/v1/auth/google/callback"
     FRONTEND_URL: str = "https://speakarena.com"
     TEACHER_GOOGLE_EMAIL: str = "speakarena8@gmail.com"
 
@@ -163,7 +163,7 @@ class Settings(BaseSettings):
             "https://speakarena.com",
             "https://www.speakarena.com",
             "https://speak-arena.vercel.app",
-            "https://speakarena.onrender.com",
+            "https://speakarena-wmp0.onrender.com",
             "http://localhost:3000",
             "http://localhost:8000",
         ]

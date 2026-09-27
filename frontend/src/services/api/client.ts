@@ -21,7 +21,7 @@ const rawEnvUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const isBrowser = typeof window !== "undefined";
 const BASE_URL = isBrowser
   ? ""
-  : (rawEnvUrl && rawEnvUrl !== "/" ? rawEnvUrl : "https://speakarena.onrender.com");
+  : (rawEnvUrl && rawEnvUrl !== "/" ? rawEnvUrl : "https://speakarena-wmp0.onrender.com");
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,

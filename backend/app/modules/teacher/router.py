@@ -92,7 +92,7 @@ def resolve_course_thumbnail_url(c) -> str | None:
         except Exception:
             pass
     if getattr(c, "thumbnail_data", None) is not None:
-        return f"https://speakarena.onrender.com/api/v1/teacher/courses/{c.id}/thumbnail{ts_param}"
+        return f"https://speakarena-wmp0.onrender.com/api/v1/teacher/courses/{c.id}/thumbnail{ts_param}"
     r2_key = getattr(c, "thumbnail_r2_key", None)
     if r2_key:
         base_url = r2.get_public_url(r2_key)
@@ -618,7 +618,7 @@ async def upload_thumbnail_direct(
         loop = asyncio.get_event_loop()
         loop.run_in_executor(_executor, _try_r2_upload)
 
-    public_url = f"https://speakarena.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
+    public_url = f"https://speakarena-wmp0.onrender.com/api/v1/teacher/courses/{course_id}/thumbnail"
     _log.info("Thumbnail upload complete url=%r", public_url)
 
     return success_response({

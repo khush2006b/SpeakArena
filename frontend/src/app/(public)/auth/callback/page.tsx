@@ -42,7 +42,7 @@ function AuthCallbackInner() {
 
         // Store the refresh token as a first-party HttpOnly cookie on speakarena.com
         // via a Next.js API route. This is needed because the backend sets the RT
-        // cookie on speakarena.onrender.com, but our Vercel proxy sends /auth/refresh
+        // cookie on speakarena-wmp0.onrender.com, but our Vercel proxy sends /auth/refresh
         // from speakarena.com — so the browser never sends the backend-domain cookie.
         if (rt) {
           try {
