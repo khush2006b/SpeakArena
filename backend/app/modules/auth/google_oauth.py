@@ -57,13 +57,33 @@ async def generate_state_and_store(redis: Redis) -> str:
     return state
 
 
+USED_STATE_TTL_SECONDS = 30  # Grace window for duplicate callbacks
+
+
 async def verify_state(redis: Redis, state: str) -> None:
-    """Verify and consume the CSRF state nonce. Raises AuthenticationError if invalid."""
+    """Verify and atomically consume the CSRF state nonce.
+
+    Uses GETDEL (atomic get + delete) so that two concurrent requests
+    cannot both pass the check before either deletes the key.
+
+    Raises:
+        AuthenticationError: If state is missing, already used, or expired.
+    """
     key = f"{STATE_REDIS_PREFIX}{state}"
-    value = await redis.get(key)
-    if not value:
+    used_key = f"{STATE_REDIS_PREFIX}used:{state}"
+
+    # Atomic get-and-delete — only one concurrent caller wins
+    value = await redis.getdel(key)
+    if value is None:
+        # Check if this is a duplicate callback within the grace window
+        is_duplicate = await redis.exists(used_key)
+        if is_duplicate:
+            # Second callback for the same state — raise with distinct message
+            raise AuthenticationError("OAuth state already used. Duplicate callback.")
         raise AuthenticationError("Invalid or expired OAuth state. Please try again.")
-    await redis.delete(key)  # one-time use
+
+    # Mark this state as "used" briefly so duplicate callbacks get a clear signal
+    await redis.setex(used_key, USED_STATE_TTL_SECONDS, "1")
 
 
 def build_auth_url(state: str) -> str:

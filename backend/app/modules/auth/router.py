@@ -1311,5 +1311,13 @@ async def google_callback(
         return response
 
     except Exception as exc:
+        exc_msg = str(exc)
+        if "Duplicate callback" in exc_msg:
+            # Second browser callback for the same state — first succeeded, just redirect home
+            logger.info("Duplicate OAuth callback received (state already consumed) — ignoring.")
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/auth/callback?error=oauth_duplicate",
+                status_code=302,
+            )
         logger.error("Google OAuth callback error: %s", exc, exc_info=True)
         return RedirectResponse(url=frontend_error_url, status_code=302)

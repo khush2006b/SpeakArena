@@ -18,6 +18,13 @@ function AuthCallbackInner() {
     const rt = searchParams.get("rt");   // raw refresh token from OAuth redirect
     const err = searchParams.get("error");
 
+    if (err === "oauth_duplicate") {
+      // Second browser callback for same OAuth state — first already succeeded.
+      // Silently redirect to login; the user's session is already active.
+      router.replace("/login");
+      return;
+    }
+
     if (err || !at) {
       setError("Sign in failed. Please try again.");
       return;
