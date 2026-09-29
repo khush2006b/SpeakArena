@@ -46,6 +46,21 @@ export async function refreshAccessToken(): Promise<string | null> {
       }
 
       setAccessToken(newAccessToken);
+
+      // Persist the new rotated RT to the Vercel-domain cookie so the NEXT
+      // refresh call sends the correct (non-stale) token.
+      const newRt =
+        data?.data?.refresh_token ??
+        data?.refresh_token ??
+        null;
+      if (newRt && typeof window !== "undefined") {
+        fetch("/api/auth/set-cookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rt: newRt }),
+        }).catch(() => {/* non-fatal */});
+      }
+
       return newAccessToken;
     } catch (refreshError: unknown) {
       setAccessToken(null);

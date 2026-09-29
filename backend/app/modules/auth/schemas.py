@@ -288,6 +288,7 @@ class RefreshResponse(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None  # New rotated RT — frontend must persist to Vercel-domain cookie
 
 
 class MessageResponse(BaseModel):

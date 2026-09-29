@@ -512,6 +512,7 @@ async def refresh(
         data=RefreshResponse(
             access_token=result.access_token,
             token_type="bearer",
+            refresh_token=result.raw_refresh_token,  # frontend persists to Vercel-domain cookie
         ).model_dump(),
     )
     _set_rt_cookie(resp, result.raw_refresh_token, max_age=rt_max_age)
