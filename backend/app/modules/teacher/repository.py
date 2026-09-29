@@ -1193,36 +1193,91 @@ class AnalyticsRepository:
             teacher_id: The teacher's user UUID.
 
         Returns:
-            dict: Revenue stats with keys 'today', 'this_month', 'total'.
+            dict: Revenue stats with keys 'today', 'this_month', 'total', 'pending_payouts', 'refunds'.
         """
-        from datetime import date
-
         now = datetime.now(timezone.utc)
         today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
         month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
+        success_statuses = [
+            PaymentStatus.CAPTURED,
+            "captured",
+            "CAPTURED",
+            "success",
+            "SUCCESS",
+            "paid",
+            "PAID",
+        ]
+
         # All captured payments for teacher's courses
         base_stmt = (
-            select(func.sum(Payment.amount).label("total"))
+            select(func.coalesce(func.sum(Payment.amount), 0).label("total"))
             .join(Course, Course.id == Payment.course_id)
             .where(
                 Course.teacher_id == teacher_id,
-                Payment.status == PaymentStatus.CAPTURED,
+                Payment.status.in_(success_statuses),
             )
         )
 
-        total = (await self._db.execute(base_stmt)).scalar_one() or 0.0
+        total = float((await self._db.execute(base_stmt)).scalar_one() or 0.0)
 
         today_stmt = base_stmt.where(func.coalesce(Payment.captured_at, Payment.created_at) >= today_start)
-        today = (await self._db.execute(today_stmt)).scalar_one() or 0.0
+        today = float((await self._db.execute(today_stmt)).scalar_one() or 0.0)
 
         month_stmt = base_stmt.where(func.coalesce(Payment.captured_at, Payment.created_at) >= month_start)
-        this_month = (await self._db.execute(month_stmt)).scalar_one() or 0.0
+        this_month = float((await self._db.execute(month_stmt)).scalar_one() or 0.0)
+
+        # Count successful transactions
+        count_stmt = (
+            select(func.count(Payment.id))
+            .join(Course, Course.id == Payment.course_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                Payment.status.in_(success_statuses),
+            )
+        )
+        total_transactions = int((await self._db.execute(count_stmt)).scalar_one() or 0)
+
+        # Count pending / processing
+        pending_stmt = (
+            select(
+                func.coalesce(func.sum(Payment.amount), 0).label("pending_amount"),
+                func.count(Payment.id).label("pending_count"),
+            )
+            .join(Course, Course.id == Payment.course_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                Payment.status.in_(["created", "CREATED", "pending", "PENDING", "authorized", "AUTHORIZED", "processing"]),
+            )
+        )
+        pending_row = (await self._db.execute(pending_stmt)).one()
+        pending_amount = float(pending_row.pending_amount or 0.0)
+
+        # Count refunds
+        refund_stmt = (
+            select(
+                func.coalesce(func.sum(func.coalesce(Payment.refund_amount, Payment.amount)), 0).label("refund_amount"),
+                func.count(Payment.id).label("refund_count"),
+            )
+            .join(Course, Course.id == Payment.course_id)
+            .where(
+                Course.teacher_id == teacher_id,
+                or_(
+                    Payment.status.in_(["refunded", "REFUNDED"]),
+                    Payment.refund_status.in_(["processed", "PROCESSED", "full", "FULL", "partial", "PARTIAL"]),
+                ),
+            )
+        )
+        refund_row = (await self._db.execute(refund_stmt)).one()
+        refund_amount = float(refund_row.refund_amount or 0.0)
 
         return {
-            "today": round(float(today), 2),
-            "this_month": round(float(this_month), 2),
-            "total": round(float(total), 2),
+            "today": round(today, 2),
+            "this_month": round(this_month, 2),
+            "total": round(total, 2),
+            "pending_payouts": round(pending_amount, 2),
+            "refunds": round(refund_amount, 2),
+            "total_transactions": total_transactions,
             "currency": "INR",
         }
 
@@ -1231,25 +1286,27 @@ class AnalyticsRepository:
         teacher_id: uuid.UUID,
         since: datetime,
     ) -> list[dict[str, Any]]:
-        """Return daily revenue aggregated as a time series.
-
-        Args:
-            teacher_id: The teacher's user UUID.
-            since: Start of the time window.
-
-        Returns:
-            list[dict]: Daily revenue data points [{date, amount, currency}].
-        """
+        """Return daily revenue aggregated as a time series."""
         date_col = func.date(func.coalesce(Payment.captured_at, Payment.created_at))
+        success_statuses = [
+            PaymentStatus.CAPTURED,
+            "captured",
+            "CAPTURED",
+            "success",
+            "SUCCESS",
+            "paid",
+            "PAID",
+        ]
         stmt = (
             select(
                 date_col.label("date"),
                 func.sum(Payment.amount).label("amount"),
+                func.count(Payment.id).label("students"),
             )
             .join(Course, Course.id == Payment.course_id)
             .where(
                 Course.teacher_id == teacher_id,
-                Payment.status == PaymentStatus.CAPTURED,
+                Payment.status.in_(success_statuses),
                 func.coalesce(Payment.captured_at, Payment.created_at) >= since,
             )
             .group_by(date_col)
@@ -1257,7 +1314,13 @@ class AnalyticsRepository:
         )
         rows = (await self._db.execute(stmt)).all()
         return [
-            {"date": str(r.date), "amount": round(float(r.amount), 2), "currency": "INR"}
+            {
+                "date": str(r.date),
+                "revenue": round(float(r.amount), 2),
+                "amount": round(float(r.amount), 2),
+                "students": int(r.students or 1),
+                "currency": "INR",
+            }
             for r in rows
         ]
 
@@ -1305,13 +1368,22 @@ class AnalyticsRepository:
         Returns:
             list[dict]: Per-course stats.
         """
+        success_statuses = [
+            PaymentStatus.CAPTURED,
+            "captured",
+            "CAPTURED",
+            "success",
+            "SUCCESS",
+            "paid",
+            "PAID",
+        ]
         stmt = (
             select(
                 Course.id.label("course_id"),
                 Course.title.label("title"),
-                func.count(CourseEnrollment.id).label("total_enrollments"),
-                func.coalesce(func.sum(Payment.amount), 0).label("total_revenue"),
-                func.coalesce(func.avg(CourseEnrollment.progress_percent), 0).label(
+                func.count(func.distinct(CourseEnrollment.id)).label("total_enrollments"),
+                func.coalesce(func.sum(case((Payment.status.in_(success_statuses), Payment.amount), else_=0)), 0).label("total_revenue"),
+                func.coalesce(func.avg(CourseEnrollment.progress_percentage), 0).label(
                     "average_progress"
                 ),
             )
@@ -1322,7 +1394,7 @@ class AnalyticsRepository:
                 Course.deleted_at.is_(None),
             )
             .group_by(Course.id, Course.title)
-            .order_by(func.count(CourseEnrollment.id).desc())
+            .order_by(func.count(func.distinct(CourseEnrollment.id)).desc())
         )
         if course_id:
             stmt = stmt.where(Course.id == course_id)
@@ -1355,15 +1427,7 @@ class AnalyticsRepository:
         teacher_id: uuid.UUID,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
-        """Return the most recent enrollments across all teacher courses.
-
-        Args:
-            teacher_id: The teacher's user UUID.
-            limit: Maximum records to return.
-
-        Returns:
-            list[dict]: Recent enrollment data.
-        """
+        """Return the most recent enrollments across all teacher courses."""
         stmt = (
             select(
                 User.full_name.label("student_name"),
@@ -1397,16 +1461,16 @@ class AnalyticsRepository:
     async def get_recent_payments(
         self,
         teacher_id: uuid.UUID,
-        limit: int = 5,
+        limit: int = 10,
     ) -> list[dict[str, Any]]:
         """Return the most recent payments for the teacher's active courses."""
         stmt = (
             select(
+                Payment,
                 User.full_name.label("student_name"),
+                User.email.label("student_email"),
+                User.avatar_r2_key.label("student_avatar_r2_key"),
                 Course.title.label("course_title"),
-                Payment.amount,
-                Payment.status,
-                func.coalesce(Payment.captured_at, Payment.created_at).label("created_at"),
             )
             .join(Course, Course.id == Payment.course_id)
             .join(User, User.id == Payment.student_id)
@@ -1420,14 +1484,210 @@ class AnalyticsRepository:
         rows = (await self._db.execute(stmt)).all()
         return [
             {
-                "student_name": r.student_name,
-                "course_title": r.course_title,
-                "amount": float(r.amount),
-                "status": r.status,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "id": str(r[0].id),
+                "payment_id": str(r[0].id),
+                "razorpay_order_id": r[0].razorpay_order_id,
+                "razorpay_payment_id": r[0].razorpay_payment_id,
+                "student_name": r[1] or "Student",
+                "student_email": r[2] or "",
+                "student_avatar_url": r2.get_public_url(r[3]) if r[3] else None,
+                "course_title": r[4] or "Course",
+                "course_name": r[4] or "Course",
+                "amount": float(r[0].amount),
+                "currency": r[0].currency or "INR",
+                "status": "SUCCESS" if (r[0].status or "").lower() in ("captured", "paid", "success") else (r[0].status or "SUCCESS").upper(),
+                "created_at": r[0].created_at.isoformat() if r[0].created_at else None,
             }
             for r in rows
         ]
+
+    async def list_transactions(
+        self,
+        teacher_id: uuid.UUID,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        course_id: Optional[uuid.UUID] = None,
+        currency: Optional[str] = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return paginated transaction records for all teacher courses."""
+        conditions = [
+            Course.teacher_id == teacher_id,
+            Course.deleted_at.is_(None),
+        ]
+
+        if course_id:
+            conditions.append(Payment.course_id == course_id)
+        if currency and currency != "all":
+            conditions.append(Payment.currency == currency)
+        if status and status != "all":
+            st_lower = status.lower()
+            if st_lower in ("success", "captured", "paid"):
+                conditions.append(Payment.status.in_(["captured", "CAPTURED", "success", "SUCCESS", "paid", "PAID"]))
+            elif st_lower in ("pending", "created", "authorized"):
+                conditions.append(Payment.status.in_(["created", "CREATED", "pending", "PENDING", "authorized", "AUTHORIZED"]))
+            elif st_lower in ("refunded", "refund"):
+                conditions.append(or_(Payment.status.in_(["refunded", "REFUNDED"]), Payment.refund_status != "none"))
+            elif st_lower in ("failed", "fail"):
+                conditions.append(Payment.status.in_(["failed", "FAILED"]))
+            else:
+                conditions.append(Payment.status.ilike(f"%{status}%"))
+
+        if search:
+            conditions.append(
+                or_(
+                    User.full_name.ilike(f"%{search}%"),
+                    User.email.ilike(f"%{search}%"),
+                    Payment.razorpay_payment_id.ilike(f"%{search}%"),
+                    Payment.razorpay_order_id.ilike(f"%{search}%"),
+                    Course.title.ilike(f"%{search}%"),
+                )
+            )
+
+        base_stmt = (
+            select(
+                Payment,
+                User.full_name.label("student_name"),
+                User.email.label("student_email"),
+                User.avatar_r2_key.label("student_avatar_r2_key"),
+                Course.title.label("course_title"),
+            )
+            .join(Course, Course.id == Payment.course_id)
+            .join(User, User.id == Payment.student_id)
+            .where(and_(*conditions))
+        )
+
+        count_stmt = (
+            select(func.count(Payment.id))
+            .join(Course, Course.id == Payment.course_id)
+            .join(User, User.id == Payment.student_id)
+            .where(and_(*conditions))
+        )
+        total: int = (await self._db.execute(count_stmt)).scalar_one()
+
+        data_stmt = (
+            base_stmt.order_by(Payment.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = (await self._db.execute(data_stmt)).all()
+
+        items = []
+        for r in rows:
+            p: Payment = r[0]
+            student_name: str = r[1] or "Student"
+            student_email: str = r[2] or ""
+            student_avatar: Optional[str] = r[3]
+            course_title: str = r[4] or "Course"
+
+            st = (p.status or "SUCCESS").upper()
+            if st in ("CAPTURED", "PAID"):
+                display_status = "SUCCESS"
+            elif st in ("CREATED", "AUTHORIZED"):
+                display_status = "PENDING"
+            else:
+                display_status = st
+
+            items.append({
+                "id": str(p.id),
+                "payment_id": str(p.id),
+                "razorpay_order_id": p.razorpay_order_id,
+                "razorpay_payment_id": p.razorpay_payment_id or p.razorpay_order_id,
+                "invoice_id": p.razorpay_payment_id or str(p.id)[:8].upper(),
+                "student_id": str(p.student_id),
+                "student_name": student_name,
+                "student_email": student_email,
+                "student_avatar_url": r2.get_public_url(student_avatar) if student_avatar else None,
+                "studentAvatar": r2.get_public_url(student_avatar) if student_avatar else None,
+                "course_id": str(p.course_id),
+                "course_name": course_title,
+                "course_title": course_title,
+                "courseName": course_title,
+                "amount": float(p.amount),
+                "currency": p.currency or "INR",
+                "status": display_status,
+                "refund_status": p.refund_status,
+                "refund_amount": float(p.refund_amount) if p.refund_amount else None,
+                "paid_at": p.captured_at.isoformat() if p.captured_at else (p.created_at.isoformat() if p.created_at else None),
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+                "createdAt": p.created_at.isoformat() if p.created_at else None,
+                "date": p.created_at.isoformat() if p.created_at else None,
+                "last4": str(p.razorpay_payment_id)[-4:] if p.razorpay_payment_id and len(p.razorpay_payment_id) >= 4 else "0000",
+                "payment_method": "Razorpay (Card / UPI / NetBanking / PayPal)",
+                "paymentMethod": "Card",
+            })
+
+        return items, total
+
+    async def get_finance_summary(
+        self,
+        teacher_id: uuid.UUID,
+        date_range: str = "month",
+        currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Return full financial overview including KPIs, status breakdown, and trends."""
+        now = datetime.now(timezone.utc)
+        if date_range == "today":
+            since = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        elif date_range == "week":
+            from datetime import timedelta
+            since = now - timedelta(days=7)
+        elif date_range == "month":
+            since = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+        elif date_range == "year":
+            since = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+        else:
+            since = datetime(2020, 1, 1, tzinfo=timezone.utc)
+
+        # 1. KPIs
+        stats = await self.get_revenue_stats(teacher_id)
+
+        # 2. Status distribution
+        status_stmt = (
+            select(Payment.status, func.count(Payment.id))
+            .join(Course, Course.id == Payment.course_id)
+            .where(Course.teacher_id == teacher_id)
+            .group_by(Payment.status)
+        )
+        status_rows = (await self._db.execute(status_stmt)).all()
+        total_count = sum(r[1] for r in status_rows)
+
+        if total_count > 0:
+            success_cnt = sum(r[1] for r in status_rows if (r[0] or "").lower() in ("captured", "success", "paid"))
+            pending_cnt = sum(r[1] for r in status_rows if (r[0] or "").lower() in ("created", "authorized", "pending"))
+            failed_cnt = sum(r[1] for r in status_rows if (r[0] or "").lower() in ("failed", "fail"))
+            refunded_cnt = sum(r[1] for r in status_rows if (r[0] or "").lower() in ("refunded", "refund"))
+
+            distribution = [
+                {"name": "Successful", "count": success_cnt, "value": round((success_cnt / total_count) * 100, 1), "color": "#10b981"},
+                {"name": "Pending", "count": pending_cnt, "value": round((pending_cnt / total_count) * 100, 1), "color": "#f59e0b"},
+                {"name": "Failed", "count": failed_cnt, "value": round((failed_cnt / total_count) * 100, 1), "color": "#ef4444"},
+                {"name": "Refunded", "count": refunded_cnt, "value": round((refunded_cnt / total_count) * 100, 1), "color": "#6b7280"},
+            ]
+        else:
+            distribution = [
+                {"name": "Successful", "count": 0, "value": 100, "color": "#10b981"},
+                {"name": "Pending", "count": 0, "value": 0, "color": "#f59e0b"},
+                {"name": "Failed", "count": 0, "value": 0, "color": "#ef4444"},
+                {"name": "Refunded", "count": 0, "value": 0, "color": "#6b7280"},
+            ]
+
+        # 3. Trends series
+        trends_raw = await self.get_revenue_series(teacher_id, since=since)
+
+        return {
+            "totalRevenue": stats["total"],
+            "revenueThisMonth": stats["this_month"],
+            "revenueToday": stats["today"],
+            "pendingPayouts": stats["pending_payouts"],
+            "refundsThisMonth": stats["refunds"],
+            "totalTransactions": stats["total_transactions"],
+            "currency": currency or "INR",
+            "distribution": distribution,
+            "trends": trends_raw,
+        }
 
     async def get_total_students(self, teacher_id: uuid.UUID) -> int:
         """Count unique enrolled students across all active teacher courses."""
@@ -1440,6 +1700,7 @@ class AnalyticsRepository:
             )
         )
         return (await self._db.execute(stmt)).scalar_one()
+
 
 
 # ===========================================================================

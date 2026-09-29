@@ -4,13 +4,54 @@ import * as React from "react";
 import { 
   Download,
   RefreshCcw,
-  DollarSign
+  DollarSign,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFinanceStore } from "@/stores/finance.store";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { apiClient } from "@/services/api/client";
+import { toast } from "sonner";
 
 export function FinanceHeader() {
   const { dateRange, setDateRange, currency, setCurrency } = useFinanceStore();
+  const queryClient = useQueryClient();
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.analytics.teacher() });
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success("Financial data refreshed");
+    }, 500);
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const response = await apiClient.get("/api/v1/teacher/finance/export", {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `speakarena_finance_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Transactions exported successfully");
+    } catch {
+      toast.error("Failed to export transactions CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="relative overflow-hidden rounded-2xl grid-bg mb-6">
@@ -23,7 +64,7 @@ export function FinanceHeader() {
             Revenue &amp; Payments
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Monitor your business performance, transactions, and cash flow.
+            Monitor verified course purchases, payments, student transactions, and cash flow.
           </p>
         </div>
 
@@ -53,13 +94,13 @@ export function FinanceHeader() {
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value as any)}
-              className="h-9 w-28 rounded-xl border border-border/60 bg-card/80 text-foreground pl-9 pr-4 text-sm font-bold appearance-none outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all backdrop-blur-sm cursor-pointer"
+              className="h-9 w-32 rounded-xl border border-border/60 bg-card/80 text-foreground pl-8 pr-3 text-xs font-bold appearance-none outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all backdrop-blur-sm cursor-pointer"
             >
+              <option value="INR" className="bg-card text-foreground">INR (₹)</option>
               <option value="USD" className="bg-card text-foreground">USD ($)</option>
-              <option value="EUR" className="bg-card text-foreground">EUR (€)</option>
-              <option value="GBP" className="bg-card text-foreground">GBP (£)</option>
+              <option value="ALL" className="bg-card text-foreground">All Currencies</option>
             </select>
-            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           </div>
 
           <div className="h-6 w-px bg-border/60 mx-1 hidden sm:block" />
@@ -67,16 +108,24 @@ export function FinanceHeader() {
           <Button
             variant="outline"
             size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
             title="Refresh Data"
             className="h-9 w-9 bg-card/80 border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl press-scale transition-all"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
 
-          <button className="btn-primary press-scale">
-            <Download className="h-4 w-4" />
-            Export
-          </button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="btn-primary press-scale text-xs h-9 gap-1.5"
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Export CSV
+          </Button>
         </div>
       </div>
     </div>

@@ -3,19 +3,35 @@
 import * as React from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRevenueTrends } from "@/hooks/queries/useTeacherQueries";
+import { useFinanceSummary } from "@/hooks/queries/useTeacherQueries";
 import { useFinanceStore } from "@/stores/finance.store";
+import { TrendingUp } from "lucide-react";
 
 export default function RevenueCharts() {
-  const { currency } = useFinanceStore();
-  const { data: trends, isLoading } = useRevenueTrends("month");
-  const currencySymbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "£";
+  const { dateRange, currency: storeCurrency } = useFinanceStore();
+  const { data: summary, isLoading } = useFinanceSummary(dateRange, storeCurrency);
+  const currencySymbol = storeCurrency === "USD" ? "$" : "₹";
+
+  const rawTrends = summary?.trends ?? [];
+  const chartData = rawTrends.length > 0
+    ? rawTrends.map((t: any) => ({
+        date: t.date || "Today",
+        revenue: Number(t.revenue ?? t.amount ?? 0),
+        students: Number(t.students ?? 1),
+      }))
+    : [
+        { date: "Day 1", revenue: 0, students: 0 },
+        { date: "Current", revenue: summary?.totalRevenue || 0, students: 1 },
+      ];
 
   return (
     <div className="card-glass hover-lift h-full flex flex-col animate-fade-up">
       <div className="px-6 pt-6 pb-2">
-        <h3 className="text-foreground font-extrabold text-base tracking-tight">Revenue Trend</h3>
-        <p className="text-muted-foreground text-sm mt-1">Actual revenue vs forecasted targets</p>
+        <h3 className="text-foreground font-extrabold text-base tracking-tight flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          Revenue Trend
+        </h3>
+        <p className="text-muted-foreground text-sm mt-1">Verified earnings time series</p>
       </div>
       <div className="flex-1 px-6 pb-6">
         <div className="h-[300px] w-full">
@@ -23,7 +39,7 @@ export default function RevenueCharts() {
             <Skeleton className="w-full h-full bg-white/5 rounded-xl" />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={Array.isArray(trends) ? trends : (trends as any)?.data_points || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -43,7 +59,7 @@ export default function RevenueCharts() {
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `${currencySymbol}${value / 1000}k`}
+                  tickFormatter={(value) => `${currencySymbol}${value}`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -53,23 +69,12 @@ export default function RevenueCharts() {
                     color: "hsl(var(--foreground))",
                   }}
                   itemStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                  formatter={(value: any) => [`${currencySymbol}${Number(value).toLocaleString()}`, undefined]}
+                  formatter={(value: any) => [`${currencySymbol}${Number(value).toLocaleString()}`, "Revenue"]}
                 />
-                {trends && trends.length > 0 && trends[0].target !== undefined && (
-                  <Area
-                    type="monotone"
-                    dataKey="target"
-                    name="Forecast"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    fillOpacity={0}
-                  />
-                )}
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  name="Actual Revenue"
+                  name="Revenue"
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   fillOpacity={1}

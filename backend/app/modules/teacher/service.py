@@ -1615,6 +1615,71 @@ class StudentManagementService:
             if e:
                 await self._repo.update_enrollment_status(e, EnrollmentStatus.ACTIVE)
 
+    async def enroll_student(
+        self,
+        student_id: uuid.UUID,
+        course_id: uuid.UUID,
+    ) -> None:
+        """Manually enroll a student in one of the teacher's courses.
+
+        Args:
+            student_id: The student UUID.
+            course_id: The course UUID (must belong to this teacher).
+
+        Raises:
+            CourseNotFoundError: Course not found or not owned by teacher.
+            StudentNotFoundError: Student not found.
+            EnrollmentNotFoundError: Re-used as DuplicateEnrollment signal.
+        """
+        from datetime import timedelta
+        from app.modules.payment.repository import EnrollmentRepository
+
+        # Verify course belongs to this teacher
+        course = await self._db.get(Course, course_id)
+        if course is None or str(course.teacher_id) != str(self._teacher.id):
+            raise CourseNotFoundError()
+
+        # Verify student exists
+        student = await self._repo.get_student(student_id)
+        if student is None:
+            raise StudentNotFoundError()
+
+        enrollment_repo = EnrollmentRepository(self._db)
+
+        # Check not already enrolled
+        already = await enrollment_repo.exists(student_id, course_id)
+        if already:
+            from app.core.exceptions.errors import DuplicateResourceError
+            raise DuplicateResourceError(message="Student is already enrolled in this course.")
+
+        # Create enrollment with payment_id=None (manual / free grant)
+        now = datetime.now(timezone.utc)
+        enrollment = CourseEnrollment(
+            student_id=student_id,
+            course_id=course_id,
+            payment_id=None,
+            status=EnrollmentStatus.ACTIVE,
+            enrolled_at=now,
+            expires_at=now + timedelta(days=365),  # 1-year access for teacher-granted enrollments
+        )
+        self._db.add(enrollment)
+        await self._db.flush()
+
+        # Update denormalized counters
+        await enrollment_repo.increment_total_enrollments(course_id)
+        await enrollment_repo.increment_teacher_students(course_id)
+        await enrollment_repo.increment_student_enrolled_count(student_id)
+
+        _audit(
+            self._db,
+            self._teacher,
+            "student.enrolled",
+            "enrollment",
+            enrollment.id,
+            severity=AuditSeverity.INFO,
+            metadata={"student_id": str(student_id), "course_id": str(course_id), "method": "manual"},
+        )
+
     async def unenroll_student(
         self,
         student_id: uuid.UUID,
@@ -1939,6 +2004,60 @@ class AnalyticsService:
             "top_course_id": str(top["course_id"]) if top else None,
             "top_course_title": top["title"] if top else None,
         }
+
+    async def list_transactions(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        course_id: Optional[uuid.UUID] = None,
+        currency: Optional[str] = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return paginated transaction records."""
+        return await self._repo.list_transactions(
+            self._teacher.id,
+            page=page,
+            page_size=page_size,
+            search=search,
+            status=status,
+            course_id=course_id,
+            currency=currency,
+        )
+
+    async def get_finance_summary(
+        self,
+        date_range: str = "month",
+        currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Return full finance overview."""
+        return await self._repo.get_finance_summary(
+            self._teacher.id,
+            date_range=date_range,
+            currency=currency,
+        )
+
+    async def export_transactions_csv(self) -> str:
+        """Export all transactions as CSV."""
+        items, _ = await self._repo.list_transactions(
+            self._teacher.id,
+            page=1,
+            page_size=10000,
+        )
+        if not items:
+            return "Transaction ID,Student Name,Student Email,Course,Amount,Currency,Status,Date\n"
+
+        import csv
+        import io
+        output = io.StringIO()
+        fieldnames = ["id", "razorpay_payment_id", "student_name", "student_email", "course_name", "amount", "currency", "status", "created_at"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for item in items:
+            writer.writerow(item)
+        return output.getvalue()
+
 
 
 # ===========================================================================

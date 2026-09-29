@@ -78,8 +78,8 @@ export function RecentPaymentsTable() {
                       {payment.courseName}
                     </td>
                     <td className="p-4 sm:p-6 font-bold text-foreground">
-                      {payment.currency === "USD" ? "$" : payment.currency}
-                      {payment.amount.toFixed(2)}
+                      {payment.currency === "USD" ? "$" : "₹"}
+                      {payment.amount.toLocaleString(payment.currency === "USD" ? "en-US" : "en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                     </td>
                     <td className="p-4 sm:p-6">
                       <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(payment.status)}`}>

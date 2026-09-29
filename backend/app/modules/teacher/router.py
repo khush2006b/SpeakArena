@@ -55,11 +55,14 @@ from app.modules.teacher.schemas import (
     CreateMeetingRequest,
     CreatePDFRequest,
     CreateVideoRequest,
+    FinanceSummaryQueryParams,
     MeetingFilterParams,
     PresignUploadRequest,
     ReorderRequest,
     StudentSearchParams,
     SuspendStudentRequest,
+    TransactionFilterParams,
+
     UpdateAnnouncementRequest,
     UpdateCourseRequest,
     UpdateMeetingRequest,
@@ -1635,6 +1638,25 @@ async def unsuspend_student(
 
 
 @router.post(
+    "/students/{student_id}/enroll",
+    summary="Manually enroll student in a course",
+    description="Teacher manually enrolls a student in one of their own published courses.",
+    status_code=201,
+)
+async def enroll_student(
+    student_id: uuid.UUID,
+    course_id: uuid.UUID = Query(..., description="Course ID to enroll the student in."),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Manually enroll a student in a course."""
+    svc = StudentManagementService(db, teacher)
+    await svc.enroll_student(student_id, course_id)
+    await db.commit()
+    return success_response(message="Student successfully enrolled in course.", status_code=201)
+
+
+@router.post(
     "/students/{student_id}/unenroll",
     summary="Unenroll student from course",
     description="Completely unenrolls a student from a specific course.",
@@ -1857,6 +1879,76 @@ async def get_course_performance_analytics(
     svc = AnalyticsService(db, teacher)
     data = await svc.get_course_analytics(params.course_id)
     return success_response(data)
+
+
+# ===========================================================================
+# Finance & Transactions
+# ===========================================================================
+
+
+@router.get(
+    "/transactions",
+    summary="List teacher transactions",
+    description="Returns paginated transaction records across all teacher courses.",
+)
+async def list_teacher_transactions(
+    params: TransactionFilterParams = Depends(),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return list of transactions for teacher."""
+    svc = AnalyticsService(db, teacher)
+    items, total = await svc.list_transactions(
+        page=params.page,
+        page_size=params.page_size,
+        search=params.search,
+        status=params.status,
+        course_id=params.course_id,
+        currency=params.currency,
+    )
+    return paginated_response(items, page=params.page, page_size=params.page_size, total=total)
+
+
+@router.get(
+    "/finance/summary",
+    summary="Teacher finance summary",
+    description="Returns aggregate revenue KPIs, breakdown, and trends.",
+)
+async def get_teacher_finance_summary(
+    params: FinanceSummaryQueryParams = Depends(),
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Return teacher financial summary."""
+    svc = AnalyticsService(db, teacher)
+    data = await svc.get_finance_summary(
+        date_range=params.date_range,
+        currency=params.currency,
+    )
+    return success_response(data)
+
+
+@router.get(
+    "/finance/export",
+    summary="Export finance transactions CSV",
+    response_class=Response,
+)
+async def export_finance_transactions(
+    teacher: User = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    """Export transactions as CSV."""
+    svc = AnalyticsService(db, teacher)
+    csv_content = await svc.export_transactions_csv()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="transactions_export.csv"'
+        },
+    )
+
+
 
 
 # ===========================================================================

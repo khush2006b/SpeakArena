@@ -93,14 +93,19 @@ export interface TeacherTransaction {
   createdAt: string;
   invoiceId: string | null;
   last4: string | null;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
 }
 
 export interface TeacherFinanceSummary {
   totalRevenue: number;
   revenueThisMonth: number;
+  revenueToday?: number;
   pendingPayouts: number;
   refundsThisMonth: number;
+  totalTransactions?: number;
   currency: string;
+  distribution?: Array<{ name: string; count: number; value: number; color: string }>;
   trends: RevenueTrend[];
 }
 
@@ -176,7 +181,7 @@ export const teacherService = {
           id: p.id ?? `p-${Math.random()}`,
           type: "payment" as const,
           title: "Payment Received",
-          description: `Received ${p.currency ?? "$"}${p.amount ?? 0} for ${p.course_title ?? "course"}`,
+          description: `Received ${p.currency === "USD" ? "$" : "₹"}${p.amount ?? 0} for ${p.course_title ?? "course"}`,
           timestamp: p.created_at ?? new Date().toISOString(),
         })),
       ];
@@ -352,71 +357,108 @@ export const teacherService = {
     await apiClient.post(`/api/v1/teacher/students/${studentId}/unblock`);
   },
 
-  // --- Finance ---
+  // --- Finance & Transactions ---
 
-  /** GET /teacher/dashboard — list teacher transactions */
+  /** GET /teacher/transactions — list teacher transactions */
   listTransactions: async (
     pagination?: PaginationConfig,
-    _filters?: {
+    filters?: {
       search?: string;
       status?: string;
       courseId?: string;
+      currency?: string;
     },
   ): Promise<PaginatedResponse<TeacherTransaction>> => {
+    const params: Record<string, unknown> = {};
+    if (pagination?.page) params.page = pagination.page;
+    if (pagination?.pageSize) params.page_size = pagination.pageSize;
+    if (filters?.search) params.search = filters.search;
+    if (filters?.status && filters.status !== "all") params.status = filters.status;
+    if (filters?.courseId) params.course_id = filters.courseId;
+    if (filters?.currency && filters.currency !== "ALL") params.currency = filters.currency;
+
     try {
-      const { data } = await apiClient.get<any>("/api/v1/teacher/dashboard");
+      const { data } = await apiClient.get<any>("/api/v1/teacher/transactions", { params }).catch(async () => {
+        // Fallback to dashboard if needed
+        return await apiClient.get<any>("/api/v1/teacher/dashboard");
+      });
       const d = data?.data ?? data ?? {};
-      const rawItems = d.recent_payments ?? d.transactions ?? [];
+      const rawItems = Array.isArray(d)
+        ? d
+        : (Array.isArray(d?.items) ? d.items : (d.recent_payments ?? d.transactions ?? []));
+
       const items: TeacherTransaction[] = rawItems.map((p: any) => ({
         id: p.id ?? p.payment_id ?? `tx-${Math.random()}`,
-        studentName: p.student_name ?? p.user_name ?? "Student",
-        courseName: p.course_title ?? "Course",
-        amount: p.amount ?? 0,
-        currency: p.currency ?? "USD",
+        studentName: p.student_name ?? p.studentName ?? "Student",
+        studentEmail: p.student_email ?? p.studentEmail ?? "",
+        studentAvatarUrl: p.student_avatar_url ?? p.studentAvatarUrl ?? p.studentAvatar ?? null,
+        courseName: p.course_name ?? p.course_title ?? p.courseName ?? "Course",
+        amount: Number(p.amount ?? 0),
+        currency: p.currency ?? "INR",
         status: (p.status?.toUpperCase() ?? "SUCCESS") as any,
-        createdAt: p.created_at ?? new Date().toISOString(),
-        invoiceId: p.invoice_id ?? null,
+        createdAt: p.created_at ?? p.createdAt ?? p.date ?? new Date().toISOString(),
+        invoiceId: p.invoice_id ?? p.razorpay_payment_id ?? null,
         last4: p.last4 ?? null,
-        studentEmail: p.student_email ?? "",
-        studentAvatarUrl: p.student_avatar_url ?? null
+        razorpayOrderId: p.razorpay_order_id,
+        razorpayPaymentId: p.razorpay_payment_id,
       }));
+
+      const serverPagination = data?.pagination;
+      const total = serverPagination?.total ?? data?.total ?? items.length;
+      const page = pagination?.page ?? serverPagination?.page ?? 1;
+      const pageSize = pagination?.pageSize ?? serverPagination?.page_size ?? 20;
+      const totalPages = serverPagination?.total_pages ?? (Math.ceil(total / pageSize) || 1);
 
       return {
         items,
-        total: items.length,
-        page: pagination?.page ?? 1,
-        pageSize: pagination?.pageSize ?? 10,
-        totalPages: Math.ceil(items.length / (pagination?.pageSize ?? 10)) || 1,
-        hasNext: false,
-        hasPrev: false,
+        total,
+        page,
+        pageSize,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
       };
-    } catch {
-      return { items: [], total: 0, page: 1, pageSize: 10, totalPages: 0, hasNext: false, hasPrev: false };
+    } catch (err) {
+      console.error("Failed to list transactions:", err);
+      return { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0, hasNext: false, hasPrev: false };
     }
   },
 
-  /** GET /teacher/dashboard — finance overview */
-  getFinanceSummary: async (): Promise<TeacherFinanceSummary> => {
+  /** GET /teacher/finance/summary — finance overview */
+  getFinanceSummary: async (dateRange = "month", currency?: string): Promise<TeacherFinanceSummary> => {
     try {
-      const { data } = await apiClient.get<any>("/api/v1/teacher/dashboard");
+      const { data } = await apiClient.get<any>("/api/v1/teacher/finance/summary", {
+        params: { date_range: dateRange, currency: currency === "ALL" ? undefined : currency },
+      }).catch(async () => {
+        return await apiClient.get<any>("/api/v1/teacher/dashboard");
+      });
       const d = data?.data ?? data ?? {};
+      const rev = d.revenue ?? {};
       return {
-        totalRevenue: d.total_revenue ?? 0,
-        revenueThisMonth: d.monthly_revenue ?? 0,
-        pendingPayouts: d.pending_payouts ?? 0,
-        refundsThisMonth: 0,
-        currency: "USD",
-        trends: d.revenue_trend ?? [],
+        totalRevenue: Number(d.totalRevenue ?? d.total_revenue ?? (typeof rev === "number" ? rev : (rev.total ?? 0))),
+        revenueThisMonth: Number(d.revenueThisMonth ?? d.revenue_this_month ?? rev.this_month ?? 0),
+        revenueToday: Number(d.revenueToday ?? d.revenue_today ?? rev.today ?? 0),
+        pendingPayouts: Number(d.pendingPayouts ?? d.pending_payouts ?? 0),
+        refundsThisMonth: Number(d.refundsThisMonth ?? d.refunds ?? 0),
+        totalTransactions: Number(d.totalTransactions ?? d.total_transactions ?? 0),
+        currency: d.currency ?? "INR",
+        distribution: d.distribution ?? [],
+        trends: d.trends ?? d.revenue_trend ?? [],
       };
-    } catch {
+    } catch (err) {
+      console.error("Failed to get finance summary:", err);
       return {
         totalRevenue: 0,
         revenueThisMonth: 0,
+        revenueToday: 0,
         pendingPayouts: 0,
         refundsThisMonth: 0,
-        currency: "USD",
+        totalTransactions: 0,
+        currency: "INR",
+        distribution: [],
         trends: [],
       };
     }
   },
 };
+

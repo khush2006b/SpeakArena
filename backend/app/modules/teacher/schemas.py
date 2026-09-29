@@ -119,6 +119,29 @@ class AnalyticsQueryParams(BaseModel):
     )
 
 
+class TransactionFilterParams(BaseModel):
+    """Query parameters for teacher transactions."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    search: Optional[str] = Field(default=None, max_length=200)
+    status: Optional[str] = None
+    course_id: Optional[uuid.UUID] = None
+    currency: Optional[str] = None
+
+
+class FinanceSummaryQueryParams(BaseModel):
+    """Query parameters for teacher finance summary."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    date_range: str = Field(default="month", max_length=50)
+    currency: Optional[str] = None
+
+
+
 # ===========================================================================
 # Category
 # ===========================================================================

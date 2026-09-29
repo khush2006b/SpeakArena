@@ -241,23 +241,24 @@ export function useMeetingAttendance(meetingId: string, enabled = false) {
 
 export function useTeacherTransactions(
   pagination?: PaginationConfig,
-  filters?: { search?: string; status?: string; courseId?: string },
+  filters?: { search?: string; status?: string; courseId?: string; currency?: string },
 ) {
   return useQuery({
-    queryKey: queryKeys.payments.list({ ...pagination, ...filters }),
+    queryKey: [...queryKeys.payments.list({ ...pagination, ...filters }), filters?.currency],
     queryFn: () => teacherService.listTransactions(pagination, filters),
     placeholderData: keepPreviousData,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
-export function useFinanceSummary() {
+export function useFinanceSummary(dateRange = "month", currency?: string) {
   return useQuery({
-    queryKey: [...queryKeys.payments.all(), "summary"],
-    queryFn: () => teacherService.getFinanceSummary(),
-    staleTime: 5 * 60 * 1000,
+    queryKey: [...queryKeys.payments.all(), "summary", dateRange, currency],
+    queryFn: () => teacherService.getFinanceSummary(dateRange, currency),
+    staleTime: 30 * 1000,
   });
 }
+
 
 // ============================================================
 // NOTIFICATIONS
