@@ -36,18 +36,18 @@ class Settings(BaseSettings):
     # --- Database ---
     DATABASE_URL: str  # Async URL: postgresql+asyncpg://...
     DATABASE_SYNC_URL: str = ""  # Sync URL: postgresql+psycopg2://...
-    DB_POOL_SIZE: int = 20
-    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_SIZE: int = 5          # Per-worker pool (3 workers × 5 = 15 total connections max)
+    DB_MAX_OVERFLOW: int = 5       # Allow brief spikes (was 10, too high for small instance)
     DB_POOL_TIMEOUT: int = 30
 
     # --- Redis ---
     REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_MAX_CONNECTIONS: int = 20
+    REDIS_MAX_CONNECTIONS: int = 10  # Per-worker (was 20 — too many for free Redis)
 
     # --- JWT ---
     JWT_SECRET_KEY: str = Field(..., min_length=32)
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60   # Increased from 15 → 60 min to reduce refresh storm frequency
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # --- Cloudflare R2 ---

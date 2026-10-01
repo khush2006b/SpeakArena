@@ -116,8 +116,8 @@ export async function getValidAccessToken(): Promise<string | null> {
       const payload = JSON.parse(jsonPayload);
       const expMs = (payload.exp || 0) * 1000;
 
-      // If token is expired or expires in less than 45 seconds, silently refresh via single mutex
-      if (Date.now() >= expMs - 45000) {
+      // If token is expired or expires in less than 2 minutes, silently refresh via single mutex
+      if (Date.now() >= expMs - 120000) {
         return await refreshAccessToken();
       }
     }

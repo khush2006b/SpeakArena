@@ -98,11 +98,11 @@ ENV PATH="/venv/bin:$PATH" \
     PYTHONPATH=/app \
     APP_VERSION="${APP_VERSION}" \
     # Gunicorn tuning (override via env in compose/k8s)
-    GUNICORN_WORKERS=3 \
+    GUNICORN_WORKERS=2 \
     GUNICORN_TIMEOUT=120 \
     GUNICORN_KEEPALIVE=5 \
-    GUNICORN_MAX_REQUESTS=1000 \
-    GUNICORN_MAX_REQUESTS_JITTER=100
+    GUNICORN_MAX_REQUESTS=2000 \
+    GUNICORN_MAX_REQUESTS_JITTER=200
 
 # Create log directory with proper permissions for speakarena user
 RUN mkdir -p /app/logs && chown -R speakarena:speakarena /app/logs
