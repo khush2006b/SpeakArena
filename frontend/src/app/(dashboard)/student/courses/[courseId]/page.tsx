@@ -30,6 +30,7 @@ import { apiClient } from "@/services/api/client";
 import { getCourseThumbnailUrl } from "@/lib/utils";
 import { useInitiatePayment, useVerifyPayment } from "@/hooks/queries/usePaymentQueries";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { useGeoPricing } from "@/hooks/useGeoPricing";
 import { toast } from "sonner";
 
 interface CourseDetail {
@@ -92,7 +93,6 @@ export default function StudentCourseDetailPage() {
 
   const [isEnrolled, setIsEnrolled] = React.useState<boolean>(false);
   const [isEnrolling, setIsEnrolling] = React.useState<boolean>(false);
-  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -100,21 +100,7 @@ export default function StudentCourseDetailPage() {
   const initiatePayment = useInitiatePayment();
   const verifyPayment = useVerifyPayment();
   const { openCheckout } = useRazorpay();
-
-  // Auto-detect visitor location: India -> INR, International -> USD
-  React.useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const isIndia =
-        tz.includes("Calcutta") ||
-        tz.includes("Kolkata") ||
-        tz.includes("Asia/Kolkata") ||
-        tz.includes("IST");
-      setCurrency(isIndia ? "INR" : "USD");
-    } catch {
-      setCurrency("INR");
-    }
-  }, []);
+  const { isIndia, currency, formatPrice, formatOriginalPrice } = useGeoPricing();
 
   const playVideo = React.useCallback(async (video: VideoItem) => {
     setActiveVideo(video);
@@ -258,24 +244,13 @@ export default function StudentCourseDetailPage() {
   const displayPrice = React.useMemo(() => {
     if (!course) return "Free";
     if (isFree) return "Free";
-    if (currency === "USD") {
-      const usdVal = course.usd_price;
-      const finalUsd = usdVal != null && usdVal > 0 ? usdVal : Math.max(Math.ceil((course.price || 0) / 80), 1);
-      return `$${finalUsd}`;
-    }
-    return `₹${Number(course.price || 0).toLocaleString("en-IN")}`;
-  }, [course, isFree, currency]);
+    return formatPrice(course.price, course.usd_price);
+  }, [course, isFree, formatPrice]);
 
   const displayOriginalPrice = React.useMemo(() => {
     if (!course) return null;
-    if (currency === "USD" && course.original_usd_price) {
-      return `$${course.original_usd_price}`;
-    }
-    if (course.original_price && course.original_price > (course.price || 0)) {
-      return `₹${Number(course.original_price).toLocaleString("en-IN")}`;
-    }
-    return null;
-  }, [course, currency]);
+    return formatOriginalPrice(course.original_price, course.original_usd_price);
+  }, [course, formatOriginalPrice]);
 
   const handleEnroll = async () => {
     if (!course) return;
@@ -370,27 +345,20 @@ export default function StudentCourseDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Courses
         </Button>
         <div className="flex items-center gap-2">
-          {/* Currency Switcher */}
+          {/* Currency / Location Badge */}
           {!isFree && (
-            <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setCurrency("INR")}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
-                  currency === "INR" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                ₹ INR
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrency("USD")}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
-                  currency === "USD" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                $ USD
-              </button>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card/80 backdrop-blur-sm text-xs font-semibold text-foreground shadow-sm">
+              {isIndia ? (
+                <>
+                  <span className="text-sm">🇮🇳</span>
+                  <span>INR (₹)</span>
+                </>
+              ) : (
+                <>
+                  <Globe className="h-3.5 w-3.5 text-blue-400" />
+                  <span>USD ($)</span>
+                </>
+              )}
             </div>
           )}
 

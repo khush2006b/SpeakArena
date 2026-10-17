@@ -13,12 +13,14 @@ import {
   GraduationCap,
   CreditCard,
   AlertCircle,
+  Globe,
 } from "lucide-react";
 import { courseService } from "@/services/course.service";
 import { Course } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInitiatePayment, useVerifyPayment } from "@/hooks/queries/usePaymentQueries";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { useGeoPricing } from "@/hooks/useGeoPricing";
 
 const THUMBNAIL_FALLBACKS = [
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'><defs><linearGradient id='g1' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%234338ca'/></linearGradient></defs><rect width='400' height='225' fill='url(%23g1)'/></svg>",
@@ -41,26 +43,11 @@ export default function ExploreCoursesPage() {
   const [enrollingId, setEnrollingId] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [paymentError, setPaymentError] = React.useState<string | null>(null);
-  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
 
   const initiatePayment = useInitiatePayment();
   const verifyPayment = useVerifyPayment();
   const { openCheckout } = useRazorpay();
-
-  // Auto-detect visitor location: India -> INR, International -> USD
-  React.useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const isIndia =
-        tz.includes("Calcutta") ||
-        tz.includes("Kolkata") ||
-        tz.includes("Asia/Kolkata") ||
-        tz.includes("IST");
-      setCurrency(isIndia ? "INR" : "USD");
-    } catch {
-      setCurrency("INR");
-    }
-  }, []);
+  const { isIndia, currency, formatPrice } = useGeoPricing();
 
   const fetchExploreCourses = React.useCallback(async () => {
     setIsLoading(true);
@@ -81,12 +68,7 @@ export default function ExploreCoursesPage() {
   }, [fetchExploreCourses]);
 
   const getDisplayPrice = (c: ExploreCourse) => {
-    if (currency === "USD") {
-      const usdVal = c.usd_price ?? c.usdPrice;
-      const finalUsd = usdVal != null && usdVal > 0 ? usdVal : Math.max(Math.ceil((c.price || 0) / 80), 1);
-      return c.price === 0 ? "Free" : `$${finalUsd}`;
-    }
-    return c.price === 0 ? "Free" : `₹${Number(c.price || 0).toLocaleString("en-IN")}`;
+    return formatPrice(c.price, c.usd_price ?? c.usdPrice);
   };
 
   const handleEnroll = async (courseId: string, courseTitle: string, isFree: boolean) => {
@@ -252,32 +234,20 @@ export default function ExploreCoursesPage() {
             </h2>
           </div>
 
-          {/* Currency Switcher */}
+          {/* Currency / Location Badge */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium">Currency:</span>
-            <div className="inline-flex items-center p-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <button
-                type="button"
-                onClick={() => setCurrency("INR")}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  currency === "INR"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-white"
-                }`}
-              >
-                🇮🇳 INR (₹)
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrency("USD")}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  currency === "USD"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-white"
-                }`}
-              >
-                🌐 USD ($)
-              </button>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md text-xs font-semibold text-foreground">
+              {isIndia ? (
+                <>
+                  <span className="text-sm">🇮🇳</span>
+                  <span>INR (₹)</span>
+                </>
+              ) : (
+                <>
+                  <Globe className="h-3.5 w-3.5 text-blue-400" />
+                  <span>USD ($)</span>
+                </>
+              )}
             </div>
           </div>
         </div>

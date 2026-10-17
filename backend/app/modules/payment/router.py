@@ -59,8 +59,42 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
 # ===========================================================================
-# Student Endpoints
+# Student & Public Payment Endpoints
 # ===========================================================================
+
+
+@router.get(
+    "/geo",
+    summary="Client geolocation and currency determination",
+    description="Detects student country via Cloudflare headers and returns the required pricing currency (INR vs USD).",
+)
+async def get_client_geo(
+    request: Request,
+    ip_address: Optional[str] = Depends(get_client_ip),
+) -> JSONResponse:
+    """Determine client's country and default pricing currency."""
+    country = (
+        request.headers.get("cf-ipcountry")
+        or request.headers.get("x-country-code")
+        or request.headers.get("x-country")
+        or request.headers.get("cloudfront-viewer-country")
+    )
+    country_code = country.strip().upper() if country else None
+
+    # If Cloudflare/reverse proxy country is present, check if it's India
+    if country_code and country_code not in ("XX", "T1"):
+        is_india = (country_code == "IN")
+    else:
+        # Development / Direct IP fallback
+        is_india = True
+
+    currency = "INR" if is_india else "USD"
+    return success_response({
+        "country": country_code or ("IN" if is_india else "UNKNOWN"),
+        "is_india": is_india,
+        "currency": currency,
+        "ip": ip_address,
+    })
 
 
 @router.post(
@@ -74,14 +108,21 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
     status_code=201,
 )
 async def create_order(
+    request: Request,
     body: CreateOrderRequest,
     student: User = Depends(get_current_student),
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
     ip_address: Optional[str] = Depends(get_client_ip),
 ) -> JSONResponse:
-    """Create a Razorpay order for course checkout."""
-    svc = PaymentService(db, redis, student, ip_address=ip_address)
+    """Create a Razorpay order for course checkout with server-side Geo-pricing."""
+    country = (
+        request.headers.get("cf-ipcountry")
+        or request.headers.get("x-country-code")
+        or request.headers.get("x-country")
+        or request.headers.get("cloudfront-viewer-country")
+    )
+    svc = PaymentService(db, redis, student, ip_address=ip_address, client_country=country)
     data = await svc.create_order(body.course_id, body.currency)
     await db.commit()
     return success_response(data, status_code=201)

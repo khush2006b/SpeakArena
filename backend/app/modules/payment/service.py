@@ -355,6 +355,7 @@ class PaymentService:
         redis: Redis,
         student: User,
         ip_address: Optional[str] = None,
+        client_country: Optional[str] = None,
     ) -> None:
         """Initialize PaymentService.
 
@@ -363,11 +364,13 @@ class PaymentService:
             redis: Async Redis client.
             student: The authenticated student user.
             ip_address: The student's IP address for fraud logging.
+            client_country: 2-letter ISO country code from reverse proxy/Cloudflare.
         """
         self._db = db
         self._redis = redis
         self._student = student
         self._ip = ip_address
+        self._country = client_country.strip().upper() if client_country else None
         self._payment_repo = PaymentRepository(db)
         self._course_repo = CourseRepository(db)
         self._enrollment_repo = EnrollmentRepository(db)
@@ -415,11 +418,28 @@ class PaymentService:
                 message=f"This course has reached its student limit of {course.max_students} enrolled seats."
             )
 
-        is_usd = str(currency).upper() == "USD"
-        if is_usd:
+        # ------------------------------------------------------------------
+        # Geo-Pricing Enforcement:
+        # Detect whether the student is connecting from outside India.
+        # If international, strictly force USD currency and course USD price,
+        # preventing foreign cards from exploiting domestic INR conversion.
+        # ------------------------------------------------------------------
+        is_international = False
+        if self._country and self._country != "IN" and self._country not in ("XX", "T1", ""):
+            is_international = True
+        elif self._student.phone:
+            cleaned_phone = self._student.phone.strip().replace(" ", "").replace("-", "")
+            if cleaned_phone.startswith("+") and not cleaned_phone.startswith("+91"):
+                is_international = True
+
+        if is_international or str(currency).upper() == "USD":
             currency = "USD"
             custom_usd = getattr(course, "usd_price", None)
-            target_price = float(custom_usd) if custom_usd is not None and float(custom_usd) > 0 else max(round(float(course.price) / 80.0, 2), 1.0)
+            target_price = (
+                float(custom_usd)
+                if custom_usd is not None and float(custom_usd) > 0
+                else max(round(float(course.price) / 80.0, 2), 1.0)
+            )
             amount_units = int(target_price * 100)
             if amount_units < 100:
                 raise CourseNotPurchasableError(

@@ -36,7 +36,7 @@ function getWsUrlBase(): string {
     }
   }
 
-  return "wss://speakarena-wmp0.onrender.com";
+  return "wss://speakarena.onrender.com";
 }
 
 // ---------------------------------------------------------------------------

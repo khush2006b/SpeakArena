@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Check, X, ShieldCheck, CreditCard, Zap } from "lucide-react";
+import { Check, X, ShieldCheck, CreditCard, Zap, Globe } from "lucide-react";
 import Link from "next/link";
+import { useGeoPricing } from "@/hooks/useGeoPricing";
 
 const TIERS = [
   {
@@ -49,21 +50,7 @@ const TIERS = [
 ];
 
 export function PricingSection() {
-  const [currency, setCurrency] = React.useState<"INR" | "USD">("INR");
-
-  React.useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const isIndia =
-        tz.includes("Calcutta") ||
-        tz.includes("Kolkata") ||
-        tz.includes("Asia/Kolkata") ||
-        tz.includes("IST");
-      setCurrency(isIndia ? "INR" : "USD");
-    } catch {
-      setCurrency("INR");
-    }
-  }, []);
+  const { isIndia, currency } = useGeoPricing();
 
   const tiers = [
     {
@@ -129,42 +116,19 @@ export function PricingSection() {
             Transparent pricing with no hidden fees. Start for free, upgrade when you need live guidance.
           </p>
 
-          {/* Currency Toggle */}
-          <div style={{ display: "inline-flex", alignItems: "center", padding: 4, borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <button
-              type="button"
-              onClick={() => setCurrency("INR")}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 700,
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                background: currency === "INR" ? "#4f46e5" : "transparent",
-                color: currency === "INR" ? "#fff" : "#9ca3af",
-              }}
-            >
-              🇮🇳 India (INR ₹)
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrency("USD")}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 700,
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                background: currency === "USD" ? "#2563eb" : "transparent",
-                color: currency === "USD" ? "#fff" : "#9ca3af",
-              }}
-            >
-              🌐 International (USD $)
-            </button>
+          {/* Location / Currency Badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 13, fontWeight: 600, color: "#fff" }}>
+            {isIndia ? (
+              <>
+                <span>🇮🇳</span>
+                <span>India Pricing (₹ INR)</span>
+              </>
+            ) : (
+              <>
+                <Globe size={16} color="#60a5fa" />
+                <span>International Pricing ($ USD)</span>
+              </>
+            )}
           </div>
         </div>
 
