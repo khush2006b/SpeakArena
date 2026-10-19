@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { useAuthStore } from "@/stores/auth.store";
+import { useChatStore } from "@/stores/chat.store";
 import {
   connectChatSocket,
   disconnectChatSocket,
@@ -442,6 +443,8 @@ export function TeacherCommunicationView() {
             scrollToBottom();
           } else if (msgRecipientId === myId && msgSenderId !== myId) {
             toast.info(`New DM from ${msg.sender?.full_name || "Student"}: ${msg.content.slice(0, 40)}`);
+            // Mark the DM channel as unread so the header dot lights up
+            useChatStore.getState().setChannelUnread(`teacher_dm:${msgSenderId}`, true);
           }
           return;
         }
@@ -477,6 +480,19 @@ export function TeacherCommunicationView() {
         }
       }
 
+      // Mark channel as unread in store when a message from someone else arrives
+      if (msgSenderId && msgSenderId !== myId) {
+        if (ch?.type === "announcements") {
+          // Key must match the key used in fetchMessages → "announcements"
+          useChatStore.getState().setChannelUnread("announcements", true);
+        } else if (ch?.type === "course" && ch.course?.id) {
+          // Keys must match those in fetchMessages
+          const subKey = ch.subType === "announcements"
+            ? `course_announcements:${ch.course.id}`
+            : `course:${ch.course.id}`;
+          useChatStore.getState().setChannelUnread(subKey, true);
+        }
+      }
 
       setMessages((prev) => {
         if (prev.some((m) => String(m.id).toLowerCase() === String(msg.id).toLowerCase()))

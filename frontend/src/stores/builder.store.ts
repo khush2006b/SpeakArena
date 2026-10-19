@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { apiClient } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
 
 export type AccessType = "public" | "private";
 
@@ -203,6 +205,16 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         thumbnailFile: null,
         isUploadingThumbnail: false,
       });
+
+      // Invalidate courses query cache so teacher course grid re-fetches and shows the new thumbnail
+      try {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.courses.all() });
+        if (targetId) {
+          await queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(targetId) });
+        }
+      } catch (_) {
+        // non-critical
+      }
 
       return uploadedUrl;
     } catch (err: any) {

@@ -11,7 +11,7 @@ export function InformationStep() {
     courseTitle, setCourseTitle,
     subtitle, setSubtitle,
     description, setDescription,
-    thumbnailUrl, setThumbnailUrl,
+    thumbnailUrl,
     setThumbnailFile,
     createCourse, isCreating, error, clearError,
     uploadThumbnail, isUploadingThumbnail,
@@ -27,13 +27,18 @@ export function InformationStep() {
   const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Show blob preview immediately for snappy UX — do NOT write to store yet
     const objectUrl = URL.createObjectURL(file);
     setThumbnailPreview(objectUrl);
-    setThumbnailUrl(objectUrl);
     setThumbnailFile(file);
 
     if (courseId) {
-      await uploadThumbnail(file, courseId);
+      // Upload to server; uploadThumbnail will update thumbnailUrl in the store to the real server URL
+      const serverUrl = await uploadThumbnail(file, courseId);
+      if (serverUrl) {
+        // Override local preview with actual server URL so it survives page transitions
+        setThumbnailPreview(serverUrl);
+      }
     }
   };
 
@@ -44,11 +49,13 @@ export function InformationStep() {
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
     setThumbnailPreview(objectUrl);
-    setThumbnailUrl(objectUrl);
     setThumbnailFile(file);
 
     if (courseId) {
-      await uploadThumbnail(file, courseId);
+      const serverUrl = await uploadThumbnail(file, courseId);
+      if (serverUrl) {
+        setThumbnailPreview(serverUrl);
+      }
     }
   };
 

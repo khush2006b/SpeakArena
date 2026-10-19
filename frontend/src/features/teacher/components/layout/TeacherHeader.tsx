@@ -1,15 +1,24 @@
 "use client";
 
 import React from "react";
-import { Bell, Menu } from "lucide-react";
+import Link from "next/link";
+import { Bell, Menu, MessageSquare } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
+import { useChatStore } from "@/stores/chat.store";
+import { useUnreadNotificationCount } from "@/hooks/queries/useNotificationQueries";
 import { TeacherProfileMenu } from "./TeacherProfileMenu";
 import { QuickActionsDropdown } from "./QuickActionsDropdown";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function TeacherHeader() {
   const toggleNotificationDrawer = useUIStore((s) => s.toggleNotificationDrawer);
-  const unreadNotifications = 3;
+  const { hasUnread: hasUnreadChat } = useChatStore();
+  const { data: unreadNotifData } = useUnreadNotificationCount();
+  const unreadNotifCount =
+    typeof unreadNotifData === "number"
+      ? unreadNotifData
+      : (unreadNotifData as any)?.unread_count ?? (unreadNotifData as any)?.count ?? 0;
+  const hasUnreadNotifs = unreadNotifCount > 0;
 
   return (
     <header
@@ -43,21 +52,41 @@ export function TeacherHeader() {
 
         <ThemeToggle />
 
+        {/* Chat / Communication */}
+        <Link
+          href="/teacher/communication"
+          className="btn-ghost press-scale flex items-center justify-center"
+          style={{ position: "relative", width: 44, height: 44, padding: 0, borderRadius: 10 }}
+          aria-label="Communication"
+          title={hasUnreadChat ? "New messages" : "Communication"}
+        >
+          <MessageSquare style={{ width: 16, height: 16 }} />
+          {hasUnreadChat && (
+            <span style={{
+              position: "absolute", top: 9, right: 9,
+              display: "block", width: 7, height: 7, borderRadius: "50%",
+              background: "#ef4444",
+              border: "2px solid hsl(var(--card))",
+            }} className="animate-pulse" />
+          )}
+        </Link>
+
         {/* Notifications */}
         <button
           onClick={toggleNotificationDrawer}
           className="btn-ghost press-scale"
           style={{ position: "relative", width: 44, height: 44, padding: 0, justifyContent: "center", borderRadius: 10 }}
           aria-label="Notifications"
+          title={hasUnreadNotifs ? `${unreadNotifCount} unread notification(s)` : "Notifications"}
         >
           <Bell style={{ width: 16, height: 16 }} />
-          {unreadNotifications > 0 && (
+          {hasUnreadNotifs && (
             <span style={{
               position: "absolute", top: 9, right: 9,
               display: "block", width: 7, height: 7, borderRadius: "50%",
               background: "hsl(270 80% 60%)",
               border: "2px solid hsl(var(--card))",
-            }} />
+            }} className="animate-pulse" />
           )}
         </button>
 

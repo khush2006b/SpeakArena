@@ -10,6 +10,7 @@ import {
   Mic2, X, ClipboardCheck, User,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
+import { useChatStore } from "@/stores/chat.store";
 
 const NAVIGATION = [
   {
@@ -52,6 +53,7 @@ const TEACHER_PRIMARY_BORDER = "hsl(270 80% 60% / 0.3)";
 
 function NavItems({ isCollapsed, onLinkClick }: { isCollapsed: boolean; onLinkClick?: () => void }) {
   const pathname = usePathname();
+  const { hasUnread } = useChatStore();
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ padding: "20px 10px", display: "flex", flexDirection: "column", gap: 28 }}>
       {NAVIGATION.map((group) => (
@@ -72,7 +74,11 @@ function NavItems({ isCollapsed, onLinkClick }: { isCollapsed: boolean; onLinkCl
           </AnimatePresence>
 
           {group.items.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/teacher" && pathname.startsWith(item.href + "/"));
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/teacher" && pathname.startsWith(item.href + "/")) ||
+              (item.href === "/teacher/chat" && (pathname === "/teacher/communication" || pathname.startsWith("/teacher/communication/")));
+            const isChatItem = item.name === "Chat";
             return (
               <Link key={item.name} href={item.href} prefetch style={{ textDecoration: "none" }} {...(isCollapsed && item.name ? { title: item.name } : {})} {...(onLinkClick ? { onClick: onLinkClick } : {})}>
                 <div
@@ -104,6 +110,34 @@ function NavItems({ isCollapsed, onLinkClick }: { isCollapsed: boolean; onLinkCl
                       </motion.span>
                     )}
                   </AnimatePresence>
+                  {isChatItem && hasUnread && !isCollapsed && (
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                        marginLeft: "auto",
+                        flexShrink: 0,
+                      }}
+                      className="animate-pulse"
+                    />
+                  )}
+                  {isChatItem && hasUnread && isCollapsed && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 7,
+                        right: 12,
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                        border: "1.5px solid hsl(var(--card))",
+                      }}
+                      className="animate-pulse"
+                    />
+                  )}
                 </div>
               </Link>
             );
