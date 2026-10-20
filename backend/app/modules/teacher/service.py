@@ -1660,7 +1660,7 @@ class StudentManagementService:
             payment_id=None,
             status=EnrollmentStatus.ACTIVE,
             enrolled_at=now,
-            expires_at=now + timedelta(days=365),  # 1-year access for teacher-granted enrollments
+            expires_at=now + timedelta(days=30),  # 1-month (30-day) batch access
         )
         self._db.add(enrollment)
         await self._db.flush()

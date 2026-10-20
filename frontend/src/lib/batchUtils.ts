@@ -21,7 +21,7 @@ export interface BatchEnrollmentInfo {
 
 /**
  * Calculates batch time spent, remaining duration, and expiry status for an enrolled course.
- * Based on the 1-month (30-day) auto-unenrollment policy.
+ * Based on the strict 1-month (30-day) auto-unenrollment policy.
  */
 export function getBatchEnrollmentInfo(item: any): BatchEnrollmentInfo {
   const now = new Date();
@@ -35,41 +35,47 @@ export function getBatchEnrollmentInfo(item: any): BatchEnrollmentInfo {
     item?.createdAt;
   const enrolledAt = rawEnrolled ? new Date(rawEnrolled) : null;
 
-  // 2. Total batch duration (default: 30 days)
+  // 2. Total batch duration is strictly 30 days (1 month)
   const totalDays = Number(item?.batch_duration_days || item?.batchDurationDays || 30);
 
-  // 3. Resolve expires_at
-  const rawExpires = item?.expires_at || item?.expiresAt;
+  // 3. Resolve expires_at (strictly capped to enrolledAt + 30 days)
   let expiresAt: Date | null = null;
-  if (rawExpires) {
-    expiresAt = new Date(rawExpires);
-  } else if (enrolledAt) {
-    expiresAt = new Date(enrolledAt.getTime() + totalDays * 24 * 60 * 60 * 1000);
+  if (enrolledAt) {
+    const maxExpiry = new Date(enrolledAt.getTime() + totalDays * 24 * 60 * 60 * 1000);
+    const rawExpires = item?.expires_at || item?.expiresAt;
+    if (rawExpires) {
+      const parsedExpires = new Date(rawExpires);
+      // Cap any legacy 1-year or oversized expiry to the strict 1-month period
+      expiresAt = parsedExpires.getTime() > maxExpiry.getTime() ? maxExpiry : parsedExpires;
+    } else {
+      expiresAt = maxExpiry;
+    }
   }
 
-  // 4. Days enrolled (how long in batch so far)
+  // 4. Days enrolled (how long the student has been in this 30-day batch)
   let daysEnrolled = 0;
-  if (typeof item?.days_enrolled === "number") {
+  if (enrolledAt) {
+    const diffMs = now.getTime() - enrolledAt.getTime();
+    daysEnrolled = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  } else if (typeof item?.days_enrolled === "number") {
     daysEnrolled = Math.max(0, item.days_enrolled);
   } else if (typeof item?.daysEnrolled === "number") {
     daysEnrolled = Math.max(0, item.daysEnrolled);
-  } else if (enrolledAt) {
-    const diffMs = now.getTime() - enrolledAt.getTime();
-    daysEnrolled = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
   }
 
-  // 5. Days remaining until auto-unenrollment
-  let daysRemaining = totalDays;
-  if (typeof item?.days_remaining === "number") {
-    daysRemaining = Math.max(0, item.days_remaining);
-  } else if (typeof item?.daysRemaining === "number") {
-    daysRemaining = Math.max(0, item.daysRemaining);
-  } else if (expiresAt) {
+  // 5. Days remaining until auto-unenrollment (strictly capped to totalDays - daysEnrolled)
+  let daysRemaining = 0;
+  if (expiresAt) {
     const diffMs = expiresAt.getTime() - now.getTime();
     daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  } else {
+    daysRemaining = Math.max(0, totalDays - daysEnrolled);
   }
 
-  const isExpired = expiresAt ? now.getTime() > expiresAt.getTime() : false;
+  // Ensure daysRemaining cannot exceed totalDays
+  daysRemaining = Math.min(totalDays, daysRemaining);
+
+  const isExpired = expiresAt ? now.getTime() > expiresAt.getTime() : daysRemaining <= 0;
   const isExpiringSoon = !isExpired && daysRemaining <= 5;
 
   const percentTimeElapsed = Math.min(

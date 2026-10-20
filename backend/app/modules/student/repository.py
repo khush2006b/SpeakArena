@@ -300,14 +300,22 @@ class StudentCourseRepository:
 
         now = datetime.now(timezone.utc)
         items = []
+        batch_duration_days = 30
         for r in rows:
             enrolled_at = r.enrolled_at
-            expires_at = r.expires_at
-            if not expires_at and enrolled_at:
-                expires_at = enrolled_at + timedelta(days=30)
+            # Strictly enforce 1-month (30-day) batch duration from enrolled_at
+            if enrolled_at:
+                max_expiry = enrolled_at + timedelta(days=batch_duration_days)
+                if not r.expires_at or r.expires_at > max_expiry:
+                    expires_at = max_expiry
+                else:
+                    expires_at = r.expires_at
+            else:
+                expires_at = r.expires_at
 
             days_enrolled = max(0, (now - enrolled_at).days) if enrolled_at else 0
-            days_remaining = max(0, (expires_at - now).days) if expires_at else 30
+            days_remaining = max(0, (expires_at - now).days) if expires_at else max(0, batch_duration_days - days_enrolled)
+            days_remaining = min(batch_duration_days, days_remaining)
 
             items.append({
                 "enrollment_id": r.enrollment_id,
@@ -538,11 +546,19 @@ class StudentCourseRepository:
 
         now = datetime.now(timezone.utc)
         enrolled_at = row.enrolled_at
-        expires_at = row.expires_at
-        if not expires_at and enrolled_at:
-            expires_at = enrolled_at + timedelta(days=30)
+        batch_duration_days = 30
+        if enrolled_at:
+            max_expiry = enrolled_at + timedelta(days=batch_duration_days)
+            if not row.expires_at or row.expires_at > max_expiry:
+                expires_at = max_expiry
+            else:
+                expires_at = row.expires_at
+        else:
+            expires_at = row.expires_at
+
         days_enrolled = max(0, (now - enrolled_at).days) if enrolled_at else 0
-        days_remaining = max(0, (expires_at - now).days) if expires_at else 30
+        days_remaining = max(0, (expires_at - now).days) if expires_at else max(0, batch_duration_days - days_enrolled)
+        days_remaining = min(batch_duration_days, days_remaining)
 
         return {
             "enrollment_id": row.enrollment_id,
