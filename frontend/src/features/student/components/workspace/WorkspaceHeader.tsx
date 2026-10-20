@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useWorkspaceStore } from "@/stores/workspace.store";
 import { useCourseDetail, useCourseProgress } from "@/hooks/queries/useCourseQueries";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BatchValidityBadge } from "@/features/student/components/courses/BatchValidityBadge";
 
 export function WorkspaceHeader() {
   const params = useParams();
@@ -77,6 +78,9 @@ export function WorkspaceHeader() {
       {/* Right side: Tools & Utility Toggle */}
       <div className="flex items-center gap-2 shrink-0">
         
+        {/* Batch Validity */}
+        {course && <BatchValidityBadge course={course} variant="pill" className="hidden lg:inline-flex mr-1" />}
+
         {/* Course Progress */}
         <div className="hidden md:flex items-center gap-3 mr-2 bg-secondary/50 rounded-full px-3 py-1 border border-border/50">
           <span className="text-xs font-semibold text-foreground">{progressPercent}%</span>

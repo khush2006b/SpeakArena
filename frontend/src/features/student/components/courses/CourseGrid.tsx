@@ -4,6 +4,7 @@ import * as React from "react";
 import { Play, Bookmark, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { BatchValidityBadge } from "./BatchValidityBadge";
 
 interface CourseGridProps {
   courses: any[];
@@ -83,9 +84,11 @@ export function CourseGrid({ courses }: CourseGridProps) {
             <h3 className="font-bold line-clamp-2 leading-tight transition-colors mb-1 text-foreground text-responsive-lg">
               {course.title}
             </h3>
-            <p className="text-sm line-clamp-1 mb-4 text-muted-foreground">
+            <p className="text-sm line-clamp-1 mb-2 text-muted-foreground">
               by {course.teacher}
             </p>
+
+            <BatchValidityBadge course={course} variant="compact" className="w-fit mb-4" />
 
             <div className="mt-auto space-y-3">
               {/* Progress */}

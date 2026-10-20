@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Play, MoreHorizontal, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BatchValidityBadge } from "./BatchValidityBadge";
 import {
   Table,
   TableBody,
@@ -42,7 +43,8 @@ export function CourseList({ courses }: CourseListProps) {
             <TableHead className="w-[300px]" style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Course</TableHead>
             <TableHead style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Teacher</TableHead>
             <TableHead style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Category</TableHead>
-            <TableHead className="w-[200px]" style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Progress</TableHead>
+            <TableHead className="w-[180px]" style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Progress</TableHead>
+            <TableHead style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Batch Validity</TableHead>
             <TableHead style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Last Activity</TableHead>
             <TableHead className="text-right" style={{ color: "#6b7280", textTransform: "uppercase", fontSize: 11 }}>Actions</TableHead>
           </TableRow>
@@ -94,6 +96,9 @@ export function CourseList({ courses }: CourseListProps) {
                     {course.progress}%
                   </span>
                 </div>
+              </TableCell>
+              <TableCell>
+                <BatchValidityBadge course={course} variant="compact" />
               </TableCell>
               <TableCell className="text-sm" style={{ color: "#9ca3af" }}>{course.lastWatched}</TableCell>
               <TableCell className="text-right">

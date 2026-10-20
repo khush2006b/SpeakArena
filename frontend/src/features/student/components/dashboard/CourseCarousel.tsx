@@ -5,6 +5,7 @@ import { Play, Star, ChevronLeft, ChevronRight, Mic, Briefcase, Award, BookOpen,
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { apiClient } from "@/services/api/client";
+import { BatchValidityBadge } from "@/features/student/components/courses/BatchValidityBadge";
 
 import { getCourseThumbnailUrl } from "@/lib/utils";
 
@@ -225,9 +226,12 @@ export function CourseCarousel({ title, type }: CourseCarouselProps) {
                   </h3>
                   
                   {type === "enrolled" ? (
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{item.progress ?? 0}% Complete</span>
-                      <span>{item.lastWatched ?? "Enrolled"}</span>
+                    <div className="space-y-1.5 pt-0.5">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{item.progress ?? 0}% Complete</span>
+                        <span>{item.lastWatched ?? "Enrolled"}</span>
+                      </div>
+                      <BatchValidityBadge course={item} variant="compact" className="w-full justify-center" />
                     </div>
                   ) : (
                     <div className="flex items-center justify-between text-xs text-muted-foreground">

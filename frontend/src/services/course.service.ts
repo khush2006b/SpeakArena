@@ -108,6 +108,11 @@ function mapCourse(raw: any): Course {
     maxStudents: raw.max_students ?? raw.maxStudents ?? 50,
     createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     updatedAt: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
+    enrolled_at: raw.enrolled_at ?? raw.enrolledAt ?? null,
+    expires_at: raw.expires_at ?? raw.expiresAt ?? null,
+    days_enrolled: raw.days_enrolled ?? raw.daysEnrolled ?? undefined,
+    days_remaining: raw.days_remaining ?? raw.daysRemaining ?? undefined,
+    batch_duration_days: raw.batch_duration_days ?? raw.batchDurationDays ?? 30,
   };
 }
 

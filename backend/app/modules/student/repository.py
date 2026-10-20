@@ -22,7 +22,7 @@ Repositories:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import and_, desc, func, or_, select, update
@@ -271,6 +271,7 @@ class StudentCourseRepository:
                 CourseEnrollment.progress_percentage,
                 CourseEnrollment.status.label("enrollment_status"),
                 CourseEnrollment.enrolled_at,
+                CourseEnrollment.expires_at,
                 CourseEnrollment.completed_at,
             )
             .join(Course, Course.id == CourseEnrollment.course_id)
@@ -297,8 +298,18 @@ class StudentCourseRepository:
         )
         rows = (await self._db.execute(data_stmt)).all()
 
-        items = [
-            {
+        now = datetime.now(timezone.utc)
+        items = []
+        for r in rows:
+            enrolled_at = r.enrolled_at
+            expires_at = r.expires_at
+            if not expires_at and enrolled_at:
+                expires_at = enrolled_at + timedelta(days=30)
+
+            days_enrolled = max(0, (now - enrolled_at).days) if enrolled_at else 0
+            days_remaining = max(0, (expires_at - now).days) if expires_at else 30
+
+            items.append({
                 "enrollment_id": r.enrollment_id,
                 "course_id": r.course_id,
                 "teacher_id": str(r.teacher_id) if r.teacher_id else None,
@@ -315,13 +326,15 @@ class StudentCourseRepository:
                 "teacher_avatar_url": r2.get_public_url(r.teacher_avatar_r2_key),
                 "progress_percentage": float(r.progress_percentage or 0.0),
                 "enrollment_status": r.enrollment_status,
-                "enrolled_at": r.enrolled_at,
+                "enrolled_at": enrolled_at,
+                "expires_at": expires_at,
+                "days_enrolled": days_enrolled,
+                "days_remaining": days_remaining,
+                "batch_duration_days": 30,
                 "completed_at": r.completed_at,
                 "last_accessed_at": None,
                 "is_favorite": False,
-            }
-            for r in rows
-        ]
+            })
         return items, total
 
     async def list_explore(
@@ -408,6 +421,7 @@ class StudentCourseRepository:
         if course is None:
             raise ValueError("Course not found")
 
+        now = datetime.now(timezone.utc)
         # Check existing enrollment
         existing_stmt = select(CourseEnrollment).where(
             CourseEnrollment.student_id == student_id,
@@ -415,25 +429,39 @@ class StudentCourseRepository:
         )
         existing = (await self._db.execute(existing_stmt)).scalar_one_or_none()
         if existing:
-            if existing.status != EnrollmentStatus.ACTIVE:
+            is_expired = existing.expires_at is not None and existing.expires_at <= now
+            if existing.status != EnrollmentStatus.ACTIVE or is_expired:
                 # Count current active enrollments before reactivating
                 count_stmt = select(func.count(CourseEnrollment.id)).where(
                     CourseEnrollment.course_id == course_id,
                     CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 )
                 active_count = (await self._db.execute(count_stmt)).scalar_one() or 0
                 if course.max_students and active_count >= course.max_students:
                     raise ValidationError(message=f"Course is full. Maximum enrollment limit of {course.max_students} seats has been reached.")
 
                 existing.status = EnrollmentStatus.ACTIVE
+                existing.enrolled_at = now
+                existing.expires_at = now + timedelta(days=30)
+                existing.progress_percentage = 0.0
+                existing.completed_at = None
                 course.total_enrollments = active_count + 1
                 await self._db.flush()
+                return {"course_id": str(course_id), "status": "active", "is_enrolled": True, "message": "Re-enrolled in batch successfully for 30 days!"}
             return {"course_id": str(course_id), "status": "active", "is_enrolled": True, "message": "Already enrolled"}
 
         # Count current active enrollments before new enrollment
         count_stmt = select(func.count(CourseEnrollment.id)).where(
             CourseEnrollment.course_id == course_id,
             CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+            or_(
+                CourseEnrollment.expires_at.is_(None),
+                CourseEnrollment.expires_at > now,
+            ),
         )
         active_count = (await self._db.execute(count_stmt)).scalar_one() or 0
         if course.max_students and active_count >= course.max_students:
@@ -444,7 +472,8 @@ class StudentCourseRepository:
             course_id=course_id,
             status=EnrollmentStatus.ACTIVE,
             progress_percentage=0.0,
-            enrolled_at=datetime.now(timezone.utc),
+            enrolled_at=now,
+            expires_at=now + timedelta(days=30),
         )
         self._db.add(enrollment)
         course.total_enrollments = active_count + 1
@@ -472,6 +501,7 @@ class StudentCourseRepository:
                 CourseEnrollment.status.label("enrollment_status"),
                 CourseEnrollment.progress_percentage,
                 CourseEnrollment.enrolled_at,
+                CourseEnrollment.expires_at,
                 CourseEnrollment.completed_at,
                 Course.id.label("course_id"),
                 Course.title,
@@ -506,11 +536,23 @@ class StudentCourseRepository:
         if row is None:
             return None
 
+        now = datetime.now(timezone.utc)
+        enrolled_at = row.enrolled_at
+        expires_at = row.expires_at
+        if not expires_at and enrolled_at:
+            expires_at = enrolled_at + timedelta(days=30)
+        days_enrolled = max(0, (now - enrolled_at).days) if enrolled_at else 0
+        days_remaining = max(0, (expires_at - now).days) if expires_at else 30
+
         return {
             "enrollment_id": row.enrollment_id,
             "enrollment_status": row.enrollment_status,
             "progress_percentage": float(row.progress_percentage or 0.0),
-            "enrolled_at": row.enrolled_at,
+            "enrolled_at": enrolled_at,
+            "expires_at": expires_at,
+            "days_enrolled": days_enrolled,
+            "days_remaining": days_remaining,
+            "batch_duration_days": 30,
             "completed_at": row.completed_at,
             "course_id": row.course_id,
             "title": row.title,

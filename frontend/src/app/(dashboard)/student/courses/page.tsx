@@ -16,13 +16,19 @@ import { getCourseThumbnailUrl } from "@/lib/utils";
 function mapCourse(item: any, idx: number) {
   const resolvedThumbnail = getCourseThumbnailUrl(item, idx);
   return {
+    ...item,
     id: item.course_id || item.id || `my-course-${idx}`,
     title: item.title,
     teacher: item.teacher_name || "Paras (Construction)",
     category: item.level || item.category || "Course",
-    progress: item.progress_percent ?? item.completion_percentage ?? 0,
+    progress: item.progress_percentage ?? item.progress_percent ?? item.completion_percentage ?? 0,
     totalModules: item.total_lectures ?? item.totalLectures ?? 0,
     completedModules: item.completed_lectures ?? 0,
+    enrolled_at: item.enrolled_at,
+    expires_at: item.expires_at,
+    days_enrolled: item.days_enrolled,
+    days_remaining: item.days_remaining,
+    batch_duration_days: item.batch_duration_days || 30,
     lastWatched: item.last_accessed_at
       ? format(new Date(item.last_accessed_at), "MMM d")
       : item.enrolled_at

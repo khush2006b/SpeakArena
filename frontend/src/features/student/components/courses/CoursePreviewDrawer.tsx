@@ -13,6 +13,7 @@ import {
 import { useCoursesStore } from "@/stores/courses.store";
 import { useCourseDetail, useCourseProgress } from "@/hooks/queries/useCourseQueries";
 import { formatDistanceToNow } from "date-fns";
+import { BatchValidityBadge } from "./BatchValidityBadge";
 
 export function CoursePreviewDrawer() {
   const { selectedCourseId, setSelectedCourseId } = useCoursesStore();
@@ -116,6 +117,9 @@ export function CoursePreviewDrawer() {
                   )}
                 </div>
               </div>
+
+              {/* Batch Duration & Validity Card */}
+              <BatchValidityBadge course={course} variant="card" />
 
             </div>
 

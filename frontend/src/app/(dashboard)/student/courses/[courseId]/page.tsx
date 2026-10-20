@@ -32,6 +32,7 @@ import { useInitiatePayment, useVerifyPayment } from "@/hooks/queries/usePayment
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useGeoPricing } from "@/hooks/useGeoPricing";
 import { toast } from "sonner";
+import { BatchValidityBadge } from "@/features/student/components/courses/BatchValidityBadge";
 
 interface CourseDetail {
   id: string;
@@ -47,6 +48,11 @@ interface CourseDetail {
   isEnrolled?: boolean;
   enrollment_id?: string;
   enrollment_status?: string;
+  enrolled_at?: string;
+  expires_at?: string;
+  days_enrolled?: number;
+  days_remaining?: number;
+  batch_duration_days?: number;
   price?: number;
   original_price?: number;
   usd_price?: number;
@@ -375,6 +381,8 @@ export default function StudentCourseDetailPage() {
       </div>
 
       {/* ── COURSE HERO BANNER ─────────────────────────────────────────── */}
+      {isEnrolled && <BatchValidityBadge course={course} variant="banner" />}
+
       <div
         className="relative overflow-hidden rounded-2xl border border-white/10 p-6 sm:p-8 card-glass"
         style={{
@@ -394,9 +402,12 @@ export default function StudentCourseDetailPage() {
 
               {/* Enrollment Badge */}
               {isEnrolled ? (
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Enrolled
-                </span>
+                <>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Enrolled
+                  </span>
+                  <BatchValidityBadge course={course} variant="pill" />
+                </>
               ) : (
                 <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
                   <GraduationCap className="h-3.5 w-3.5" /> Ready to Enroll
@@ -511,6 +522,8 @@ export default function StudentCourseDetailPage() {
                 Instant access • Includes all lectures & guides
               </p>
             </div>
+
+            {isEnrolled && <BatchValidityBadge course={course} variant="card" />}
           </div>
         </div>
       </div>

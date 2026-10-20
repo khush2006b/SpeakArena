@@ -7,6 +7,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/api/client";
 import { useChatStore } from "@/stores/chat.store";
+import { BatchValidityBadge } from "@/features/student/components/courses/BatchValidityBadge";
 
 import { getCourseThumbnailUrl } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ export function DashboardHero() {
   const { hasUnread } = useChatStore();
   const [imageError, setImageError] = React.useState(false);
   const [studentName, setStudentName] = React.useState("");
+  const [latestCourse, setLatestCourse] = React.useState<any>(null);
   const [hero, setHero] = React.useState({
     courseId: "",
     thumbnail: "",
@@ -37,6 +39,7 @@ export function DashboardHero() {
         const courses = coursesRes.data?.items ?? coursesRes.data?.data ?? coursesRes.data ?? [];
         const latest = Array.isArray(courses) ? courses[0] : null;
         if (latest) {
+          setLatestCourse(latest);
           const resolvedThumb = getCourseThumbnailUrl(latest);
           setHero({
             courseId: latest.id || latest.course_id || "",
@@ -87,10 +90,13 @@ export function DashboardHero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="max-w-2xl space-y-4"
         >
-          <div className="inline-flex items-center px-3 py-1 text-xs font-semibold backdrop-blur-md bg-primary/15 border border-primary/30 text-primary badge-primary"
-               style={{ borderRadius: 100 }}>
-            <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" />
-            {studentName ? `Welcome back, ${studentName}!` : "Welcome to Speak Arena!"}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center px-3 py-1 text-xs font-semibold backdrop-blur-md bg-primary/15 border border-primary/30 text-primary badge-primary"
+                 style={{ borderRadius: 100 }}>
+              <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" />
+              {studentName ? `Welcome back, ${studentName}!` : "Welcome to Speak Arena!"}
+            </div>
+            {latestCourse && <BatchValidityBadge course={latestCourse} variant="pill" />}
           </div>
           
           <h1 className="drop-shadow-md text-foreground font-extrabold tracking-tighter text-responsive-xl" style={{ fontSize: "clamp(24px, 2.5vw, 36px)" }}>

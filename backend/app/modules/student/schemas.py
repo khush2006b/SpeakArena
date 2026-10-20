@@ -150,6 +150,10 @@ class EnrolledCourseListItem(BaseModel):
     progress_percentage: float
     enrollment_status: str
     enrolled_at: datetime
+    expires_at: Optional[datetime] = None
+    days_enrolled: Optional[int] = None
+    days_remaining: Optional[int] = None
+    batch_duration_days: Optional[int] = 30
     completed_at: Optional[datetime] = None
     last_accessed_at: Optional[datetime] = None
     is_favorite: bool = False
@@ -190,6 +194,10 @@ class CourseDetailResponse(BaseModel):
     enrollment_status: str
     progress_percentage: float
     enrolled_at: datetime
+    expires_at: Optional[datetime] = None
+    days_enrolled: Optional[int] = None
+    days_remaining: Optional[int] = None
+    batch_duration_days: Optional[int] = 30
     completed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

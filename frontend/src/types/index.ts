@@ -110,6 +110,11 @@ export interface Course {
   maxStudents?: number;
   createdAt: string;
   updatedAt: string;
+  enrolled_at?: string | null;
+  expires_at?: string | null;
+  days_enrolled?: number;
+  days_remaining?: number;
+  batch_duration_days?: number;
 }
 
 export interface Enrollment {
@@ -172,6 +177,11 @@ export interface ChatMessage {
   replyToId: string | null;
   createdAt: string;
   updatedAt: string;
+  enrolled_at?: string | null;
+  expires_at?: string | null;
+  days_enrolled?: number;
+  days_remaining?: number;
+  batch_duration_days?: number;
 }
 
 export interface TypingUser {
