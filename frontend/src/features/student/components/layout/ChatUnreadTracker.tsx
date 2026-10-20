@@ -29,6 +29,8 @@ export function ChatUnreadTracker() {
   useEffect(() => {
     if (!user?.id) return;
     const currentUserId = String(user.id);
+    const roleStr = String(user.role || "").toLowerCase();
+    const isTeacher = roleStr.includes("teacher");
 
     const checkAllChannels = async () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") {
@@ -59,91 +61,141 @@ export function ChatUnreadTracker() {
 
       // Step 2: Resilient client-side fallback
       try {
-        const coursesRes = await apiClient.get("/api/v1/courses");
-        const raw = coursesRes.data;
-        let courses: any[] = [];
-        if (Array.isArray(raw?.data)) courses = raw.data;
-        else if (Array.isArray(raw?.data?.items)) courses = raw.data.items;
-        else if (Array.isArray(raw?.items)) courses = raw.items;
-        else if (Array.isArray(raw)) courses = raw;
+        if (isTeacher) {
+          const coursesRes = await apiClient.get("/api/v1/teacher/courses");
+          const raw = coursesRes.data;
+          let courses: any[] = [];
+          if (Array.isArray(raw?.data)) courses = raw.data;
+          else if (Array.isArray(raw?.data?.items)) courses = raw.data.items;
+          else if (Array.isArray(raw)) courses = raw;
 
-        if (courses.length === 0) return;
+          for (const course of courses) {
+            const courseId = course.id;
+            if (!courseId) continue;
 
-        for (const course of courses.slice(0, 6)) {
-          const courseId = course.course_id || course.id;
-          if (!courseId) continue;
-          const teacherId = getCourseTeacherId(course);
-
-          // Check General Talk
-          try {
-            const genRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=general&public_only=true`);
-            const genMsgs: any[] = genRes.data?.data?.messages ?? genRes.data?.messages ?? [];
-            const otherGen = genMsgs.filter((m: any) => {
-              const sid = m.sender_id || m.sender?.id;
-              return String(sid) !== currentUserId;
-            });
-            if (otherGen.length > 0) {
-              const latest = otherGen[0];
-              const lastRead = typeof window !== "undefined"
-                ? (localStorage.getItem(`sa_read_course:${courseId}`) || localStorage.getItem(`sa_last_read_msg_${courseId}`))
-                : null;
-              setChannelUnread(`course:${courseId}`, !lastRead || latest.id !== lastRead);
-            } else {
-              setChannelUnread(`course:${courseId}`, false);
-            }
-          } catch {}
-
-          // Check Course Announcements
-          try {
-            const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
-            const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
-            const otherAnn = annMsgs.filter((m: any) => {
-              const sid = m.sender_id || m.sender?.id;
-              return String(sid) !== currentUserId;
-            });
-            if (otherAnn.length > 0) {
-              const latest = otherAnn[0];
-              const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_course_announcements:${courseId}`) : null;
-              setChannelUnread(`course_announcements:${courseId}`, !lastRead || latest.id !== lastRead);
-            } else {
-              setChannelUnread(`course_announcements:${courseId}`, false);
-            }
-          } catch {}
-
-          // Check General Announcements
-          try {
-            const gannRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=global_announcement&announcements_only=true`);
-            const gannMsgs: any[] = gannRes.data?.data?.messages ?? gannRes.data?.messages ?? [];
-            const otherGann = gannMsgs.filter((m: any) => {
-              const sid = m.sender_id || m.sender?.id;
-              return String(sid) !== currentUserId;
-            });
-            if (otherGann.length > 0) {
-              const latest = otherGann[0];
-              const lastRead = typeof window !== "undefined" ? localStorage.getItem("sa_read_announcements") : null;
-              setChannelUnread("announcements", !lastRead || latest.id !== lastRead);
-            } else {
-              setChannelUnread("announcements", false);
-            }
-          } catch {}
-
-          // Check Teacher DM
-          if (teacherId) {
+            // Check General Talk
             try {
-              const dmRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&dm_student_id=${teacherId}`);
-              const dmMsgs: any[] = dmRes.data?.data?.messages ?? dmRes.data?.messages ?? [];
-              const otherDm = dmMsgs.filter((m: any) => {
+              const genRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=general&public_only=true`);
+              const genMsgs: any[] = genRes.data?.data?.messages ?? genRes.data?.messages ?? [];
+              const otherGen = genMsgs.filter((m: any) => {
                 const sid = m.sender_id || m.sender?.id;
                 return String(sid) !== currentUserId;
               });
-              if (otherDm.length > 0) {
-                const latest = otherDm[0];
-                const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_teacher_dm:${teacherId}`) : null;
-                setChannelUnread(`teacher_dm:${teacherId}`, !lastRead || latest.id !== lastRead);
+              if (otherGen.length > 0) {
+                const latest = otherGen[0];
+                const lastRead = typeof window !== "undefined"
+                  ? (localStorage.getItem(`sa_read_course:${courseId}`) || localStorage.getItem(`sa_last_read_msg_${courseId}`))
+                  : null;
+                setChannelUnread(`course:${courseId}`, !lastRead || latest.id !== lastRead);
               } else {
-                setChannelUnread(`teacher_dm:${teacherId}`, false);
+                setChannelUnread(`course:${courseId}`, false);
               }
             } catch {}
+
+            // Check Course Announcements
+            try {
+              const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
+              const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
+              const otherAnn = annMsgs.filter((m: any) => {
+                const sid = m.sender_id || m.sender?.id;
+                return String(sid) !== currentUserId;
+              });
+              if (otherAnn.length > 0) {
+                const latest = otherAnn[0];
+                const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_course_announcements:${courseId}`) : null;
+                setChannelUnread(`course_announcements:${courseId}`, !lastRead || latest.id !== lastRead);
+              } else {
+                setChannelUnread(`course_announcements:${courseId}`, false);
+              }
+            } catch {}
+          }
+        } else {
+          const coursesRes = await apiClient.get("/api/v1/courses");
+          const raw = coursesRes.data;
+          let courses: any[] = [];
+          if (Array.isArray(raw?.data)) courses = raw.data;
+          else if (Array.isArray(raw?.data?.items)) courses = raw.data.items;
+          else if (Array.isArray(raw?.items)) courses = raw.items;
+          else if (Array.isArray(raw)) courses = raw;
+
+          if (courses.length === 0) return;
+
+          for (const course of courses.slice(0, 6)) {
+            const courseId = course.course_id || course.id;
+            if (!courseId) continue;
+            const teacherId = getCourseTeacherId(course);
+
+            // Check General Talk
+            try {
+              const genRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=general&public_only=true`);
+              const genMsgs: any[] = genRes.data?.data?.messages ?? genRes.data?.messages ?? [];
+              const otherGen = genMsgs.filter((m: any) => {
+                const sid = m.sender_id || m.sender?.id;
+                return String(sid) !== currentUserId;
+              });
+              if (otherGen.length > 0) {
+                const latest = otherGen[0];
+                const lastRead = typeof window !== "undefined"
+                  ? (localStorage.getItem(`sa_read_course:${courseId}`) || localStorage.getItem(`sa_last_read_msg_${courseId}`))
+                  : null;
+                setChannelUnread(`course:${courseId}`, !lastRead || latest.id !== lastRead);
+              } else {
+                setChannelUnread(`course:${courseId}`, false);
+              }
+            } catch {}
+
+            // Check Course Announcements
+            try {
+              const annRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=announcement&announcements_only=true`);
+              const annMsgs: any[] = annRes.data?.data?.messages ?? annRes.data?.messages ?? [];
+              const otherAnn = annMsgs.filter((m: any) => {
+                const sid = m.sender_id || m.sender?.id;
+                return String(sid) !== currentUserId;
+              });
+              if (otherAnn.length > 0) {
+                const latest = otherAnn[0];
+                const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_course_announcements:${courseId}`) : null;
+                setChannelUnread(`course_announcements:${courseId}`, !lastRead || latest.id !== lastRead);
+              } else {
+                setChannelUnread(`course_announcements:${courseId}`, false);
+              }
+            } catch {}
+
+            // Check General Announcements
+            try {
+              const gannRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&room_type=global_announcement&announcements_only=true`);
+              const gannMsgs: any[] = gannRes.data?.data?.messages ?? gannRes.data?.messages ?? [];
+              const otherGann = gannMsgs.filter((m: any) => {
+                const sid = m.sender_id || m.sender?.id;
+                return String(sid) !== currentUserId;
+              });
+              if (otherGann.length > 0) {
+                const latest = otherGann[0];
+                const lastRead = typeof window !== "undefined" ? localStorage.getItem("sa_read_announcements") : null;
+                setChannelUnread("announcements", !lastRead || latest.id !== lastRead);
+              } else {
+                setChannelUnread("announcements", false);
+              }
+            } catch {}
+
+            // Check Teacher DM
+            if (teacherId) {
+              try {
+                const dmRes = await apiClient.get(`/api/v1/chat/${courseId}/messages?limit=5&dm_student_id=${teacherId}`);
+                const dmMsgs: any[] = dmRes.data?.data?.messages ?? dmRes.data?.messages ?? [];
+                const otherDm = dmMsgs.filter((m: any) => {
+                  const sid = m.sender_id || m.sender?.id;
+                  return String(sid) !== currentUserId;
+                });
+                if (otherDm.length > 0) {
+                  const latest = otherDm[0];
+                  const lastRead = typeof window !== "undefined" ? localStorage.getItem(`sa_read_teacher_dm:${teacherId}`) : null;
+                  setChannelUnread(`teacher_dm:${teacherId}`, !lastRead || latest.id !== lastRead);
+                } else {
+                  setChannelUnread(`teacher_dm:${teacherId}`, false);
+                }
+              } catch {}
+            }
           }
         }
       } catch {}
@@ -152,8 +204,18 @@ export function ChatUnreadTracker() {
     checkAllChannels();
     const interval = setInterval(checkAllChannels, 8000);
 
-    return () => clearInterval(interval);
-  }, [pathname, user?.id, setChannelUnread]);
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        checkAllChannels();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [pathname, user?.id, user?.role, setChannelUnread]);
 
   return null;
 }

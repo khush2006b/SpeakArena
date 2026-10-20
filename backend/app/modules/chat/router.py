@@ -351,25 +351,21 @@ async def get_unread_summary(
                 Message.deleted_at.is_(None),
                 Message.sender_id != actor.id,
             )
-            .order_by(Message.created_at.desc())
-            .limit(40)
+            .distinct(Message.sender_id)
+            .order_by(Message.sender_id, Message.created_at.desc())
         )
         dm_res = await db.execute(dm_stmt)
         dm_rows = dm_res.all()
 
-        seen_senders: set[uuid.UUID] = set()
         for row in dm_rows:
             partner_id = row[1]
-            if partner_id in seen_senders:
-                continue
-            seen_senders.add(partner_id)
             msg_id_str = str(row[0])
             msg_created_at = row[2]
             ck = f"teacher_dm:{partner_id}"
 
             is_dm_read = False
             if redis is not None:
-                dm_ts = await redis.get(f"chat:read_time:dm:{partner_id}:{actor.id}")
+                dm_ts = (await redis.get(f"chat:read_time:dm:{partner_id}:{actor.id}")) or (await redis.get(f"chat:read_time:ch:{ck}:{actor.id}"))
                 if dm_ts:
                     try:
                         read_ts = float(dm_ts.decode() if isinstance(dm_ts, bytes) else str(dm_ts))
@@ -378,7 +374,7 @@ async def get_unread_summary(
                     except Exception:
                         pass
                 if not is_dm_read:
-                    cursor_val = await redis.get(f"chat:read:dm:{partner_id}:{actor.id}")
+                    cursor_val = (await redis.get(f"chat:read:dm:{partner_id}:{actor.id}")) or (await redis.get(f"chat:read:ch:{ck}:{actor.id}"))
                     if cursor_val:
                         last_dm_id = cursor_val.decode() if isinstance(cursor_val, bytes) else str(cursor_val)
                         if last_dm_id == msg_id_str:

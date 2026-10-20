@@ -6,6 +6,7 @@ import { TeacherSidebar } from "./TeacherSidebar";
 import { TeacherHeader } from "./TeacherHeader";
 import { GlobalSearchPalette } from "./GlobalSearchPalette";
 import { NotificationDrawer } from "./NotificationDrawer";
+import { ChatUnreadTracker } from "@/features/student/components/layout/ChatUnreadTracker";
 
 export function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,6 +17,7 @@ export function TeacherLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
+      <ChatUnreadTracker />
       <TeacherSidebar />
       
       <div className="flex flex-1 flex-col overflow-hidden bg-background">

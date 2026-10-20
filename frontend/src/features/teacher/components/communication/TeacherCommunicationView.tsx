@@ -179,10 +179,21 @@ function Avatar({
 
 export function TeacherCommunicationView() {
   const { user } = useAuthStore();
+  const { unreadChannelKeys, markChannelRead } = useChatStore();
 
   // Data
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [allStudents, setAllStudents] = useState<PlatformStudent[]>([]);
+
+  const sortedStudents = React.useMemo(() => {
+    return [...allStudents].sort((a, b) => {
+      const aUnread = Boolean(unreadChannelKeys[`teacher_dm:${a.student_id}`]);
+      const bUnread = Boolean(unreadChannelKeys[`teacher_dm:${b.student_id}`]);
+      if (aUnread && !bUnread) return -1;
+      if (!aUnread && bUnread) return 1;
+      return 0;
+    });
+  }, [allStudents, unreadChannelKeys]);
 
   // Active channel selection
   const [activeChannel, setActiveChannel] = useState<ActiveChannel>({
@@ -450,47 +461,47 @@ export function TeacherCommunicationView() {
         }
       }
 
-      // Room guard for course discussion / announcement channels.
-      // For the global Announcements tab: accept messages from ANY announcement room
-      // (we are subscribed to all of them). For other channels: strict single-room check.
-      if (msg.chat_room_id && ch?.type !== "dm") {
-        if (ch?.type === "announcements") {
-          const knownRoomIds = announcementRoomsRef.current.map((r) =>
-            String(r.id).toLowerCase()
-          );
-          const msgRoomId = String(msg.chat_room_id).toLowerCase();
-          if (knownRoomIds.length > 0 && !knownRoomIds.includes(msgRoomId)) return;
-        } else if (currentRoom?.id) {
-          if (
-            String(msg.chat_room_id).toLowerCase() !==
-            String(currentRoom.id).toLowerCase()
-          )
+      // ── 2. Course Rooms & Announcements ─────────────────────────────────────
+      if (!ch) return;
+
+      const crsId = (msg as any).course_id || (msg as any).courseId || currentRoom?.course_id;
+      const rType = (msg as any).room_type || currentRoom?.room_type;
+      const isGlobal = rType === "global_announcement";
+
+      if (msg.is_announcement || isGlobal || rType === "announcement") {
+        if (isGlobal) {
+          const isLookingAtGeneralAnn = ch.type === "announcements";
+          if (!isLookingAtGeneralAnn) {
+            useChatStore.getState().setChannelUnread("announcements", true);
+            toast.info(`New Announcement: ${msg.content.slice(0, 40)}`);
             return;
-        }
-      }
-
-      if (ch?.type === "announcements") {
-        if (!msg.is_announcement) return;
-      } else if (ch?.type === "course") {
-        const isAnnSub = ch.subType === "announcements";
-        if (isAnnSub) {
-          if (msg.recipient_id) return;
+          }
         } else {
-          if (msg.is_announcement || msg.recipient_id) return;
-        }
-      }
+          const isLookingAtCourseAnn =
+            ch.type === "course" &&
+            ch.subType === "announcements" &&
+            (!crsId || String(ch.course?.id).toLowerCase() === String(crsId).toLowerCase());
 
-      // Mark channel as unread in store when a message from someone else arrives
-      if (msgSenderId && msgSenderId !== myId) {
-        if (ch?.type === "announcements") {
-          // Key must match the key used in fetchMessages → "announcements"
-          useChatStore.getState().setChannelUnread("announcements", true);
-        } else if (ch?.type === "course" && ch.course?.id) {
-          // Keys must match those in fetchMessages
-          const subKey = ch.subType === "announcements"
-            ? `course_announcements:${ch.course.id}`
-            : `course:${ch.course.id}`;
-          useChatStore.getState().setChannelUnread(subKey, true);
+          if (!isLookingAtCourseAnn) {
+            if (crsId) {
+              useChatStore.getState().setChannelUnread(`course_announcements:${crsId}`, true);
+            }
+            toast.info(`New Course Announcement: ${msg.content.slice(0, 40)}`);
+            return;
+          }
+        }
+      } else {
+        // Course General Talk
+        const isLookingAtThisGen =
+          ch.type === "course" &&
+          ch.subType !== "announcements" &&
+          (!crsId || String(ch.course?.id).toLowerCase() === String(crsId).toLowerCase());
+
+        if (!isLookingAtThisGen) {
+          if (crsId && msgSenderId !== myId) {
+            useChatStore.getState().setChannelUnread(`course:${crsId}`, true);
+          }
+          return;
         }
       }
 
@@ -677,9 +688,9 @@ export function TeacherCommunicationView() {
       setTimeout(scrollToTarget, 350);
 
       // Mark as read in store and storage
-      if (key && fetchedMsgs.length > 0) {
+      if (key) {
+        markChannelRead(key);
         const latest = fetchedMsgs[fetchedMsgs.length - 1];
-        useChatStore.getState().markChannelRead(key);
         if (typeof window !== "undefined") {
           localStorage.setItem(`sa_read_ts_${key}`, String(Date.now()));
           if (latest?.id) localStorage.setItem(key, latest.id);
@@ -1202,6 +1213,7 @@ export function TeacherCommunicationView() {
             className="ch-item"
             onClick={() => {
               setActiveChannel({ type: "announcements" });
+              markChannelRead("announcements");
               setMobileShowChat(true);
             }}
             style={{
@@ -1239,6 +1251,19 @@ export function TeacherCommunicationView() {
               }}
             />
             <span style={{ flex: 1 }}>Announcements</span>
+            {Boolean(unreadChannelKeys["announcements"]) && (
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  flexShrink: 0,
+                  marginRight: 4,
+                }}
+                className="animate-pulse"
+              />
+            )}
             <span
               style={{
                 fontSize: 9,
@@ -1297,6 +1322,21 @@ export function TeacherCommunicationView() {
                 {courses.length}
               </span>
             )}
+            {Object.entries(unreadChannelKeys).some(
+              ([k, v]) => (k.startsWith("course:") || k.startsWith("course_announcements:")) && Boolean(v)
+            ) && (
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  marginLeft: courses.length > 0 ? 4 : "auto",
+                  flexShrink: 0,
+                }}
+                className="animate-pulse"
+              />
+            )}
           </button>
 
           {coursesSectionOpen && (
@@ -1342,12 +1382,27 @@ export function TeacherCommunicationView() {
                           fontWeight: 700,
                           color: "#64748b",
                           padding: "6px 8px 2px",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                         }}
                       >
-                        {c.title}
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {c.title}
+                        </span>
+                        {(Boolean(unreadChannelKeys[`course:${c.id}`]) || Boolean(unreadChannelKeys[`course_announcements:${c.id}`])) && (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                              marginLeft: 4,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </div>
 
                       {/* 1. Course Announcements sub-channel */}
@@ -1355,6 +1410,7 @@ export function TeacherCommunicationView() {
                         className="ch-item"
                         onClick={() => {
                           setActiveChannel({ type: "course", course: c, subType: "announcements" });
+                          markChannelRead(`course_announcements:${c.id}`);
                           setMobileShowChat(true);
                         }}
                         style={{
@@ -1381,6 +1437,18 @@ export function TeacherCommunicationView() {
                         <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           Announcements
                         </span>
+                        {Boolean(unreadChannelKeys[`course_announcements:${c.id}`]) && (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </button>
 
                       {/* 2. Course General Talk sub-channel */}
@@ -1388,6 +1456,7 @@ export function TeacherCommunicationView() {
                         className="ch-item"
                         onClick={() => {
                           setActiveChannel({ type: "course", course: c, subType: "general" });
+                          markChannelRead(`course:${c.id}`);
                           setMobileShowChat(true);
                         }}
                         style={{
@@ -1414,6 +1483,18 @@ export function TeacherCommunicationView() {
                         <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           General Talk
                         </span>
+                        {Boolean(unreadChannelKeys[`course:${c.id}`]) && (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#ef4444",
+                              flexShrink: 0,
+                            }}
+                            className="animate-pulse"
+                          />
+                        )}
                       </button>
                     </div>
                   );
@@ -1465,6 +1546,21 @@ export function TeacherCommunicationView() {
                 {allStudents.length}
               </span>
             )}
+            {Object.entries(unreadChannelKeys).some(
+              ([k, v]) => k.startsWith("teacher_dm:") && Boolean(v)
+            ) && (
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  marginLeft: allStudents.length > 0 ? 4 : "auto",
+                  flexShrink: 0,
+                }}
+                className="animate-pulse"
+              />
+            )}
           </button>
 
           {dmsSectionOpen && (
@@ -1482,7 +1578,7 @@ export function TeacherCommunicationView() {
                   >
                     Loading students...
                   </div>
-                ) : allStudents.length === 0 ? (
+                ) : sortedStudents.length === 0 ? (
                   <div
                     style={{
                       padding: "8px 10px",
@@ -1494,16 +1590,18 @@ export function TeacherCommunicationView() {
                     No students found.
                   </div>
                 ) : (
-                  allStudents.map((st, idx) => {
+                  sortedStudents.map((st, idx) => {
                     const isActive =
                       activeChannel.type === "dm" &&
                       activeChannel.student.student_id === st.student_id;
+                    const isUnread = Boolean(unreadChannelKeys[`teacher_dm:${st.student_id}`]);
                     return (
                       <button
                         key={`st-${st.student_id}-${idx}`}
                         className="st-item"
                         onClick={() => {
                           setActiveChannel({ type: "dm", student: st });
+                          markChannelRead(`teacher_dm:${st.student_id}`);
                           setMobileShowChat(true);
                         }}
                         style={{
@@ -1543,15 +1641,36 @@ export function TeacherCommunicationView() {
                         >
                           <div
                             style={{
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              color: isActive ? "#e2e8f0" : "#cbd5e1",
-                              fontWeight: isActive ? 700 : 400,
-                              fontSize: 12,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 4,
                             }}
                           >
-                            {st.student_name}
+                            <span
+                              style={{
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                color: isActive ? "#e2e8f0" : "#cbd5e1",
+                                fontWeight: isActive || isUnread ? 700 : 400,
+                                fontSize: 12,
+                              }}
+                            >
+                              {st.student_name}
+                            </span>
+                            {isUnread && (
+                              <span
+                                style={{
+                                  width: 7,
+                                  height: 7,
+                                  borderRadius: "50%",
+                                  background: "#ef4444",
+                                  flexShrink: 0,
+                                }}
+                                className="animate-pulse"
+                              />
+                            )}
                           </div>
                           <div
                             style={{
