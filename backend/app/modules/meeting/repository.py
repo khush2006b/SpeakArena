@@ -431,6 +431,8 @@ class MeetingRepository:
         Returns:
             bool: True if an active enrollment exists.
         """
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = await self._db.execute(
             select(func.count())
             .select_from(CourseEnrollment)
@@ -438,6 +440,11 @@ class MeetingRepository:
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.course_id == course_id,
                 CourseEnrollment.status == "active",
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         return result.scalar_one() > 0

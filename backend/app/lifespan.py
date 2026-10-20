@@ -216,6 +216,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         SET full_name = 'Paras (Construction)'
         WHERE role = 'teacher' OR role = 'admin';
         """,
+        # Unenroll any students who have crossed the 30-day batch validity period
+        """
+        UPDATE courses c
+        SET total_enrollments = GREATEST(0, c.total_enrollments - sub.cnt)
+        FROM (
+            SELECT course_id, COUNT(*) as cnt
+            FROM course_enrollments
+            WHERE enrolled_at <= NOW() - INTERVAL '30 days'
+               OR (expires_at IS NOT NULL AND expires_at <= NOW())
+            GROUP BY course_id
+        ) sub
+        WHERE c.id = sub.course_id;
+        """,
+        """
+        DELETE FROM course_enrollments
+        WHERE enrolled_at <= NOW() - INTERVAL '30 days'
+           OR (expires_at IS NOT NULL AND expires_at <= NOW());
+        """,
     ]
 
     try:

@@ -22,12 +22,14 @@ Repositories provided:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import Select, String, and_, case, cast, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
+
+from app.modules.student.repository import auto_unenroll_expired_enrollments
 
 from app.models.assignment import Assignment
 from app.models.auth import UserSession
@@ -1428,6 +1430,8 @@ class AnalyticsRepository:
         limit: int = 5,
     ) -> list[dict[str, Any]]:
         """Return the most recent enrollments across all teacher courses."""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         stmt = (
             select(
                 User.full_name.label("student_name"),
@@ -1442,6 +1446,12 @@ class AnalyticsRepository:
             .where(
                 Course.teacher_id == teacher_id,
                 Course.deleted_at.is_(None),
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
             .order_by(CourseEnrollment.enrolled_at.desc())
             .limit(limit)
@@ -1691,12 +1701,21 @@ class AnalyticsRepository:
 
     async def get_total_students(self, teacher_id: uuid.UUID) -> int:
         """Count unique enrolled students across all active teacher courses."""
+        await auto_unenroll_expired_enrollments(self._db)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         stmt = (
             select(func.count(func.distinct(CourseEnrollment.student_id)))
             .join(Course, Course.id == CourseEnrollment.course_id)
             .where(
                 Course.teacher_id == teacher_id,
                 Course.deleted_at.is_(None),
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         return (await self._db.execute(stmt)).scalar_one()
@@ -1726,9 +1745,19 @@ class StudentManagementRepository:
         is_active: Optional[bool] = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """Paginated list of enrolled students for a teacher."""
+        await auto_unenroll_expired_enrollments(self._db)
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         conditions = [
             Course.teacher_id == teacher_id,
             Course.deleted_at.is_(None),
+            CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+            CourseEnrollment.enrolled_at > cutoff,
+            or_(
+                CourseEnrollment.expires_at.is_(None),
+                CourseEnrollment.expires_at > now,
+            ),
         ]
 
         if course_id:
@@ -1899,6 +1928,8 @@ class StudentManagementRepository:
         if user is None:
             return None
 
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         # Check they're enrolled in at least one teacher course
         enrollments_stmt = (
             select(
@@ -1911,6 +1942,13 @@ class StudentManagementRepository:
             .where(
                 CourseEnrollment.student_id == student_id,
                 Course.teacher_id == teacher_id,
+                Course.deleted_at.is_(None),
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         enrollment_rows = (await self._db.execute(enrollments_stmt)).all()
@@ -1979,6 +2017,8 @@ class StudentManagementRepository:
         teacher_id: uuid.UUID,
     ) -> list[CourseEnrollment]:
         """Fetch all enrollment records for a student in courses belonging to a teacher."""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         stmt = (
             select(CourseEnrollment)
             .join(Course, Course.id == CourseEnrollment.course_id)
@@ -1986,6 +2026,12 @@ class StudentManagementRepository:
                 CourseEnrollment.student_id == student_id,
                 Course.teacher_id == teacher_id,
                 Course.deleted_at.is_(None),
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         return list((await self._db.execute(stmt)).scalars().all())

@@ -62,6 +62,70 @@ from app.models.video import Video
 
 
 # ===========================================================================
+# Auto-Unenrollment Helper
+# ===========================================================================
+
+
+async def auto_unenroll_expired_enrollments(
+    db: AsyncSession,
+    student_id: Optional[uuid.UUID] = None,
+    course_id: Optional[uuid.UUID] = None,
+) -> int:
+    """Automatically unenroll any students who have crossed the 30-day batch period.
+
+    An enrollment is considered expired when:
+    - enrolled_at <= NOW() - INTERVAL '30 days'
+    - OR (expires_at IS NOT NULL AND expires_at <= NOW())
+
+    When expired:
+    - Course.total_enrollments is decremented
+    - The CourseEnrollment record is permanently deleted
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
+
+        conditions = [
+            or_(
+                CourseEnrollment.enrolled_at <= cutoff,
+                and_(CourseEnrollment.expires_at.is_not(None), CourseEnrollment.expires_at <= now),
+            )
+        ]
+        if student_id:
+            conditions.append(CourseEnrollment.student_id == student_id)
+        if course_id:
+            conditions.append(CourseEnrollment.course_id == course_id)
+
+        stmt = select(CourseEnrollment).where(and_(*conditions))
+        expired_enrollments = (await db.execute(stmt)).scalars().all()
+
+        if not expired_enrollments:
+            return 0
+
+        # Decrement total_enrollments on each affected course
+        course_counts: dict[uuid.UUID, int] = {}
+        for e in expired_enrollments:
+            if e.course_id:
+                course_counts[e.course_id] = course_counts.get(e.course_id, 0) + 1
+
+        for c_id, cnt in course_counts.items():
+            course = (await db.execute(select(Course).where(Course.id == c_id))).scalar_one_or_none()
+            if course and course.total_enrollments:
+                course.total_enrollments = max(0, course.total_enrollments - cnt)
+
+        # Delete expired enrollments
+        for e in expired_enrollments:
+            await db.delete(e)
+
+        await db.flush()
+        return len(expired_enrollments)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("auto_unenroll_expired_enrollments warning: %s", exc)
+        return 0
+
+
+# ===========================================================================
 # StudentEnrollmentRepository
 # ===========================================================================
 
@@ -90,6 +154,7 @@ class StudentEnrollmentRepository:
 
         An enrollment is considered active when:
         - status == 'active'
+        - enrolled_at > NOW() - 30 days
         - expires_at is NULL (lifetime) or expires_at > NOW()
 
         Args:
@@ -97,14 +162,18 @@ class StudentEnrollmentRepository:
             course_id: The course UUID.
 
         Returns:
-            CourseEnrollment | None: The enrollment, or None if not enrolled/suspended.
+            CourseEnrollment | None: The enrollment, or None if not enrolled/suspended/expired.
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id, course_id=course_id)
+
         now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = await self._db.execute(
             select(CourseEnrollment).where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.course_id == course_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
                 or_(
                     CourseEnrollment.expires_at.is_(None),
                     CourseEnrollment.expires_at > now,
@@ -146,10 +215,19 @@ class StudentEnrollmentRepository:
         Returns:
             list[uuid.UUID]: Enrolled course UUIDs.
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id)
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = await self._db.execute(
             select(CourseEnrollment.course_id).where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         return list(result.scalars().all())
@@ -231,13 +309,25 @@ class StudentCourseRepository:
         Returns:
             tuple: (list of course dict rows, total count).
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id)
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
+
         conditions = [
             CourseEnrollment.student_id == student_id,
             Course.deleted_at.is_(None),
+            CourseEnrollment.enrolled_at > cutoff,
+            or_(
+                CourseEnrollment.expires_at.is_(None),
+                CourseEnrollment.expires_at > now,
+            ),
         ]
 
         if status:
             conditions.append(CourseEnrollment.status == status)
+        else:
+            conditions.append(CourseEnrollment.status == EnrollmentStatus.ACTIVE)
         if search:
             conditions.append(Course.title.ilike(f"%{search}%"))
         if only_in_progress:
@@ -359,9 +449,17 @@ class StudentCourseRepository:
         ``is_enrolled`` field is always False.
         """
         if student_id is not None:
+            await auto_unenroll_expired_enrollments(self._db, student_id=student_id)
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(days=30)
             enrolled_stmt = select(CourseEnrollment.course_id).where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
             enrolled_res = await self._db.execute(enrolled_stmt)
             enrolled_ids = set(enrolled_res.scalars().all())
@@ -503,6 +601,10 @@ class StudentCourseRepository:
         Returns:
             dict | None: Course detail with teacher and enrollment info.
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id, course_id=course_id)
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = await self._db.execute(
             select(
                 CourseEnrollment.id.label("enrollment_id"),
@@ -538,6 +640,12 @@ class StudentCourseRepository:
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.course_id == course_id,
                 Course.deleted_at.is_(None),
+                CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         row = result.one_or_none()
@@ -652,11 +760,19 @@ class StudentCourseRepository:
         Returns:
             int: Active enrollment count.
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         return (
             await self._db.execute(
                 select(func.count(CourseEnrollment.id)).where(
                     CourseEnrollment.student_id == student_id,
                     CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    CourseEnrollment.enrolled_at > cutoff,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 )
             )
         ).scalar_one()
@@ -1270,11 +1386,17 @@ class StudentMeetingRepository:
             tuple: (list of meeting dicts, total count).
         """
         now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         enrolled_courses = (
             select(CourseEnrollment.course_id)
             .where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
             .scalar_subquery()
         )
@@ -1283,6 +1405,11 @@ class StudentMeetingRepository:
             Meeting.course_id.in_(select(CourseEnrollment.course_id).where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )),
             Meeting.deleted_at.is_(None),
         ]
@@ -1353,6 +1480,8 @@ class StudentMeetingRepository:
         Returns:
             dict | None: Meeting data dict or None.
         """
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = await self._db.execute(
             select(
                 Meeting.id,
@@ -1379,6 +1508,11 @@ class StudentMeetingRepository:
                     CourseEnrollment.course_id == Meeting.course_id,
                     CourseEnrollment.student_id == student_id,
                     CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    CourseEnrollment.enrolled_at > cutoff,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 ),
             )
             .outerjoin(
@@ -1430,6 +1564,7 @@ class StudentMeetingRepository:
             list[dict]: Upcoming meeting data.
         """
         now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         data_stmt = (
             select(
                 Meeting.id,
@@ -1449,6 +1584,11 @@ class StudentMeetingRepository:
                     CourseEnrollment.course_id == Meeting.course_id,
                     CourseEnrollment.student_id == student_id,
                     CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    CourseEnrollment.enrolled_at > cutoff,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 ),
             )
             .where(
@@ -2012,6 +2152,9 @@ class StudentDashboardRepository:
         Returns:
             float: Average progress percentage (0–100).
         """
+        await auto_unenroll_expired_enrollments(self._db, student_id=student_id)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         result = (
             await self._db.execute(
                 select(
@@ -2019,6 +2162,11 @@ class StudentDashboardRepository:
                 ).where(
                     CourseEnrollment.student_id == student_id,
                     CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                    CourseEnrollment.enrolled_at > cutoff,
+                    or_(
+                        CourseEnrollment.expires_at.is_(None),
+                        CourseEnrollment.expires_at > now,
+                    ),
                 )
             )
         ).scalar_one()
@@ -2038,10 +2186,17 @@ class StudentDashboardRepository:
         Returns:
             list[dict]: Recent announcement data.
         """
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=30)
         enrolled_course_ids = (
             select(CourseEnrollment.course_id).where(
                 CourseEnrollment.student_id == student_id,
                 CourseEnrollment.status == EnrollmentStatus.ACTIVE,
+                CourseEnrollment.enrolled_at > cutoff,
+                or_(
+                    CourseEnrollment.expires_at.is_(None),
+                    CourseEnrollment.expires_at > now,
+                ),
             )
         )
         stmt = (
