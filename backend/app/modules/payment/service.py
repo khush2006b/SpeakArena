@@ -750,7 +750,21 @@ class WebhookService:
             logger.info("Unhandled webhook event type: %s", event)
             return {"status": "ignored", "event": event}
 
-        return await handler(payload)
+        try:
+            return await handler(payload)
+        except Exception:
+            # Handler failed — release the idempotency lock so Razorpay can retry
+            # and successfully process the event on a subsequent delivery.
+            try:
+                await self._redis.delete(redis_key)
+                logger.warning(
+                    "Webhook handler for event %s (id=%s) failed; released idempotency lock for retry.",
+                    event,
+                    event_id,
+                )
+            except Exception as redis_err:
+                logger.error("Failed to release webhook idempotency lock: %s", redis_err)
+            raise
 
     async def _handle_payment_captured(
         self,
@@ -781,10 +795,29 @@ class WebhookService:
             logger.error("payment.captured: payment not found for order %s", rz_order_id)
             return {"status": "error", "reason": "payment_not_found"}
 
-        # Idempotency: already captured?
+        # Idempotency: already captured? — still check if enrollment exists to handle
+        # the edge case where payment was marked captured but enrollment failed on a
+        # previous attempt (e.g. DB connection reset during grant_access).
         if payment.status == PaymentStatus.CAPTURED:
-            logger.info("Payment %s already captured. Skipping.", payment.id)
-            return {"status": "skipped", "reason": "already_captured"}
+            from sqlalchemy import select as _idem_select
+            from app.models.course import CourseEnrollment as _IdemCE
+            _idem_result = await self._db.execute(
+                _idem_select(_IdemCE).where(
+                    _IdemCE.student_id == payment.student_id,
+                    _IdemCE.course_id == payment.course_id,
+                )
+            )
+            if _idem_result.scalar_one_or_none() is not None:
+                logger.info("Payment %s already captured and enrollment exists. Skipping.", payment.id)
+                return {"status": "skipped", "reason": "already_captured"}
+            else:
+                logger.warning(
+                    "Payment %s already captured but NO enrollment found — re-granting access (recovery).",
+                    payment.id,
+                )
+                enrollment_svc = EnrollmentService(self._db)
+                await enrollment_svc.grant_access(payment)
+                return {"status": "recovered", "payment_id": str(payment.id)}
 
         # Amount verification
         expected_paise = int(float(payment.amount) * 100)
@@ -846,7 +879,18 @@ class WebhookService:
 
         # Grant enrollment
         enrollment_svc = EnrollmentService(self._db)
-        await enrollment_svc.grant_access(payment)
+        try:
+            await enrollment_svc.grant_access(payment)
+        except Exception as enroll_exc:
+            logger.error(
+                "CRITICAL: grant_access failed for payment %s (order %s): %s — "
+                "idempotency lock will be released so Razorpay retry can re-attempt enrollment.",
+                payment.id,
+                rz_order_id,
+                enroll_exc,
+                exc_info=True,
+            )
+            raise
 
         # Generate invoice number (non-fatal)
         try:

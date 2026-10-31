@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5          # Per-worker pool (3 workers × 5 = 15 total connections max)
     DB_MAX_OVERFLOW: int = 5       # Allow brief spikes (was 10, too high for small instance)
     DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 300     # Recycle connections every 5 min to avoid stale-socket errors on Render
 
     # --- Redis ---
     REDIS_URL: str = "redis://localhost:6379/0"
