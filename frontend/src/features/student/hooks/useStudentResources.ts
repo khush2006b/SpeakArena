@@ -73,7 +73,7 @@ export function useStudentResources() {
           Promise.allSettled(
             courses.map(course =>
               Promise.all([
-                apiClient.get(`/api/v1/videos/${course.courseId}`).then(r => {
+                apiClient.get(`/api/v1/videos/${course.courseId}`, { params: { page: 1, page_size: 200 } }).then(r => {
                   const d = r.data;
                   // Handle { success, data: [...] } or { success, data: { items: [...] } } or plain array
                   let vids: any[] = [];
@@ -86,7 +86,7 @@ export function useStudentResources() {
                   console.warn(`[resources] Failed to load videos for course ${course.courseId}:`, err?.response?.data || err?.message);
                   return [];
                 }),
-                apiClient.get(`/api/v1/pdfs/${course.courseId}`).then(r => {
+                apiClient.get(`/api/v1/pdfs/${course.courseId}`, { params: { page: 1, page_size: 200 } }).then(r => {
                   const d = r.data;
                   let pdfs: any[] = [];
                   if (Array.isArray(d?.data?.items)) pdfs = d.data.items;
