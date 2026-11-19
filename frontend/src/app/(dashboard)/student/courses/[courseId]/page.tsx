@@ -476,7 +476,7 @@ export default function StudentCourseDetailPage() {
                     <CheckCircle2 className="h-3 w-3" /> Active Access
                   </span>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Full Lifetime Access</span>
+                  <span className="text-xs text-muted-foreground">1 Month Access</span>
                 )}
               </div>
 
